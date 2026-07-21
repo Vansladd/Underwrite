@@ -65,3 +65,22 @@ is always 5432, so only the published port differs. Override with `POSTGRES_PORT
 
 Defaulting to a port nobody else takes means `make up` works on a machine that already runs
 other stacks — which is the normal case, not the exception.
+
+---
+
+## D-004 · Rating goldens are regenerated deliberately, never automatically
+
+**Ticket:** UW-011b · **Date:** 2026-07-21
+
+`tests/goldens/rating_v1_0.json` freezes the full `RatingResult` for 32 representative risks.
+It only rewrites under `make regen-goldens`, and the test asserts the file's `rating_version`
+matches `RATING_VERSION` before comparing.
+
+A golden file that self-heals is worse than no golden file: the diff is the deliverable. A
+factor change should arrive in review as "these 11 risks moved, this one flipped to REFER",
+which is a question a human can answer. Auto-regeneration turns that into a green tick.
+
+Multipliers and running premiums serialise as **strings**. `json.dumps` refuses `Decimal`, and
+the reflex fix — `float(...)` — puts a float in the money path against D6 and stops the stored
+trace folding back to the premium. The same constraint applies to the `factors` JSONB column
+in UW-012.

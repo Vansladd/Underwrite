@@ -1,7 +1,7 @@
 COMPOSE := docker compose
 API_PORT ?= 8000
 
-.PHONY: help up down restart logs ps health test lint fmt migrate seed psql shell clean
+.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate seed psql shell clean
 
 help:
 	@echo "Underwrite — available targets"
@@ -16,6 +16,7 @@ help:
 	@echo "  make test      run pytest inside the api container"
 	@echo "  make lint      ruff check"
 	@echo "  make fmt       ruff format + fix imports"
+	@echo "  make regen-goldens  rewrite the rating golden file"
 	@echo ""
 	@echo "  make migrate   run alembic migrations        (UW-013)"
 	@echo "  make seed      insert the 6 canned submissions (UW-027)"
@@ -57,6 +58,9 @@ health:
 
 test:
 	$(COMPOSE) run --rm api uv run --frozen pytest -q
+
+regen-goldens:
+	$(COMPOSE) run --rm --no-deps api uv run --frozen pytest -q --regen-goldens tests/test_rating_goldens.py
 
 lint:
 	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff check .
