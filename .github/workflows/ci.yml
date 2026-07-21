@@ -72,10 +72,8 @@ jobs:
       - name: pytest
         run: uv run --frozen pytest -q -m "not llm"
 
-  # Single stable context for branch protection to require. Requiring lint and
-  # test by name breaks whenever a job is renamed, a matrix is added, or a path
-  # filter stops a job reporting — and a required check that never reports
-  # blocks the PR forever with no timeout.
+  # The one context branch protection requires: job names change, and a
+  # required check that never reports blocks the PR permanently.
   ci-ok:
     name: ci-ok
     if: always()

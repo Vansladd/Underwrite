@@ -129,7 +129,7 @@ trading is the 1.0 band. There are no ambiguous values.
 Implementation is an **edges array + `bisect_right`**, not `(min, max)` pairs:
 
 ```python
-REVENUE_EDGES_PENCE = (10_000_00, 50_000_000, 200_000_000, 1_000_000_000)
+REVENUE_EDGES_PENCE = (10_000_000, 50_000_000, 200_000_000, 1_000_000_000)
 REVENUE_FACTORS     = (D("0.8"), D("1.0"), D("1.3"), D("1.7"), D("2.2"))
 factor = REVENUE_FACTORS[bisect.bisect_right(REVENUE_EDGES_PENCE, revenue_pence)]
 ```
@@ -258,8 +258,8 @@ Discrete lookup, not a band — `requested_limit_gbp` is an enum.
 
 | Band (pence, half-open) | Label | Factor | Outcome |
 |---|---|---|---|
-| `[0, 10_000_00)` | < £100k | 0.8 | — |
-| `[10_000_00, 50_000_000)` | £100k – £500k | 1.0 | — |
+| `[0, 10_000_000)` | < £100k | 0.8 | — |
+| `[10_000_000, 50_000_000)` | £100k – £500k | 1.0 | — |
 | `[50_000_000, 200_000_000)` | £500k – £2m | 1.3 | — |
 | `[200_000_000, 1_000_000_000)` | £2m – £10m | 1.7 | — |
 | `[1_000_000_000, ∞)` | ≥ £10m | 2.2 | **REFER** |
