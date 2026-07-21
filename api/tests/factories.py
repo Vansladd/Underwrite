@@ -1,5 +1,9 @@
+from contextlib import contextmanager
 from dataclasses import replace
 from datetime import date
+
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 from app.domain.enums import (
     AuditActor,
@@ -15,6 +19,20 @@ from app.models import AuditEvent, Enrichment, Extraction, Quote, Rating, Submis
 from app.schemas import rating_to_orm_kwargs
 from app.services.rating import rate
 from tests.rating_baseline import CLEAN_ENRICHMENT, application
+
+
+@contextmanager
+def count_queries():
+    statements = []
+
+    def record(connection, cursor, statement, *args):
+        statements.append(statement)
+
+    event.listen(Engine, "before_cursor_execute", record)
+    try:
+        yield statements
+    finally:
+        event.remove(Engine, "before_cursor_execute", record)
 
 
 async def make_submission(db, **overrides) -> Submission:

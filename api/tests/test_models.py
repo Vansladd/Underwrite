@@ -1,10 +1,8 @@
-from contextlib import contextmanager
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import event, select, text
-from sqlalchemy.engine import Engine
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError, MissingGreenlet
 from sqlalchemy.orm import selectinload
 
@@ -21,21 +19,7 @@ from app.domain.enums import (
     SubmissionStatus,
 )
 from app.models import AuditEvent, Enrichment, Extraction, Quote, Rating, Submission
-from tests.factories import make_full_submission, make_submission
-
-
-@contextmanager
-def count_queries():
-    statements = []
-
-    def record(connection, cursor, statement, *args):
-        statements.append(statement)
-
-    event.listen(Engine, "before_cursor_execute", record)
-    try:
-        yield statements
-    finally:
-        event.remove(Engine, "before_cursor_execute", record)
+from tests.factories import count_queries, make_full_submission, make_submission
 
 
 async def test_every_model_round_trips(db):
