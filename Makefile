@@ -56,7 +56,7 @@ health:
 	@curl -fsS http://localhost:$(API_PORT)/health && echo
 
 test:
-	$(COMPOSE) run --rm --no-deps api uv run --frozen pytest -q
+	$(COMPOSE) run --rm api uv run --frozen pytest -q
 
 lint:
 	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff check .
