@@ -221,14 +221,22 @@ computable without re-deriving anything:
 ```python
 @dataclass(frozen=True)
 class FactorApplication:
-    code: str              # "REVENUE_BAND"
-    band_label: str        # "£500k – £2m"
-    input_value: int       # 75_000_000 (pence)
-    multiplier: Decimal    # Decimal("1.3")
-    reason: str            # user-facing copy, rendered verbatim
-    premium_before_pence: int
-    premium_after_pence: int
+    code: str                       # "REVENUE_BAND"
+    band_label: str                 # "£500k – £2m"
+    multiplier: Decimal             # Decimal("1.3")
+    reason: str                     # user-facing copy, rendered verbatim
+    premium_before_pence: Decimal
+    premium_after_pence: Decimal
 ```
+
+**The running premium is `Decimal`, not `int`.** §4 forbids intermediate rounding, so the only
+integer premium in the result is `indicative_premium_pence` after the single rounding step. An
+`int` here would either round at every factor — order-dependent, and it breaks the folding
+invariant below — or truncate silently.
+
+**No `input_value` field.** The rated input is already in `reason`, in the form the ops drawer
+renders (`"Annual revenue of £750,000."`). A second machine-readable copy has no consumer, and
+two representations of one value can disagree.
 
 **Invariant (test in UW-011):** folding `factors` from `base_premium_pence` reproduces
 `indicative_premium_pence` exactly. This guarantees the explanation shown to the ops user *is*
@@ -258,11 +266,14 @@ Discrete lookup, not a band — `requested_limit_gbp` is an enum.
 
 | Band (pence, half-open) | Label | Factor | Outcome |
 |---|---|---|---|
-| `[0, 10_000_000)` | < £100k | 0.8 | — |
+| `[0, 10_000_000)` | under £100k | 0.8 | — |
 | `[10_000_000, 50_000_000)` | £100k – £500k | 1.0 | — |
 | `[50_000_000, 200_000_000)` | £500k – £2m | 1.3 | — |
 | `[200_000_000, 1_000_000_000)` | £2m – £10m | 1.7 | — |
-| `[1_000_000_000, ∞)` | ≥ £10m | 2.2 | **REFER** |
+| `[1_000_000_000, ∞)` | £10m or more | 2.2 | **REFER** |
+
+Every **Label** in this section is verbatim user-facing copy — it reaches the ops drawer and the
+quote PDF unmodified, so the strings are asserted character-for-character in UW-011.
 
 ### Sector
 
@@ -286,11 +297,11 @@ Discrete lookup, not a band — `requested_limit_gbp` is an enum.
 
 ### Prior claims
 
-| Count | Factor | Outcome |
-|---|---|---|
-| 0 | 1.0 | — |
-| 1 | 1.4 | **REFER** *(multiplier applies **and** refers)* |
-| ≥ 2 | 1.4 *(indicative only)* | **DECLINE** |
+| Count | Label | Factor | Outcome |
+|---|---|---|---|
+| 0 | no prior claims | 1.0 | — |
+| 1 | 1 prior claim | 1.4 | **REFER** *(multiplier applies **and** refers)* |
+| ≥ 2 | 2 or more prior claims | 1.4 *(indicative only)* | **DECLINE** |
 
 ### Months trading
 
