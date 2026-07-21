@@ -1,7 +1,7 @@
 COMPOSE := docker compose
 API_PORT ?= 8000
 
-.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate seed psql shell clean
+.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate migration downgrade seed psql shell clean
 
 help:
 	@echo "Underwrite — available targets"
@@ -18,7 +18,9 @@ help:
 	@echo "  make fmt       ruff format + fix imports"
 	@echo "  make regen-goldens  rewrite the rating golden file"
 	@echo ""
-	@echo "  make migrate   run alembic migrations        (UW-013)"
+	@echo "  make migrate   alembic upgrade head"
+	@echo "  make migration m=\"...\"  autogenerate a revision"
+	@echo "  make downgrade one revision back"
 	@echo "  make seed      insert the 6 canned submissions (UW-027)"
 	@echo ""
 	@echo "  make psql      open a psql shell on the database"
@@ -70,8 +72,14 @@ fmt:
 	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff check --fix .
 
 migrate:
-	@echo "not implemented yet — see UW-013 (Alembic async migration)"
-	@exit 1
+	$(COMPOSE) run --rm -w /app api uv run --frozen alembic upgrade head
+
+migration:
+	@test -n "$(m)" || (echo 'usage: make migration m="what changed"'; exit 1)
+	$(COMPOSE) run --rm -w /app api uv run --frozen alembic revision --autogenerate -m "$(m)"
+
+downgrade:
+	$(COMPOSE) run --rm -w /app api uv run --frozen alembic downgrade -1
 
 seed:
 	@echo "not implemented yet — see UW-027 (seed data)"

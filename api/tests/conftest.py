@@ -1,6 +1,10 @@
+import asyncio
 from collections.abc import AsyncIterator, Iterator
+from pathlib import Path
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from fastapi.testclient import TestClient
 from hypothesis import settings
 from sqlalchemy import text
@@ -12,7 +16,15 @@ from sqlalchemy.pool import NullPool
 from app.config import get_settings
 from app.db import get_db
 from app.main import app
-from app.models import Base
+
+ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
+
+
+def alembic_config(url: str) -> Config:
+    config = Config(ALEMBIC_INI)
+    config.set_main_option("sqlalchemy.url", url)
+    return config
+
 
 # The per-example deadline only ever fires on a loaded CI runner, never on a regression.
 settings.register_profile("underwrite", deadline=None, max_examples=200)
@@ -84,8 +96,11 @@ async def engine():
     await create_test_database_if_missing()
     test_engine = create_async_engine(derive_test_database_url(), poolclass=NullPool)
     async with test_engine.begin() as connection:
-        await connection.run_sync(Base.metadata.drop_all)
-        await connection.run_sync(Base.metadata.create_all)
+        await connection.execute(text("drop schema public cascade"))
+        await connection.execute(text("create schema public"))
+    # Migrations, not create_all: otherwise nothing in the suite ever runs 0001 and it is
+    # free to drift from the models. env.py calls asyncio.run, so it needs its own thread.
+    await asyncio.to_thread(command.upgrade, alembic_config(derive_test_database_url()), "head")
     yield test_engine
     await test_engine.dispose()
 
