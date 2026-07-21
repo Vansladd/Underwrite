@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -6,13 +7,18 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.api.routes import submissions
-from app.config import get_settings
+from app.config import DEFAULT_OPS_PASSWORD, get_settings
 from app.db import DbSession, build_engine, build_sessionmaker
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    engine = build_engine(get_settings())
+    settings = get_settings()
+    if settings.ops_password == DEFAULT_OPS_PASSWORD:
+        logging.getLogger("uvicorn.error").warning(
+            "OPS_PASSWORD is still the shipped default; ops routes are effectively open"
+        )
+    engine = build_engine(settings)
     app.state.engine = engine
     app.state.sessionmaker = build_sessionmaker(engine)
     try:

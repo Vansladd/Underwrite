@@ -287,3 +287,40 @@ route suite green. It now asserts identity against creation order, and fails wit
 over an unstable sort can repeat or skip rows between pages. That one is asserted **structurally**
 — against the compiled SQL — because Postgres happens to return tied rows in a stable order at
 this size, so a behavioural test passes with or without the tiebreaker and proves nothing.
+
+---
+
+## D-012 · The ops gate is a shared password, and the detail route is deliberately open
+
+**Ticket:** UW-017 · **Date:** 2026-07-21 · **Superseded by:** UW-019
+
+A single `OPS_PASSWORD` over HTTP Basic, compared with `secrets.compare_digest`. **A demo
+shortcut, labelled as one.** It authenticates nobody: the audit trail records `actor='ops'`
+with no identity behind it, which is the gap UW-019 exists to close.
+
+Basic rather than a custom header because browsers prompt for it natively, so the deployed URL
+is usable before any frontend exists.
+
+Two details that turn a 401 into something worse if missed. `compare_digest` raises `TypeError`
+on non-ASCII `str`, so both sides are encoded to bytes or a `£` in the password becomes a 500.
+And both halves of the credential are compared **before** the results are combined — `and`
+short-circuits, which restores the timing signal a constant-time compare exists to remove.
+
+**`GET /api/submissions/{id}` stays open.** #38–39 have the applicant watch their own
+submission rate and read the result, and applicants have no account until UW-019 — so the UUID
+*is* the capability. That is sound against enumeration and weak against leakage, since URLs
+reach browser history, proxy logs and `Referer` headers. Acceptable for fabricated data; it
+would not be for real submissions.
+
+**`POST /api/submissions` stays open until #29**, which is when it starts spending Anthropic
+credit.
+
+**Classification is enforced by a test, not by remembering.** It walks the route tree and fails
+on any route that is neither in an explicit public allowlist nor carrying the dependency. The
+first version passed while seeing nothing at all — FastAPI 0.139 keeps an `_IncludedRouter`
+rather than flattening into `app.routes`, so it was blind to every mounted route. A companion
+test asserts the allowlist matches live routes, which is what caught it.
+
+**Known gap:** `ops_password` defaults to `changeme`, so a deployment that forgets to set it is
+open. Startup logs a warning; that is visibility, not a control. #16 builds the prod `.env` and
+is where a real value belongs.

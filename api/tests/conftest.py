@@ -6,7 +6,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from httpx import ASGITransport, AsyncClient
+from httpx import ASGITransport, AsyncClient, BasicAuth
 from hypothesis import settings
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
@@ -14,7 +14,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.config import get_settings
+from app.api.deps import OPS_USERNAME
+from app.config import DEFAULT_OPS_PASSWORD, get_settings
 from app.db import get_db
 from app.main import app
 
@@ -131,3 +132,8 @@ async def api(db) -> AsyncIterator[AsyncClient]:
         yield client
     # pop, not clear: clear() would drop an override another fixture installed.
     app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def ops_auth() -> BasicAuth:
+    return BasicAuth(OPS_USERNAME, DEFAULT_OPS_PASSWORD)
