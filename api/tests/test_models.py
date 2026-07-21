@@ -154,8 +154,6 @@ async def test_an_unloaded_relation_cannot_be_lazy_loaded_under_asyncio(db):
 
     loaded = await db.scalar(select(Submission).where(Submission.id == submission_id))
 
-    # This is why every read path has to name its relations: lazy loading is not merely
-    # slow under asyncio, it does not work at all.
     with pytest.raises(MissingGreenlet):
         _ = loaded.audit_events
 
@@ -398,8 +396,7 @@ async def test_selectinload_costs_one_query_per_relation(db):
         assert loaded.extraction.company_name == "Example Ltd"
         assert loaded.quote.quote_ref == "UW-2026-0001"
 
-    # One for the submission, one per relation. Lazy loading would be six round trips at
-    # attribute-access time instead — under asyncio it would be a MissingGreenlet.
+    # One for the submission, one per relation.
     assert len(statements) == 6
 
 
@@ -430,7 +427,6 @@ async def test_events_written_in_one_transaction_keep_their_order(db):
         .options(selectinload(Submission.audit_events))
     )
 
-    # now() is the transaction timestamp, so these four would tie and order arbitrarily.
     assert [event.event_type for event in loaded.audit_events] == written
     stamps = [event.occurred_at for event in loaded.audit_events]
     assert len(set(stamps)) == len(stamps)
@@ -448,7 +444,6 @@ async def test_form_submissions_have_no_raw_input(db):
 
 
 async def test_rows_inserted_outside_the_orm_get_their_defaults(db):
-    """`make seed` and Alembic data migrations do not go through the ORM."""
     submission_id = await db.scalar(
         text(
             "insert into submissions (input_mode, raw_input) "

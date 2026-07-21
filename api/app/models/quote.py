@@ -34,7 +34,7 @@ class Quote(Base):
     inception_date: Mapped[calendar_date]
     valid_until: Mapped[calendar_date] = mapped_column(index=True)
 
-    # Nullable by design: a Lambda render failure must not lose the approval (UW-052).
+    # Nullable: a render failure must not lose the approval (UW-052).
     pdf_s3_key: Mapped[str | None]
     created_at: Mapped[created_at]
 

@@ -14,8 +14,7 @@ from app.db import get_db
 from app.main import app
 from app.models import Base
 
-# The rating properties call a pure function a few thousand times; the per-example
-# deadline only ever fires on a loaded CI runner, never on a real regression.
+# The per-example deadline only ever fires on a loaded CI runner, never on a regression.
 settings.register_profile("underwrite", deadline=None, max_examples=200)
 settings.load_profile("underwrite")
 
@@ -93,13 +92,9 @@ async def engine():
 
 @pytest.fixture
 async def db(engine) -> AsyncIterator:
-    """A session on a transaction that is always rolled back, so tests never see each other."""
     async with engine.connect() as connection:
         transaction = await connection.begin()
-        # Explicit because the default is "conditional_savepoint" — it does the right thing
-        # here, but only while the conditions hold. Pinning it keeps a test that commits
-        # (any test exercising a real route) from committing this transaction and leaking
-        # its rows into every test after it.
+        # Explicit: the default "conditional_savepoint" holds only while its conditions do.
         factory = async_sessionmaker(
             bind=connection,
             expire_on_commit=False,
@@ -107,7 +102,6 @@ async def db(engine) -> AsyncIterator:
         )
         async with factory() as session:
             yield session
-        # A test that provoked an IntegrityError has already had the session unwind this
-        # transaction; rolling it back again warns, and warnings are errors here.
+        # An IntegrityError already unwound this, and a second rollback warns.
         if transaction.is_active:
             await transaction.rollback()

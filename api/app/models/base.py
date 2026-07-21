@@ -7,8 +7,7 @@ from sqlalchemy import BigInteger, Date, DateTime, Enum, MetaData, Text, func, t
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, mapped_column
 
-# Alembic autogenerates unnamed constraints without this, and an unnamed constraint cannot
-# be referenced by a later ALTER. Set before the first migration, not after.
+# An unnamed constraint cannot be referenced by a later ALTER. See DECISIONS D-005.
 NAMING_CONVENTION = {
     "ix": "ix_%(table_name)s_%(column_0_N_name)s",
     "uq": "uq_%(table_name)s_%(column_0_N_name)s",
@@ -23,11 +22,7 @@ class Base(DeclarativeBase):
 
 
 def pg_enum(enum_cls: type[PyEnum], name: str) -> Enum:
-    """A native Postgres enum storing member *values*.
-
-    SQLAlchemy's default is to persist the member *name*, so `SAAS = "saas"` lands in the
-    database as 'SAAS' and every `WHERE sector = 'saas'` quietly misses.
-    """
+    """Stores member values; SQLAlchemy's default of names breaks `WHERE sector = 'saas'`."""
     return Enum(
         enum_cls,
         name=name,
@@ -37,12 +32,7 @@ def pg_enum(enum_cls: type[PyEnum], name: str) -> Enum:
 
 
 def pg_enum_by_name(enum_cls: type[PyEnum], name: str) -> Enum:
-    """A native Postgres enum storing member *names* — for the two IntEnums.
-
-    `Decision` is deliberate: D7 requires 'DECLINE' on disk so that reordering the IntEnum
-    cannot reinterpret history. `RequestedLimit`'s values are integers, which a Postgres
-    enum cannot hold at all.
-    """
+    """Stores member names, for the two IntEnums. See DECISIONS D-005."""
     return Enum(enum_cls, name=name, native_enum=True)
 
 
@@ -54,8 +44,7 @@ created_at = Annotated[
     datetime,
     mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False),
 ]
-# clock_timestamp(), not now(): now() is the *transaction* timestamp, so a pipeline writing
-# four events in one request stamps them all identically and the trail cannot be ordered.
+# clock_timestamp(), not now(): now() ties every row written in one transaction.
 event_at = Annotated[
     datetime,
     mapped_column(
@@ -77,8 +66,7 @@ pence = Annotated[int, mapped_column(BigInteger)]
 optional_pence = Annotated[int | None, mapped_column(BigInteger)]
 long_text = Annotated[str, mapped_column(Text)]
 optional_long_text = Annotated[str | None, mapped_column(Text)]
-# server_default as well as default: seeds, Alembic data migrations and psql fixture loads
-# insert outside the ORM, where a Python-side default does not exist.
+# server_default too: seeds and data migrations insert outside the ORM.
 json_list = Annotated[
     list[Any],
     mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb")),

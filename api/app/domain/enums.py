@@ -19,8 +19,7 @@ class DataVolume(StrEnum):
     OVER_1M = "over_1m"
 
 
-# The only integer money-ish value in the codebase that is NOT pence — it is pounds, and
-# only ever rendered, never arithmetic. See docs/DECISIONS.md D-006.
+# Pounds, not pence — a display label, never arithmetic. See DECISIONS D-006.
 class RequestedLimit(IntEnum):
     GBP_250K = 250_000
     GBP_500K = 500_000

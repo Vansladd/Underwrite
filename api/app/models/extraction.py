@@ -28,8 +28,7 @@ class Extraction(Base):
         unique=True,
     )
 
-    # Every rated field is nullable: the prompt's never-guess rule returns null plus an entry
-    # in missing_fields rather than a plausible number.
+    # Nullable: the never-guess rule returns null plus a missing_fields entry.
     company_name: Mapped[str | None]
     company_number: Mapped[str | None]
     sector: Mapped[Sector | None] = mapped_column(pg_enum(Sector, "sector"))

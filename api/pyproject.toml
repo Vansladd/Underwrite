@@ -29,8 +29,7 @@ package = false
 pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-# The schema is built once per run, so the engine fixture and the tests that use it have to
-# share one event loop — asyncpg connections cannot cross loops.
+# The engine fixture and its tests must share one loop — asyncpg cannot cross loops.
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 addopts = "--strict-markers"

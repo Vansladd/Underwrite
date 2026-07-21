@@ -16,7 +16,7 @@ class AuditEvent(Base):
     __table_args__ = (Index(None, "submission_id", "occurred_at"),)
 
     id: Mapped[uuid_pk]
-    # RESTRICT, not CASCADE: an append-only trail that a DELETE can erase is not a trail.
+    # RESTRICT: a trail a DELETE can erase is not a trail.
     submission_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("submissions.id", ondelete="RESTRICT")
     )

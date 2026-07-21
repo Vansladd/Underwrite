@@ -27,13 +27,12 @@ class Enrichment(Base):
     ch_company_status: Mapped[CompanyStatus | None] = mapped_column(
         pg_enum(CompanyStatus, "company_status")
     )
-    # 'active' + 'active-proposal-to-strike-off' is a live company being struck off — the
-    # sharpest risk signal in the payload, and invisible if you only read company_status.
+    # 'active' + 'active-proposal-to-strike-off' is a live company being struck off.
     ch_company_status_detail: Mapped[str | None]
     ch_date_of_creation: Mapped[date | None]
     ch_name_match_score: Mapped[float | None]
 
-    # Strings, never ints: SIC codes carry leading zeros ("01110").
+    # Strings, never ints: SIC codes carry leading zeros.
     sic_codes: Mapped[json_list]
     discrepancies: Mapped[json_list]
 

@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 class Rating(Base):
     __tablename__ = "ratings"
     __table_args__ = (
-        # D3's invariant, enforced by Postgres rather than by remembering to branch.
+        # RATING_SPEC D3, enforced by Postgres rather than by remembering to branch.
         CheckConstraint(
             "(decision = 'DECLINE') = (annual_premium_pence IS NULL)",
             name="declined_iff_no_annual_premium",
@@ -41,7 +41,7 @@ class Rating(Base):
     indicative_premium_pence: Mapped[pence]
     annual_premium_pence: Mapped[optional_pence]
 
-    # Multipliers and running premiums are Decimal strings — see docs/DECISIONS.md D-004.
+    # Multipliers and premiums are Decimal strings. See DECISIONS D-004.
     factors: Mapped[json_list]
     refer_reasons: Mapped[json_list]
     decline_reasons: Mapped[json_list]
