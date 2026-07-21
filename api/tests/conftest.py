@@ -98,8 +98,7 @@ async def engine():
     async with test_engine.begin() as connection:
         await connection.execute(text("drop schema public cascade"))
         await connection.execute(text("create schema public"))
-    # Migrations, not create_all: otherwise nothing in the suite ever runs 0001 and it is
-    # free to drift from the models. env.py calls asyncio.run, so it needs its own thread.
+    # Migrations, not create_all. env.py calls asyncio.run, so it needs its own thread.
     await asyncio.to_thread(command.upgrade, alembic_config(derive_test_database_url()), "head")
     yield test_engine
     await test_engine.dispose()

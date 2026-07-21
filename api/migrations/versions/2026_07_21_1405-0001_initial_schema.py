@@ -17,8 +17,7 @@ down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# DROP TABLE does not drop the enum types the table used, so a downgrade that only drops
-# tables leaves these behind and the next upgrade dies on "type already exists".
+# DROP TABLE does not drop enum types. See DECISIONS D-008.
 ENUM_TYPES = (
     "audit_actor",
     "audit_event_type",

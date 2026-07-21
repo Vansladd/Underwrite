@@ -7,25 +7,21 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.config import get_settings
-
-# Imported for the side effect: every mapper must register before target_metadata is read.
-import app.models  # noqa: F401  isort:skip
-from app.models import Base  # noqa: E402  isort:skip
+from app.models import Base
 
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Alembic runs in-process from the tests; the default would mute every existing logger.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
-# The DSN lives in Settings, never in alembic.ini — one source of truth, no secret in git.
-# Only as a fallback: a caller that set a URL (the tests) must not be overridden.
+# Fallback only — a caller that set a URL must win. See DECISIONS D-008.
 if not config.get_main_option("sqlalchemy.url", None):
     config.set_main_option("sqlalchemy.url", get_settings().database_url)
 
 target_metadata = Base.metadata
 
-# Both default to False. compare_server_default is why autogenerate silently misses a
-# server_default, which is most of what this schema relies on.
+# Both default to False; without the second, autogenerate misses a changed server_default.
 COMPARE = {"compare_type": True, "compare_server_default": True}
 
 

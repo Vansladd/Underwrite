@@ -6,7 +6,7 @@ API_PORT ?= 8000
 help:
 	@echo "Underwrite — available targets"
 	@echo ""
-	@echo "  make up        build + start the stack, wait for health"
+	@echo "  make up        build + start the stack, migrate, wait for health"
 	@echo "  make down      stop the stack (keeps the database volume)"
 	@echo "  make restart   down + up"
 	@echo "  make logs      tail all logs"
@@ -33,6 +33,7 @@ help:
 
 up: .env
 	$(COMPOSE) up -d --build
+	@$(MAKE) --no-print-directory migrate
 	@printf "waiting for api"
 	@for i in $$(seq 1 40); do \
 		if curl -fsS http://localhost:$(API_PORT)/health >/dev/null 2>&1; then \
