@@ -1,8 +1,8 @@
 .env
 *.local
 
-# Working docs are local by default; publish by exception.
-# Note: /docs/* not /docs/ — git cannot re-include a file whose parent dir is excluded.
+# Local by default, published by exception.
+# /docs/* not /docs/ — git cannot re-include under an excluded directory.
 /docs/*
 !/docs/RATING_SPEC.md
 !/docs/DECISIONS.md

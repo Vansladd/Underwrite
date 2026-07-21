@@ -200,8 +200,7 @@ def _refer_reasons(application: Application, enrichment: Enrichment) -> list[Rea
     if application.prior_claims_count == 1:
         reasons.append(Reason(ReasonCode.PRIOR_CLAIM, "One prior claim was disclosed."))
 
-    # Discrepancies are reported by the enrichment step and are not necessarily
-    # derived from a match, so they are checked before the ch_found gate below.
+    # Not necessarily match-derived, so checked before the ch_found gate.
     if enrichment.discrepancies:
         reasons.append(
             Reason(
@@ -212,8 +211,7 @@ def _refer_reasons(application: Application, enrichment: Enrichment) -> list[Rea
             )
         )
 
-    # The remaining Companies House rules only evaluate on a match: the score
-    # and status are absent otherwise, and CH_NOT_FOUND carries the referral.
+    # Score and status are absent without a match; CH_NOT_FOUND covers it.
     if not enrichment.ch_found:
         reasons.append(
             Reason(

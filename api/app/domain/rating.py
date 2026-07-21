@@ -23,11 +23,7 @@ class Application:
     extraction_confidence: float = 1.0
     missing_fields: tuple[str, ...] = ()
 
-    # Coerce here so the engine can use identity comparison and `.value` safely.
-    # An equal raw string is not identical to its StrEnum member, and silently
-    # taking the wrong branch is worse than rejecting an unknown value loudly.
-    # The numeric guards exist for the same reason: a negative count reaches a
-    # factor lookup that has no row for it and prices without ever refusing.
+    # A raw string compares equal to its StrEnum member but is not identical.
     def __post_init__(self) -> None:
         object.__setattr__(self, "sector", Sector(self.sector))
         object.__setattr__(self, "data_records_held", DataVolume(self.data_records_held))
@@ -69,7 +65,7 @@ class Reason:
     message: str
 
 
-# Running values stay Decimal: rounding happens once, at the end of rate().
+# Decimal, not int: rounding happens once, in rate().
 @dataclass(frozen=True, slots=True)
 class FactorApplication:
     code: str
