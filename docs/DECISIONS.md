@@ -287,3 +287,43 @@ route suite green. It now asserts identity against creation order, and fails wit
 over an unstable sort can repeat or skip rows between pages. That one is asserted **structurally**
 — against the compiled SQL — because Postgres happens to return tied rows in a stable order at
 this size, so a behavioural test passes with or without the tiebreaker and proves nothing.
+
+---
+
+## D-013 · The state bucket is created by hand; locking is native S3
+
+**Ticket:** UW-060 · **Date:** 2026-07-21
+
+Terraform cannot provision the bucket holding its own state, so `underwrite-tfstate` is four
+CLI calls: create, versioning, public-access block, encryption. **Versioning is the substance**
+— `terraform state` has no undo, so a bad `state rm` or a truncated write is unrecoverable
+without object history. Noncurrent versions expire after 90 days so it does not grow forever.
+
+**`use_lockfile = true`, not a DynamoDB table.** Native S3 locking is GA in Terraform 1.11 and
+`dynamodb_table` is deprecated; every tutorial recommending a lock table is stale. The mechanism
+is a conditional `PutObject`, which is visible when it fires:
+
+```
+Error acquiring the state lock
+api error PreconditionFailed: At least one of the pre-conditions you specified did not hold
+Lock Info:  Operation: OperationTypeApply
+```
+
+That was produced deliberately rather than assumed. With no resources an apply finishes in
+milliseconds, so two concurrent runs would not collide and the DoD would have "passed" while
+proving nothing — the same vacuous-test trap as D-011's ordering assertion. A temporary
+`terraform_data` with a 40-second `local-exec` widened the window, the second operation was
+refused, then the probe was destroyed.
+
+**No `profile` in the provider block.** Credentials come from `AWS_PROFILE`, so the same config
+works unchanged when CI authenticates through GitHub OIDC — the alternative is editing HCL to
+deploy from somewhere else.
+
+**`default_tags`** carries `Project` and `ManagedBy` onto every resource, which is what makes
+the billing console answer "what does this project cost" rather than showing one undifferentiated
+line.
+
+**Developer credentials are IAM Identity Center**, not an IAM user access key: a session that
+expires in 8 hours rather than a static secret in `~/.aws/credentials`. Least privilege belongs
+in the workload roles — the instance profile at #15 and the Lambda execution role at #22 — not
+in the human's permission set, where scoping it precisely teaches nothing and blocks everything.

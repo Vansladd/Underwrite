@@ -1,7 +1,11 @@
 COMPOSE := docker compose
 API_PORT ?= 8000
 
-.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate migration downgrade seed psql shell clean
+# One place for the profile; Terraform reads credentials from the environment, never HCL.
+AWS_PROFILE ?= underwrite
+TF := AWS_PROFILE=$(AWS_PROFILE) terraform -chdir=infra
+
+.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-init tf-fmt tf-plan tf-apply
 
 help:
 	@echo "Underwrite — available targets"
@@ -22,6 +26,11 @@ help:
 	@echo "  make migration m=\"...\"  autogenerate a revision"
 	@echo "  make downgrade one revision back"
 	@echo "  make seed      insert the 6 canned submissions (UW-027)"
+	@echo ""
+	@echo "  make tf-init   terraform init against the S3 backend"
+	@echo "  make tf-fmt    terraform fmt"
+	@echo "  make tf-plan   terraform plan"
+	@echo "  make tf-apply  terraform apply"
 	@echo ""
 	@echo "  make psql      open a psql shell on the database"
 	@echo "  make shell     open a bash shell in the api container"
@@ -81,6 +90,18 @@ migration:
 
 downgrade:
 	$(COMPOSE) run --rm -w /app api uv run --frozen alembic downgrade -1
+
+tf-init:
+	$(TF) init
+
+tf-fmt:
+	$(TF) fmt
+
+tf-plan:
+	$(TF) plan
+
+tf-apply:
+	$(TF) apply
 
 seed:
 	@echo "not implemented yet — see UW-027 (seed data)"
