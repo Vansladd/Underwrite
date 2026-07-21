@@ -7,8 +7,7 @@ CLEAN_ENRICHMENT = Enrichment(
     ch_name_match_score=0.99,
 )
 
-# The RATING_SPEC §4 worked example: rates to £2,780 and auto-approves, so any single
-# override below isolates exactly the rule under test.
+# RATING_SPEC §4's worked example, so one override isolates one rule.
 SPEC_EXAMPLE = {
     "company_name": "Example Ltd",
     "sector": Sector.SAAS,
