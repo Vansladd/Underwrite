@@ -191,3 +191,36 @@ unratable submission becomes — failed, or referred to a human — is UW-025's 
 opaque to a reader and reintroduces the ordering dependency D7 stores the name to avoid.
 Decimals serialise as strings for the same reason they are stored as strings (D-004): a JSON
 number is a double again by the time it reaches the browser.
+
+---
+
+## D-010 · Audit payloads are coerced, never rejected
+
+**Ticket:** UW-016 · **Date:** 2026-07-21
+
+JSONB serialises at **flush**, not at construction. Verified against a real database, one
+savepoint per case: `Decimal`, `datetime`, `date`, `UUID`, dataclasses, `RatingResult`, `set`
+and tuple-valued dict keys all raise `StatementError: TypeError … not JSON serializable`.
+`StrEnum` and `IntEnum` survive only because they subclass `str` and `int`.
+
+So the obvious call — `record_event(..., {"output": rating_result})` — raises at flush and
+poisons the transaction, **rolling back the rating it was recording**. An audit trail that can
+destroy the thing it documents is worse than no audit trail, and the traceback points at the
+commit rather than at the payload.
+
+`jsonable()` is therefore total: it coerces what it knows and falls back to `repr()` for
+everything else. Losing fidelity on an exotic object is acceptable; losing an approved quote
+because its audit payload held a `Decimal` is not. A genuine foreign-key error still raises —
+that is a programming error, not a payload problem.
+
+**Enum checks come before the primitive check.** `Decision` is an `IntEnum`, so
+`isinstance(value, int)` matches first and writes `0` — exactly the integer that D7 stores the
+name to avoid. This was caught by reading the serialised output, not by a test that already
+existed.
+
+**Append-only is enforced by `before_update` and `before_delete` listeners** that raise. The
+`ON DELETE RESTRICT` from UW-012 only stops a submission from taking its history with it;
+nothing stopped `session.delete(event)`.
+
+**Not addressed:** payloads carry raw broker emails and Companies House data — personal data in
+an append-only store with no redaction path. It belongs in the README's design decisions.
