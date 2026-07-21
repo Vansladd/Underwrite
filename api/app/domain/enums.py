@@ -19,11 +19,16 @@ class DataVolume(StrEnum):
     OVER_1M = "over_1m"
 
 
+# Pounds, not pence — a display label, never arithmetic. See DECISIONS D-006.
 class RequestedLimit(IntEnum):
     GBP_250K = 250_000
     GBP_500K = 500_000
     GBP_1M = 1_000_000
     GBP_2M = 2_000_000
+
+    @property
+    def pence(self) -> int:
+        return self.value * 100
 
 
 class CompanyStatus(StrEnum):
@@ -79,3 +84,45 @@ class ReasonCode(StrEnum):
     CLAIMS_HISTORY = "CLAIMS_HISTORY"
     TOO_NEW = "TOO_NEW"
     CH_STATUS_TERMINAL = "CH_STATUS_TERMINAL"
+
+
+class InputMode(StrEnum):
+    FORM = "form"
+    PASTE = "paste"
+    PDF_UPLOAD = "pdf_upload"
+
+
+class SubmissionStatus(StrEnum):
+    RECEIVED = "received"
+    FAILED = "failed"
+    AUTO_APPROVED = "auto_approved"
+    REFERRED = "referred"
+    DECLINED = "declined"
+    QUOTED = "quoted"
+
+
+class QuoteStatus(StrEnum):
+    ISSUED = "issued"
+    EXPIRED = "expired"
+
+
+class AuditActor(StrEnum):
+    SYSTEM = "system"
+    OPS = "ops"
+    APPLICANT = "applicant"
+
+
+class AuditEventType(StrEnum):
+    SUBMISSION_RECEIVED = "submission_received"
+    EXTRACTION_COMPLETED = "extraction_completed"
+    EXTRACTION_FAILED = "extraction_failed"
+    ENRICHMENT_COMPLETED = "enrichment_completed"
+    ENRICHMENT_FAILED = "enrichment_failed"
+    RATING_COMPLETED = "rating_completed"
+    RATING_FAILED = "rating_failed"
+    SUBMISSION_APPROVED = "submission_approved"
+    SUBMISSION_DECLINED = "submission_declined"
+    QUOTE_GENERATED = "quote_generated"
+    QUOTE_RENDER_FAILED = "quote_render_failed"
+    QUOTE_EXPIRED = "quote_expired"
+    BORDEREAU_EXPORTED = "bordereau_exported"

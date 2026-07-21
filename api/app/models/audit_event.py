@@ -1,0 +1,29 @@
+import uuid
+from typing import TYPE_CHECKING
+
+from sqlalchemy import ForeignKey, Index
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.domain.enums import AuditActor, AuditEventType
+from app.models.base import Base, event_at, json_object, pg_enum, uuid_pk
+
+if TYPE_CHECKING:
+    from app.models.submission import Submission
+
+
+class AuditEvent(Base):
+    __tablename__ = "audit_events"
+    __table_args__ = (Index(None, "submission_id", "occurred_at"),)
+
+    id: Mapped[uuid_pk]
+    # RESTRICT: a trail a DELETE can erase is not a trail.
+    submission_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("submissions.id", ondelete="RESTRICT")
+    )
+
+    event_type: Mapped[AuditEventType] = mapped_column(pg_enum(AuditEventType, "audit_event_type"))
+    actor: Mapped[AuditActor] = mapped_column(pg_enum(AuditActor, "audit_actor"))
+    payload: Mapped[json_object]
+    occurred_at: Mapped[event_at]
+
+    submission: Mapped["Submission"] = relationship(back_populates="audit_events")
