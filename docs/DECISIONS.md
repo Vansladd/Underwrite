@@ -222,5 +222,19 @@ existed.
 `ON DELETE RESTRICT` from UW-012 only stops a submission from taking its history with it;
 nothing stopped `session.delete(event)`.
 
+They live in `app/models/audit_event.py`, not the service. Registered in the service they were
+a side effect of importing it: with only `app.models` imported the mapper had **zero**
+`before_delete` listeners, so the sweeper and bordereau Lambdas — which import models and never
+touch `app.services` — would have deleted freely.
+
+**The guard is ORM-only.** Mapper events do not fire for Core or raw SQL, so
+`session.execute(update(AuditEvent)...)` bypasses it entirely. Closing that needs a database
+trigger or revoking UPDATE/DELETE from the application role; neither is built.
+
+**Two things that reach JSONB and must not.** `bytes` satisfies `Sequence`, so a 2MB PDF would
+serialise as two million integers — they are summarised instead. And Postgres rejects `\u0000`
+inside a jsonb string with `UntranslatableCharacterError`, so NUL is escaped in every string;
+`bytes(16)` decodes as valid UTF-8 and would otherwise have failed the flush.
+
 **Not addressed:** payloads carry raw broker emails and Companies House data — personal data in
 an append-only store with no redaction path. It belongs in the README's design decisions.

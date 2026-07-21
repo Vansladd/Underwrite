@@ -1,7 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Index
+from sqlalchemy import ForeignKey, Index, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import AuditActor, AuditEventType
@@ -9,6 +9,10 @@ from app.models.base import Base, event_at, json_object, pg_enum, uuid_pk
 
 if TYPE_CHECKING:
     from app.models.submission import Submission
+
+
+class AuditTrailIsAppendOnly(Exception):
+    pass
 
 
 class AuditEvent(Base):
@@ -27,3 +31,14 @@ class AuditEvent(Base):
     occurred_at: Mapped[event_at]
 
     submission: Mapped["Submission"] = relationship(back_populates="audit_events")
+
+
+# Registered here so a Lambda importing only models still gets the guard. See DECISIONS D-010.
+@event.listens_for(AuditEvent, "before_update")
+def _refuse_update(mapper, connection, target) -> None:
+    raise AuditTrailIsAppendOnly(f"audit event {target.id} cannot be modified")
+
+
+@event.listens_for(AuditEvent, "before_delete")
+def _refuse_delete(mapper, connection, target) -> None:
+    raise AuditTrailIsAppendOnly(f"audit event {target.id} cannot be deleted")

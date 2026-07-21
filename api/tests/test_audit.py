@@ -10,18 +10,23 @@ from sqlalchemy.exc import IntegrityError
 
 from app.domain.enums import AuditActor, AuditEventType, Decision, RequestedLimit, Sector
 from app.models import AuditEvent
+from app.models.audit_event import AuditTrailIsAppendOnly
 from app.schemas import ExtractedApplication
-from app.services.audit import AuditTrailIsAppendOnly, jsonable, record_event
+from app.services.audit import jsonable, record_event
 from app.services.rating import rate
-from tests.factories import make_submission
+from tests.factories import count_queries, make_submission
 from tests.rating_baseline import CLEAN_ENRICHMENT, application
-from tests.test_models import count_queries
 
 
 @dataclass
 class Coordinates:
     latitude: float
     longitude: float
+
+
+@dataclass
+class Wrapper:
+    inner: object
 
 
 # Every one of these raises TypeError at flush if it reaches JSONB uncoerced.
@@ -53,6 +58,40 @@ def test_enums_keep_the_representation_the_database_uses():
 
 def test_dictionary_keys_become_strings():
     assert jsonable({(1, 2): "corner", 3: "three"}) == {"(1, 2)": "corner", "3": "three"}
+
+
+def test_bytes_are_summarised_not_expanded_into_integers():
+    # The Sequence branch would render a 2MB PDF as two million integers.
+    assert jsonable(b"%PDF-1.7 header") == "%PDF-1.7 header"
+    assert jsonable(bytes(4096)) == "<4096 bytes>"
+
+
+def test_undecodable_bytes_are_described_by_length():
+    assert jsonable(b"\xff\xfe\x00binary") == "<9 bytes>"
+
+
+def test_nul_never_reaches_jsonb():
+    # Postgres rejects \u0000 in a jsonb string, so a decodable NUL is still a flush failure.
+    assert "\x00" not in jsonable({"text": "before\x00after"})["text"]
+    assert jsonable(bytes(16)) == "<16 bytes>"
+
+
+def test_a_cycle_is_marked_rather_than_recursed_forever():
+    cyclic = {"name": "loop"}
+    cyclic["self"] = cyclic
+
+    coerced = jsonable(cyclic)
+
+    assert coerced["name"] == "loop"
+    assert coerced["self"] == "<cycle: dict>"
+
+
+def test_a_dataclass_holding_an_unpicklable_field_does_not_raise():
+    # asdict() deep-copies, and deepcopy raises on a socket.
+    with socket.socket() as connection:
+        coerced = jsonable(Wrapper(connection))
+
+    assert coerced["inner"].startswith("<socket.socket")
 
 
 def test_an_object_with_no_json_form_is_recorded_not_raised():
@@ -211,3 +250,19 @@ async def test_an_event_cannot_be_deleted(db):
 
     with pytest.raises(AuditTrailIsAppendOnly, match="cannot be deleted"):
         await db.flush()
+
+
+async def test_a_non_mapping_payload_is_refused_at_the_call_site(db):
+    submission = await make_submission(db)
+
+    # JSONB would accept an array, but the model and read schema both type payload as an object.
+    with pytest.raises(TypeError, match="payload must be a mapping"):
+        await record_event(
+            db, submission.id, AuditEventType.RATING_COMPLETED, AuditActor.SYSTEM, [1, 2]
+        )
+
+
+def test_the_append_only_guard_does_not_depend_on_importing_the_service():
+    # A zip Lambda (#40, #41) imports models and never touches app.services.
+    assert len(AuditEvent.__mapper__.dispatch.before_delete) == 1
+    assert len(AuditEvent.__mapper__.dispatch.before_update) == 1
