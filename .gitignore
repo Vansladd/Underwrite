@@ -1,5 +1,6 @@
 .env
 *.local
+CLAUDE.local.md
 
 # Local by default, published by exception.
 # /docs/* not /docs/ — git cannot re-include under an excluded directory.
