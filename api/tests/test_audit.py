@@ -17,6 +17,8 @@ from app.services.rating import rate
 from tests.factories import count_queries, make_submission
 from tests.rating_baseline import CLEAN_ENRICHMENT, application
 
+RESTRICT_VIOLATION = "23001"
+
 
 @dataclass
 class Coordinates:
@@ -266,3 +268,58 @@ def test_the_append_only_guard_does_not_depend_on_importing_the_service():
     # A zip Lambda (#40, #41) imports models and never touches app.services.
     assert len(AuditEvent.__mapper__.dispatch.before_delete) == 1
     assert len(AuditEvent.__mapper__.dispatch.before_update) == 1
+
+
+# --- immutable at the database, not only in the ORM ---------------------------------------
+
+
+# TRUNCATE is the one a reset routine reaches for, and row triggers do not see it.
+TAMPERING = [
+    pytest.param("update audit_events set payload = '{\"tampered\": true}'", id="update"),
+    pytest.param("delete from audit_events", id="delete"),
+    pytest.param("truncate audit_events", id="truncate"),
+    pytest.param("truncate submissions cascade", id="truncate_cascade"),
+]
+
+
+@pytest.mark.parametrize("statement", TAMPERING)
+async def test_raw_sql_cannot_change_the_trail(db, statement):
+    submission = await make_submission(db)
+    await record_event(
+        db, submission.id, AuditEventType.RATING_COMPLETED, AuditActor.SYSTEM, {"seq": 1}
+    )
+
+    # Core and raw SQL never reach the mapper listeners, so only the triggers stop these.
+    with pytest.raises(IntegrityError) as raised:
+        await db.execute(text(statement))
+
+    # The SQLSTATE the migration declares, not the message text it happens to carry.
+    assert raised.value.orig.sqlstate == RESTRICT_VIOLATION
+
+
+async def test_the_trigger_does_not_block_appending(db):
+    submission = await make_submission(db)
+
+    for _ in range(3):
+        await record_event(
+            db, submission.id, AuditEventType.RATING_COMPLETED, AuditActor.SYSTEM, {}
+        )
+
+    stored = await db.scalar(
+        text("select count(*) from audit_events where submission_id = :id"),
+        {"id": submission.id},
+    )
+    assert stored == 3
+
+
+async def test_the_orm_error_wins_over_the_database_one(db):
+    submission = await make_submission(db)
+    recorded = await record_event(
+        db, submission.id, AuditEventType.RATING_COMPLETED, AuditActor.SYSTEM, {}
+    )
+
+    await db.delete(recorded)
+
+    # The listener fires before the flush reaches Postgres, so the reader gets the clearer error.
+    with pytest.raises(AuditTrailIsAppendOnly):
+        await db.flush()

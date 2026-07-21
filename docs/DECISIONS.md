@@ -227,9 +227,34 @@ a side effect of importing it: with only `app.models` imported the mapper had **
 `before_delete` listeners, so the sweeper and bordereau Lambdas — which import models and never
 touch `app.services` — would have deleted freely.
 
-**The guard is ORM-only.** Mapper events do not fire for Core or raw SQL, so
-`session.execute(update(AuditEvent)...)` bypasses it entirely. Closing that needs a database
-trigger or revoking UPDATE/DELETE from the application role; neither is built.
+**Migration `0002` adds two triggers** (UW-018), because the listeners are ORM-only — mapper
+events do not fire for Core or raw SQL, so `session.execute(update(...))` and anything a Lambda
+writes with `text()` bypassed them entirely.
+
+Two, not one: a `FOR EACH ROW` trigger does **not** fire for `TRUNCATE`. The first version of
+this migration blocked `UPDATE` and `DELETE` while `truncate audit_events` emptied the table and
+reported success — and `truncate submissions cascade` did the same through the `ON DELETE
+RESTRICT` foreign key, which does not apply to TRUNCATE. Both defences fell to one statement,
+and `make seed` (#30) is required to be idempotent, so project code was the likely first caller.
+A `BEFORE TRUNCATE ... FOR EACH STATEMENT` trigger covers it.
+
+A trigger rather than `REVOKE UPDATE, DELETE`: dev and CI connect as `underwrite`, and
+`select usesuper` confirms it is a superuser, who bypasses privilege checks. A revoke would
+pass a test written against a lesser role and do nothing where we actually run. It becomes the
+right second layer once #15–16 provisions a non-owner application role.
+
+The ORM listeners stay. They fire before the flush reaches Postgres, so a developer using the
+session still gets `AuditTrailIsAppendOnly` rather than a SQLSTATE — asserted.
+
+**Any migration that must touch `audit_events` has to disable the triggers first**
+(`alter table audit_events disable trigger user`, re-enabled after). Repairing payloads written
+before a serialisation fix is a real prospect — D-010 has needed two already — and without this
+the migration aborts `alembic upgrade head` partway through a deploy.
+
+**This is defence-in-depth, not tamper-proofing.** The table owner can
+`ALTER TABLE audit_events DISABLE TRIGGER audit_events_append_only`, and a superuser can drop
+it. It stops accidents, bugs and casual `UPDATE`s, not a determined operator with owner rights.
+Real tamper-evidence would need hash chaining or append-only storage, which is out of scope.
 
 **Two things that reach JSONB and must not.** `bytes` satisfies `Sequence`, so a 2MB PDF would
 serialise as two million integers — they are summarised instead. And Postgres rejects `\u0000`
