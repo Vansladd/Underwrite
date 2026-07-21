@@ -5,7 +5,7 @@ from sqlalchemy import ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import AuditActor, AuditEventType
-from app.models.base import Base, created_at, json_object, pg_enum, uuid_pk
+from app.models.base import Base, event_at, json_object, pg_enum, uuid_pk
 
 if TYPE_CHECKING:
     from app.models.submission import Submission
@@ -13,9 +13,7 @@ if TYPE_CHECKING:
 
 class AuditEvent(Base):
     __tablename__ = "audit_events"
-    __table_args__ = (
-        Index("ix_audit_events_submission_id_occurred_at", "submission_id", "occurred_at"),
-    )
+    __table_args__ = (Index(None, "submission_id", "occurred_at"),)
 
     id: Mapped[uuid_pk]
     # RESTRICT, not CASCADE: an append-only trail that a DELETE can erase is not a trail.
@@ -26,6 +24,6 @@ class AuditEvent(Base):
     event_type: Mapped[AuditEventType] = mapped_column(pg_enum(AuditEventType, "audit_event_type"))
     actor: Mapped[AuditActor] = mapped_column(pg_enum(AuditActor, "audit_actor"))
     payload: Mapped[json_object]
-    occurred_at: Mapped[created_at]
+    occurred_at: Mapped[event_at]
 
     submission: Mapped["Submission"] = relationship(back_populates="audit_events")

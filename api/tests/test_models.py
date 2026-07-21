@@ -5,7 +5,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import event, select, text
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, MissingGreenlet
 from sqlalchemy.orm import selectinload
 
 from app.domain.enums import (
@@ -148,19 +148,16 @@ async def test_nested_relations_load_with_selectinload(db):
     assert [event.event_type for event in loaded.audit_events] == [AuditEventType.RATING_COMPLETED]
 
 
-async def test_relations_are_reachable_without_a_second_await(db):
+async def test_an_unloaded_relation_cannot_be_lazy_loaded_under_asyncio(db):
     submission_id = (await make_full_submission(db)).id
     db.expire_all()
 
-    loaded = await db.scalar(
-        select(Submission)
-        .where(Submission.id == submission_id)
-        .options(selectinload(Submission.audit_events))
-    )
+    loaded = await db.scalar(select(Submission).where(Submission.id == submission_id))
 
-    # Touching a lazy relation here would raise MissingGreenlet, which is the whole point
-    # of eager-loading under asyncio.
-    assert len(loaded.audit_events) == 1
+    # This is why every read path has to name its relations: lazy loading is not merely
+    # slow under asyncio, it does not work at all.
+    with pytest.raises(MissingGreenlet):
+        _ = loaded.audit_events
 
 
 @pytest.mark.parametrize(
@@ -304,6 +301,19 @@ async def test_a_submission_with_history_cannot_be_deleted(db):
         (Extraction, {"extraction_confidence": 1.0, "missing_fields": [], "model": "form"}),
         (Enrichment, {"ch_found": False, "sic_codes": [], "discrepancies": []}),
         (
+            Rating,
+            {
+                "rating_version": "v1.0",
+                "decision": Decision.AUTO_APPROVE,
+                "base_premium_pence": 90_000,
+                "indicative_premium_pence": 278_000,
+                "annual_premium_pence": 278_000,
+                "factors": [],
+                "refer_reasons": [],
+                "decline_reasons": [],
+            },
+        ),
+        (
             Quote,
             {
                 "quote_ref": "UW-2026-0002",
@@ -391,3 +401,88 @@ async def test_selectinload_costs_one_query_per_relation(db):
     # One for the submission, one per relation. Lazy loading would be six round trips at
     # attribute-access time instead — under asyncio it would be a MissingGreenlet.
     assert len(statements) == 6
+
+
+async def test_events_written_in_one_transaction_keep_their_order(db):
+    submission = await make_submission(db)
+    written = [
+        AuditEventType.SUBMISSION_RECEIVED,
+        AuditEventType.EXTRACTION_COMPLETED,
+        AuditEventType.ENRICHMENT_COMPLETED,
+        AuditEventType.RATING_COMPLETED,
+    ]
+    for event_type in written:
+        db.add(
+            AuditEvent(
+                submission_id=submission.id,
+                event_type=event_type,
+                actor=AuditActor.SYSTEM,
+                payload={},
+            )
+        )
+        await db.flush()
+    submission_id = submission.id
+    db.expire_all()
+
+    loaded = await db.scalar(
+        select(Submission)
+        .where(Submission.id == submission_id)
+        .options(selectinload(Submission.audit_events))
+    )
+
+    # now() is the transaction timestamp, so these four would tie and order arbitrarily.
+    assert [event.event_type for event in loaded.audit_events] == written
+    stamps = [event.occurred_at for event in loaded.audit_events]
+    assert len(set(stamps)) == len(stamps)
+
+
+async def test_form_submissions_have_no_raw_input(db):
+    submission = await make_submission(db, input_mode=InputMode.FORM, raw_input=None)
+    submission_id = submission.id
+    db.expire_all()
+
+    loaded = await db.scalar(select(Submission).where(Submission.id == submission_id))
+
+    assert loaded.raw_input is None
+    assert loaded.input_mode is InputMode.FORM
+
+
+async def test_rows_inserted_outside_the_orm_get_their_defaults(db):
+    """`make seed` and Alembic data migrations do not go through the ORM."""
+    submission_id = await db.scalar(
+        text(
+            "insert into submissions (input_mode, raw_input) "
+            "values ('paste', 'quote us please') returning id"
+        )
+    )
+    await db.execute(
+        text("insert into enrichments (submission_id, ch_found) values (:id, false)"),
+        {"id": submission_id},
+    )
+
+    status, rate_limited, sic_codes = (
+        await db.execute(
+            text(
+                "select s.status::text, e.rate_limited, e.sic_codes "
+                "from submissions s join enrichments e on e.submission_id = s.id "
+                "where s.id = :id"
+            ),
+            {"id": submission_id},
+        )
+    ).one()
+
+    assert status == "received"
+    assert rate_limited is False
+    assert sic_codes == []
+
+
+async def test_a_committing_test_does_not_leak_rows(db, engine):
+    submission = await make_submission(db, raw_input="committed inside a test")
+    await db.commit()
+
+    async with engine.connect() as outside:
+        visible = await outside.scalar(
+            text("select count(*) from submissions where id = :id"), {"id": submission.id}
+        )
+
+    assert visible == 0

@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import CompanyStatus
@@ -37,7 +37,7 @@ class Enrichment(Base):
     sic_codes: Mapped[json_list]
     discrepancies: Mapped[json_list]
 
-    rate_limited: Mapped[bool] = mapped_column(default=False)
+    rate_limited: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     created_at: Mapped[created_at]
 
     submission: Mapped["Submission"] = relationship(back_populates="enrichment")

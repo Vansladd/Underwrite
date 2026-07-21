@@ -1,7 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import QuoteStatus
@@ -24,6 +24,7 @@ class Quote(Base):
     status: Mapped[QuoteStatus] = mapped_column(
         pg_enum(QuoteStatus, "quote_status"),
         default=QuoteStatus.ISSUED,
+        server_default=text(f"'{QuoteStatus.ISSUED.value}'"),
         index=True,
     )
 

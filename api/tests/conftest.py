@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from hypothesis import settings
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -69,6 +70,12 @@ async def create_test_database_if_missing() -> None:
             )
             if not exists:
                 await connection.execute(text(f'create database "{target}"'))
+    except (OSError, SQLAlchemyError) as error:
+        raise RuntimeError(
+            f"could not reach the 'postgres' maintenance database to create {target!r}. "
+            f"The suite needs a role that can connect to it and CREATEDB; point DATABASE_URL "
+            f"at a local Postgres, or create {target!r} by hand."
+        ) from error
     finally:
         await admin.dispose()
 
@@ -89,7 +96,15 @@ async def db(engine) -> AsyncIterator:
     """A session on a transaction that is always rolled back, so tests never see each other."""
     async with engine.connect() as connection:
         transaction = await connection.begin()
-        factory = async_sessionmaker(bind=connection, expire_on_commit=False)
+        # Explicit because the default is "conditional_savepoint" — it does the right thing
+        # here, but only while the conditions hold. Pinning it keeps a test that commits
+        # (any test exercising a real route) from committing this transaction and leaking
+        # its rows into every test after it.
+        factory = async_sessionmaker(
+            bind=connection,
+            expire_on_commit=False,
+            join_transaction_mode="create_savepoint",
+        )
         async with factory() as session:
             yield session
         # A test that provoked an IntegrityError has already had the session unwind this

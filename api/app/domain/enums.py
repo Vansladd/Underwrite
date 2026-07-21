@@ -127,10 +127,3 @@ class AuditEventType(StrEnum):
     QUOTE_RENDER_FAILED = "quote_render_failed"
     QUOTE_EXPIRED = "quote_expired"
     BORDEREAU_EXPORTED = "bordereau_exported"
-
-
-DECISION_TO_SUBMISSION_STATUS: dict[Decision, SubmissionStatus] = {
-    Decision.AUTO_APPROVE: SubmissionStatus.AUTO_APPROVED,
-    Decision.REFER: SubmissionStatus.REFERRED,
-    Decision.DECLINE: SubmissionStatus.DECLINED,
-}

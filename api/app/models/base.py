@@ -54,6 +54,16 @@ created_at = Annotated[
     datetime,
     mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False),
 ]
+# clock_timestamp(), not now(): now() is the *transaction* timestamp, so a pipeline writing
+# four events in one request stamps them all identically and the trail cannot be ordered.
+event_at = Annotated[
+    datetime,
+    mapped_column(
+        DateTime(timezone=True),
+        server_default=text("clock_timestamp()"),
+        nullable=False,
+    ),
+]
 updated_at = Annotated[
     datetime,
     mapped_column(
@@ -66,6 +76,15 @@ updated_at = Annotated[
 pence = Annotated[int, mapped_column(BigInteger)]
 optional_pence = Annotated[int | None, mapped_column(BigInteger)]
 long_text = Annotated[str, mapped_column(Text)]
-json_list = Annotated[list[Any], mapped_column(JSONB, default=list)]
-json_object = Annotated[dict[str, Any], mapped_column(JSONB, default=dict)]
+optional_long_text = Annotated[str | None, mapped_column(Text)]
+# server_default as well as default: seeds, Alembic data migrations and psql fixture loads
+# insert outside the ORM, where a Python-side default does not exist.
+json_list = Annotated[
+    list[Any],
+    mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb")),
+]
+json_object = Annotated[
+    dict[str, Any],
+    mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb")),
+]
 calendar_date = Annotated[date, mapped_column(Date)]
