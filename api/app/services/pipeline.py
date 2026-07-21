@@ -23,6 +23,10 @@ async def run_pipeline(
         session,
         submission.id,
         AuditEventType.EXTRACTION_COMPLETED,
-        AuditActor.APPLICANT,
-        {"model": FORM_MODEL, "fields": sorted(application.model_fields_set)},
+        AuditActor.SYSTEM,
+        {
+            "model": FORM_MODEL,
+            "source": "applicant_form",
+            "fields": sorted(application.model_fields_set),
+        },
     )

@@ -5,7 +5,7 @@ from sqlalchemy import ForeignKey, Index, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import AuditActor, AuditEventType
-from app.models.base import Base, event_at, json_object, pg_enum, uuid_pk
+from app.models.base import Base, json_object, pg_enum, uuid_pk, written_at
 
 if TYPE_CHECKING:
     from app.models.submission import Submission
@@ -28,7 +28,7 @@ class AuditEvent(Base):
     event_type: Mapped[AuditEventType] = mapped_column(pg_enum(AuditEventType, "audit_event_type"))
     actor: Mapped[AuditActor] = mapped_column(pg_enum(AuditActor, "audit_actor"))
     payload: Mapped[json_object]
-    occurred_at: Mapped[event_at]
+    occurred_at: Mapped[written_at]
 
     submission: Mapped["Submission"] = relationship(back_populates="audit_events")
 

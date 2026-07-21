@@ -263,3 +263,27 @@ inside a jsonb string with `UntranslatableCharacterError`, so NUL is escaped in 
 
 **Not addressed:** payloads carry raw broker emails and Companies House data — personal data in
 an append-only store with no redaction path. It belongs in the README's design decisions.
+
+---
+
+## D-011 · Row timestamps use `clock_timestamp()`, and listings break ties on `id`
+
+**Ticket:** UW-015 · **Date:** 2026-07-21
+
+D-010 fixed `audit_events.occurred_at` and stopped there. Every other `created_at` kept
+`now()`, which is the **transaction** timestamp — so three submissions written in one
+transaction get **one distinct value between them**, measured. `make seed` (#30) inserts six in
+one transaction, so the ops queue (#32) would have rendered them in planner order.
+
+Migration `0003` moves all six timestamp columns to `clock_timestamp()`. `written_at` is now
+the single annotated type for "when this row was written"; `event_at` was an identical
+definition under a second name.
+
+**The ordering test was vacuous and hid this.** It compared a list of identical timestamps
+against its own sort, which is trivially true — deleting `ORDER BY` entirely left the whole
+route suite green. It now asserts identity against creation order, and fails without the clause.
+
+**Listings order by `(created_at desc, id desc)`.** A tiebreaker matters because `LIMIT`/`OFFSET`
+over an unstable sort can repeat or skip rows between pages. That one is asserted **structurally**
+— against the compiled SQL — because Postgres happens to return tied rows in a stable order at
+this size, so a behavioural test passes with or without the tiebreaker and proves nothing.

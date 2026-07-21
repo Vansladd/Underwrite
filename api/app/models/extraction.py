@@ -7,12 +7,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.domain.enums import DataVolume, RequestedLimit, Sector
 from app.models.base import (
     Base,
-    created_at,
     json_list,
     optional_pence,
     pg_enum,
     pg_enum_by_name,
     uuid_pk,
+    written_at,
 )
 
 if TYPE_CHECKING:
@@ -43,6 +43,6 @@ class Extraction(Base):
     extraction_confidence: Mapped[float]
     missing_fields: Mapped[json_list]
     model: Mapped[str]
-    created_at: Mapped[created_at]
+    created_at: Mapped[written_at]
 
     submission: Mapped["Submission"] = relationship(back_populates="extraction")

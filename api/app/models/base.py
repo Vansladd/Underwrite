@@ -40,24 +40,18 @@ uuid_pk = Annotated[
     uuid.UUID,
     mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")),
 ]
-created_at = Annotated[
-    datetime,
-    mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False),
-]
-# clock_timestamp(), not now(): now() ties every row written in one transaction.
-event_at = Annotated[
+# clock_timestamp(), not now(): now() is per transaction, so rows written together tie.
+written_at = Annotated[
     datetime,
     mapped_column(
-        DateTime(timezone=True),
-        server_default=text("clock_timestamp()"),
-        nullable=False,
+        DateTime(timezone=True), server_default=text("clock_timestamp()"), nullable=False
     ),
 ]
 updated_at = Annotated[
     datetime,
     mapped_column(
         DateTime(timezone=True),
-        server_default=func.now(),
+        server_default=text("clock_timestamp()"),
         onupdate=func.now(),
         nullable=False,
     ),

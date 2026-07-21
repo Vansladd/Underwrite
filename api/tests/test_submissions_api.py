@@ -1,12 +1,13 @@
 import uuid
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
+from app.api.routes.submissions import submissions_query
 from app.db import get_db
 from app.domain.enums import AuditEventType, DataVolume, RequestedLimit, Sector
 from app.main import app
-from app.models import AuditEvent, Extraction
+from app.models import AuditEvent, Extraction, Submission
 from tests.factories import make_submission
 
 BROKER_EMAIL = "Please quote Example Ltd for £1m cyber cover. Turnover £750k, trading 3 years."
@@ -30,7 +31,7 @@ async def test_route_tests_run_on_the_test_transaction(api, db):
 
 async def test_pasting_a_broker_email_creates_a_submission(api):
     response = await api.post(
-        "/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL}
+        "/api/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL}
     )
 
     assert response.status_code == 201
@@ -44,7 +45,7 @@ async def test_pasting_a_broker_email_creates_a_submission(api):
 
 async def test_a_new_submission_starts_its_audit_trail(api, db):
     response = await api.post(
-        "/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL}
+        "/api/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL}
     )
 
     events = (
@@ -62,7 +63,7 @@ async def test_a_new_submission_starts_its_audit_trail(api, db):
 
 async def test_the_audit_payload_references_the_email_rather_than_copying_it(api, db):
     response = await api.post(
-        "/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL}
+        "/api/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL}
     )
     event = await db.scalar(
         select(AuditEvent).where(AuditEvent.submission_id == uuid.UUID(response.json()["id"]))
@@ -74,7 +75,7 @@ async def test_the_audit_payload_references_the_email_rather_than_copying_it(api
 
 async def test_a_form_submission_persists_its_fields_in_storage_units(api, db):
     response = await api.post(
-        "/submissions", json={"input_mode": "form", "application": FORM_APPLICATION}
+        "/api/submissions", json={"input_mode": "form", "application": FORM_APPLICATION}
     )
 
     assert response.status_code == 201
@@ -91,7 +92,7 @@ async def test_a_form_submission_persists_its_fields_in_storage_units(api, db):
 
 async def test_a_form_submission_is_returned_with_its_extraction_nested(api):
     response = await api.post(
-        "/submissions", json={"input_mode": "form", "application": FORM_APPLICATION}
+        "/api/submissions", json={"input_mode": "form", "application": FORM_APPLICATION}
     )
 
     extraction = response.json()["extraction"]
@@ -101,7 +102,7 @@ async def test_a_form_submission_is_returned_with_its_extraction_nested(api):
 
 async def test_a_form_submission_records_extraction_in_the_trail(api, db):
     response = await api.post(
-        "/submissions", json={"input_mode": "form", "application": FORM_APPLICATION}
+        "/api/submissions", json={"input_mode": "form", "application": FORM_APPLICATION}
     )
 
     events = (
@@ -119,7 +120,7 @@ async def test_a_form_submission_records_extraction_in_the_trail(api, db):
 
 
 async def test_a_pdf_upload_needs_no_text_yet(api):
-    response = await api.post("/submissions", json={"input_mode": "pdf_upload"})
+    response = await api.post("/api/submissions", json={"input_mode": "pdf_upload"})
 
     assert response.status_code == 201
     assert response.json()["raw_input"] is None
@@ -134,56 +135,83 @@ async def test_a_pdf_upload_needs_no_text_yet(api):
         ({"raw_input": "hi"}, "input_mode"),
     ],
 )
-async def test_an_invalid_submission_is_rejected_not_stored(api, payload, expected):
-    response = await api.post("/submissions", json=payload)
+async def test_an_invalid_submission_is_rejected_not_stored(api, db, payload, expected):
+    response = await api.post("/api/submissions", json=payload)
 
     assert response.status_code == 422
     assert expected in response.text
+    assert await db.scalar(select(func.count()).select_from(Submission)) == 0
 
 
 # --- reading -------------------------------------------------------------------------------
 
 
-async def test_listing_returns_newest_first(api, db):
-    for _ in range(3):
-        await api.post("/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL})
+async def test_listing_returns_newest_first(api):
+    written = [
+        (
+            await api.post(
+                "/api/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL}
+            )
+        ).json()["id"]
+        for _ in range(3)
+    ]
 
-    body = (await api.get("/submissions")).json()
-    created = [each["created_at"] for each in body]
+    listed = [each["id"] for each in (await api.get("/api/submissions")).json()]
 
-    assert len(body) == 3
-    assert created == sorted(created, reverse=True)
+    # Identity, not timestamps: three rows sharing a created_at compare equal to their own sort.
+    assert listed == list(reversed(written))
+
+
+async def test_rows_written_together_still_get_distinct_timestamps(api):
+    body = [
+        (
+            await api.post(
+                "/api/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL}
+            )
+        ).json()["created_at"]
+        for _ in range(3)
+    ]
+
+    # now() would give all three the transaction timestamp. See DECISIONS D-011.
+    assert len(set(body)) == 3
 
 
 async def test_listing_filters_by_status(api, db):
     await make_submission(db, status="referred")
-    await api.post("/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL})
+    await api.post("/api/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL})
 
-    referred = (await api.get("/submissions", params={"status": "referred"})).json()
-    received = (await api.get("/submissions", params={"status": "received"})).json()
+    referred = (await api.get("/api/submissions", params={"status": "referred"})).json()
+    received = (await api.get("/api/submissions", params={"status": "received"})).json()
 
     assert [each["status"] for each in referred] == ["referred"]
     assert [each["status"] for each in received] == ["received"]
 
 
 async def test_listing_rejects_an_unknown_status(api):
-    response = await api.get("/submissions", params={"status": "vibes"})
+    response = await api.get("/api/submissions", params={"status": "vibes"})
 
     assert response.status_code == 422
 
 
 async def test_listing_is_bounded(api):
-    assert (await api.get("/submissions", params={"limit": 201})).status_code == 422
-    assert (await api.get("/submissions", params={"limit": 0})).status_code == 422
-    assert (await api.get("/submissions", params={"limit": 200})).status_code == 200
+    assert (await api.get("/api/submissions", params={"limit": 201})).status_code == 422
+    assert (await api.get("/api/submissions", params={"limit": 0})).status_code == 422
+    assert (await api.get("/api/submissions", params={"limit": 200})).status_code == 200
+
+
+def test_the_listing_query_breaks_timestamp_ties():
+    # Structural: Postgres returns tied rows stably here, so a paging test proves nothing.
+    compiled = str(submissions_query(None, 50, 0))
+
+    assert "ORDER BY submissions.created_at DESC, submissions.id DESC" in compiled
 
 
 async def test_listing_pages(api):
     for _ in range(3):
-        await api.post("/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL})
+        await api.post("/api/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL})
 
-    first = (await api.get("/submissions", params={"limit": 2})).json()
-    second = (await api.get("/submissions", params={"limit": 2, "offset": 2})).json()
+    first = (await api.get("/api/submissions", params={"limit": 2})).json()
+    second = (await api.get("/api/submissions", params={"limit": 2, "offset": 2})).json()
 
     assert len(first) == 2
     assert len(second) == 1
@@ -193,7 +221,7 @@ async def test_listing_pages(api):
 async def test_reading_one_submission_nests_its_relations(api, db):
     submission = await make_submission(db)
 
-    body = (await api.get(f"/submissions/{submission.id}")).json()
+    body = (await api.get(f"/api/submissions/{submission.id}")).json()
 
     assert body["id"] == str(submission.id)
     assert set(body) >= {"extraction", "enrichment", "rating", "quote", "audit_events"}
@@ -202,23 +230,23 @@ async def test_reading_one_submission_nests_its_relations(api, db):
 async def test_an_unknown_submission_is_not_found(api):
     missing = uuid.uuid4()
 
-    response = await api.get(f"/submissions/{missing}")
+    response = await api.get(f"/api/submissions/{missing}")
 
     assert response.status_code == 404
     assert str(missing) in response.json()["detail"]
 
 
 async def test_a_malformed_id_is_rejected_before_the_database(api):
-    response = await api.get("/submissions/not-a-uuid")
+    response = await api.get("/api/submissions/not-a-uuid")
 
     assert response.status_code == 422
 
 
 async def test_the_created_submission_is_readable_by_id(api):
     created = (
-        await api.post("/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL})
+        await api.post("/api/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL})
     ).json()
 
-    fetched = (await api.get(f"/submissions/{created['id']}")).json()
+    fetched = (await api.get(f"/api/submissions/{created['id']}")).json()
 
     assert fetched == created

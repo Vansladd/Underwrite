@@ -7,12 +7,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.domain.enums import Decision
 from app.models.base import (
     Base,
-    created_at,
     json_list,
     optional_pence,
     pence,
     pg_enum_by_name,
     uuid_pk,
+    written_at,
 )
 
 if TYPE_CHECKING:
@@ -45,6 +45,6 @@ class Rating(Base):
     factors: Mapped[json_list]
     refer_reasons: Mapped[json_list]
     decline_reasons: Mapped[json_list]
-    created_at: Mapped[created_at]
+    created_at: Mapped[written_at]
 
     submission: Mapped["Submission"] = relationship(back_populates="rating")

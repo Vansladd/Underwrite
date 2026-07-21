@@ -12,6 +12,7 @@ from sqlalchemy.pool import NullPool
 from tests.conftest import alembic_config, derive_test_database_url
 
 DATABASE = "underwrite_migrations_test"
+HEAD = "0003"
 
 TABLES = "select table_name from information_schema.tables where table_schema = 'public'"
 TRIGGERS = """
@@ -123,7 +124,7 @@ def test_upgrade_downgrade_upgrade_round_trips(config, scratch):
     command.upgrade(config, "head")
 
     assert "submissions" in names(scratch, TABLES)
-    assert names(scratch, "select version_num from alembic_version") == {"0002"}
+    assert names(scratch, "select version_num from alembic_version") == {HEAD}
 
 
 def test_migrations_match_the_models(config):

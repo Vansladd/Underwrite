@@ -59,7 +59,7 @@ def client_without_db() -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = broken_db
     with TestClient(app) as test_client:
         yield test_client
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_db, None)
 
 
 def derive_test_database_url() -> str:
@@ -129,4 +129,5 @@ async def api(db) -> AsyncIterator[AsyncClient]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://underwrite.test") as client:
         yield client
-    app.dependency_overrides.clear()
+    # pop, not clear: clear() would drop an override another fixture installed.
+    app.dependency_overrides.pop(get_db, None)
