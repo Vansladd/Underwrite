@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.11"
+  required_version = "~> 1.11"
 
   required_providers {
     aws = {
@@ -8,7 +8,7 @@ terraform {
     }
   }
 
-  # use_lockfile is native S3 locking, GA in 1.11. A DynamoDB lock table is deprecated.
+  # Region duplicated from var.region: backend blocks cannot use variables. See DECISIONS D-013.
   backend "s3" {
     bucket       = "underwrite-tfstate"
     key          = "prod/terraform.tfstate"

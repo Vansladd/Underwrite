@@ -10,8 +10,8 @@ variable "region" {
   default     = "eu-west-2"
 }
 
+# No default: a clone inheriting someone else's hostname fails issuance at #17.
 variable "domain" {
   description = "Hostname Caddy requests a certificate for (UW-067)"
   type        = string
-  default     = "underwrite.nexusstechnologies.com"
 }

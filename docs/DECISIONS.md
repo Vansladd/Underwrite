@@ -294,8 +294,10 @@ this size, so a behavioural test passes with or without the tiebreaker and prove
 
 **Ticket:** UW-060 · **Date:** 2026-07-21
 
-Terraform cannot provision the bucket holding its own state, so `underwrite-tfstate` is four
-CLI calls: create, versioning, public-access block, encryption. **Versioning is the substance**
+Terraform cannot provision the bucket holding its own state, so `underwrite-tfstate` is five
+CLI calls — create, versioning, public-access block, encryption, lifecycle — kept in
+`infra/bootstrap.sh` and idempotent, because a bootstrap that lives only in prose is not
+reproducible and the easiest steps to forget are the two protecting the state file. **Versioning is the substance**
 — `terraform state` has no undo, so a bad `state rm` or a truncated write is unrecoverable
 without object history. Noncurrent versions expire after 90 days so it does not grow forever.
 

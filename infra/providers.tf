@@ -1,5 +1,4 @@
-# No profile here: credentials come from AWS_PROFILE, so the same config works unchanged
-# when CI authenticates through GitHub OIDC.
+# Credentials come from AWS_PROFILE, never HCL, so CI can use OIDC unchanged.
 provider "aws" {
   region = var.region
 
