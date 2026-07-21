@@ -145,3 +145,86 @@ def test_enum_fields_coerce_from_raw_values():
 def test_unknown_enum_value_is_rejected_at_construction():
     with pytest.raises(ValueError, match="not a valid Sector"):
         spec_example_application(sector="quantum_blockchain")
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("annual_revenue_pence", -1),
+        ("months_trading", -1),
+        ("prior_claims_count", -1),
+    ],
+)
+def test_negative_numeric_fields_are_rejected(field, value):
+    with pytest.raises(ValueError, match="must not be negative"):
+        spec_example_application(**{field: value})
+
+
+@pytest.mark.parametrize("confidence", [-0.1, 1.1])
+def test_extraction_confidence_outside_zero_to_one_is_rejected(confidence):
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        spec_example_application(extraction_confidence=confidence)
+
+
+def test_name_match_score_outside_zero_to_one_is_rejected():
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        Enrichment(ch_found=True, ch_name_match_score=1.4)
+
+
+def test_mutable_sequences_are_frozen_into_tuples():
+    application = spec_example_application(missing_fields=["annual_revenue_pence"])
+    enrichment = Enrichment(ch_found=False, discrepancies=["incorporated 2024"])
+
+    assert application.missing_fields == ("annual_revenue_pence",)
+    assert enrichment.discrepancies == ("incorporated 2024",)
+    assert isinstance(hash(application), int)
+    assert isinstance(hash(enrichment), int)
+
+
+def test_discrepancies_still_refer_when_no_company_was_matched():
+    result = rate(
+        spec_example_application(),
+        Enrichment(ch_found=False, discrepancies=("incorporated 2024, claims 5 years",)),
+    )
+
+    assert {r.code for r in result.refer_reasons} == {
+        ReasonCode.CH_DISCREPANCY,
+        ReasonCode.CH_NOT_FOUND,
+    }
+
+
+def test_missing_companies_house_status_reads_sensibly():
+    result = rate(spec_example_application(), Enrichment(ch_found=True, ch_name_match_score=0.99))
+
+    (reason,) = result.refer_reasons
+    assert reason.code is ReasonCode.CH_STATUS_NOT_ACTIVE
+    assert reason.message == "Companies House did not return a company status."
+
+
+@pytest.mark.parametrize(
+    ("claims", "factor", "label"),
+    [
+        (0, Decimal("1.0"), "no prior claims"),
+        (1, Decimal("1.4"), "1 prior claim"),
+        (2, Decimal("1.4"), "2 or more prior claims"),
+        (7, Decimal("1.4"), "2 or more prior claims"),
+    ],
+)
+def test_prior_claims_band(claims, factor, label):
+    result = rate(spec_example_application(prior_claims_count=claims), CLEAN_ENRICHMENT)
+
+    applied = next(f for f in result.factors if f.code == "CLAIMS_HISTORY")
+    assert (applied.multiplier, applied.band_label) == (factor, label)
+
+
+def test_missing_factor_for_an_enum_member_fails_loudly():
+    with pytest.raises(ValueError, match="no factor defined for"):
+        rating._validate_lookup("sector", {Sector.SAAS: Decimal("1.0")}, Sector)
+
+
+@pytest.mark.parametrize(
+    ("pence", "expected"),
+    [(75_000_000, "£750,000"), (75_000_050, "£750,000.50"), (0, "£0"), (99, "£0.99")],
+)
+def test_money_is_rendered_without_losing_pence(pence, expected):
+    assert rating._format_gbp(pence) == expected

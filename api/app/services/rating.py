@@ -76,8 +76,13 @@ DATA_VOLUME_FACTORS: dict[DataVolume, Decimal] = {
     DataVolume.OVER_1M: Decimal("1.5"),
 }
 
-NO_CLAIMS_FACTOR = Decimal("1.0")
-PRIOR_CLAIMS_FACTOR = Decimal("1.4")
+PRIOR_CLAIMS_EDGES = (1, 2)
+PRIOR_CLAIMS_FACTORS = (Decimal("1.0"), Decimal("1.4"), Decimal("1.4"))
+PRIOR_CLAIMS_LABELS = (
+    "no prior claims",
+    "1 prior claim",
+    "2 or more prior claims",
+)
 
 
 def _validate_band(
@@ -109,6 +114,12 @@ _validate_band(
     MONTHS_TRADING_FACTORS,
     MONTHS_TRADING_LABELS,
 )
+_validate_band(
+    "prior_claims",
+    PRIOR_CLAIMS_EDGES,
+    PRIOR_CLAIMS_FACTORS,
+    PRIOR_CLAIMS_LABELS,
+)
 _validate_lookup("limit", LIMIT_FACTORS, RequestedLimit)
 _validate_lookup("sector", SECTOR_FACTORS, Sector)
 _validate_lookup("data_volume", DATA_VOLUME_FACTORS, DataVolume)
@@ -116,6 +127,10 @@ _validate_lookup("data_volume", DATA_VOLUME_FACTORS, DataVolume)
 
 def _band_index(edges: tuple[int, ...], value: int) -> int:
     return bisect_right(edges, value)
+
+
+def _format_gbp(pence: int) -> str:
+    return f"£{Decimal(pence) / 100:,.2f}".removesuffix(".00")
 
 
 def _round_to_nearest(value: Decimal, step: int) -> int:
@@ -185,8 +200,20 @@ def _refer_reasons(application: Application, enrichment: Enrichment) -> list[Rea
     if application.prior_claims_count == 1:
         reasons.append(Reason(ReasonCode.PRIOR_CLAIM, "One prior claim was disclosed."))
 
-    # Companies House rules only evaluate on a match: the score and status are
-    # absent otherwise, and CH_NOT_FOUND already carries the referral.
+    # Discrepancies are reported by the enrichment step and are not necessarily
+    # derived from a match, so they are checked before the ch_found gate below.
+    if enrichment.discrepancies:
+        reasons.append(
+            Reason(
+                ReasonCode.CH_DISCREPANCY,
+                "Submission conflicts with Companies House: "
+                + "; ".join(enrichment.discrepancies)
+                + ".",
+            )
+        )
+
+    # The remaining Companies House rules only evaluate on a match: the score
+    # and status are absent otherwise, and CH_NOT_FOUND carries the referral.
     if not enrichment.ch_found:
         reasons.append(
             Reason(
@@ -208,22 +235,18 @@ def _refer_reasons(application: Application, enrichment: Enrichment) -> list[Rea
             )
         )
 
-    if enrichment.ch_company_status is not CompanyStatus.ACTIVE:
+    if enrichment.ch_company_status is None:
         reasons.append(
             Reason(
                 ReasonCode.CH_STATUS_NOT_ACTIVE,
-                f"Companies House status is "
-                f"{enrichment.ch_company_status or 'unknown'}, not active.",
+                "Companies House did not return a company status.",
             )
         )
-
-    if enrichment.discrepancies:
+    elif enrichment.ch_company_status is not CompanyStatus.ACTIVE:
         reasons.append(
             Reason(
-                ReasonCode.CH_DISCREPANCY,
-                "Submission conflicts with Companies House: "
-                + "; ".join(enrichment.discrepancies)
-                + ".",
+                ReasonCode.CH_STATUS_NOT_ACTIVE,
+                f"Companies House status is {enrichment.ch_company_status}, not active.",
             )
         )
 
@@ -288,7 +311,7 @@ def rate(application: Application, enrichment: Enrichment) -> RatingResult:
         "REVENUE_BAND",
         REVENUE_LABELS[revenue_index],
         REVENUE_FACTORS[revenue_index],
-        f"Annual revenue of £{application.annual_revenue_pence // 100:,}.",
+        f"Annual revenue of {_format_gbp(application.annual_revenue_pence)}.",
         factors,
     )
 
@@ -310,13 +333,13 @@ def rate(application: Application, enrichment: Enrichment) -> RatingResult:
         factors,
     )
 
-    claims_factor = NO_CLAIMS_FACTOR if application.prior_claims_count == 0 else PRIOR_CLAIMS_FACTOR
+    claims_index = _band_index(PRIOR_CLAIMS_EDGES, application.prior_claims_count)
     running = _apply(
         running,
         "CLAIMS_HISTORY",
-        f"{application.prior_claims_count} prior claims",
-        claims_factor,
-        f"{application.prior_claims_count} prior claims disclosed.",
+        PRIOR_CLAIMS_LABELS[claims_index],
+        PRIOR_CLAIMS_FACTORS[claims_index],
+        f"Claims history: {PRIOR_CLAIMS_LABELS[claims_index]}.",
         factors,
     )
 
@@ -335,7 +358,13 @@ def rate(application: Application, enrichment: Enrichment) -> RatingResult:
     refer = _refer_reasons(application, enrichment)
     decline = _decline_reasons(application, enrichment)
 
-    decision = Decision.worst([Decision.REFER] * bool(refer) + [Decision.DECLINE] * bool(decline))
+    decision = Decision.worst(
+        [
+            outcome
+            for outcome, reasons in ((Decision.REFER, refer), (Decision.DECLINE, decline))
+            if reasons
+        ]
+    )
 
     return RatingResult(
         rating_version=RATING_VERSION,
