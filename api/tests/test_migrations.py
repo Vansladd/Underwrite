@@ -14,6 +14,8 @@ from tests.conftest import alembic_config, derive_test_database_url
 DATABASE = "underwrite_migrations_test"
 
 TABLES = "select table_name from information_schema.tables where table_schema = 'public'"
+TRIGGERS = "select tgname from pg_trigger where not tgisinternal"
+FUNCTIONS = "select proname from pg_proc where proname = 'refuse_audit_mutation'"
 ENUM_TYPES = """
 select t.typname from pg_type t
 join pg_namespace n on n.oid = t.typnamespace
@@ -82,6 +84,8 @@ def test_upgrade_builds_the_whole_schema_from_empty(config, scratch):
         "quotes",
         "audit_events",
     }
+    assert names(scratch, TRIGGERS) == {"audit_events_append_only"}
+    assert names(scratch, FUNCTIONS) == {"refuse_audit_mutation"}
     assert names(scratch, ENUM_TYPES) == {
         "audit_actor",
         "audit_event_type",
@@ -103,6 +107,8 @@ def test_downgrade_leaves_no_tables_and_no_enum_types(config, scratch):
     # DROP TABLE leaves enum types behind, so this is the assertion that matters.
     assert names(scratch, TABLES) == {"alembic_version"}
     assert names(scratch, ENUM_TYPES) == set()
+    # The function is schema-level and outlives its table, so it needs its own DROP.
+    assert names(scratch, FUNCTIONS) == set()
 
 
 def test_upgrade_downgrade_upgrade_round_trips(config, scratch):
@@ -111,7 +117,7 @@ def test_upgrade_downgrade_upgrade_round_trips(config, scratch):
     command.upgrade(config, "head")
 
     assert "submissions" in names(scratch, TABLES)
-    assert names(scratch, "select version_num from alembic_version") == {"0001"}
+    assert names(scratch, "select version_num from alembic_version") == {"0002"}
 
 
 def test_migrations_match_the_models(config):
