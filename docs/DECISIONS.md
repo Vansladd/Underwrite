@@ -159,3 +159,35 @@ column without a migration fails CI by name.
 `postgresql.ENUM(..., create_type=False)` or it will try to `CREATE TYPE` a second time.
 `ALTER TYPE ... ADD VALUE` has its own transaction rules. Neither applies to an initial
 migration; both will apply around UW-020.
+
+---
+
+## D-009 · The extraction schema speaks broker units; one function converts
+
+**Ticket:** UW-014 · **Date:** 2026-07-21
+
+`ExtractedApplication` carries `annual_revenue_gbp` and `years_trading`, not pence and months.
+It is the `messages.parse()` output format, and a rambling broker email says "£750k, trading
+about three years" — asking the model to emit pence is asking it to do arithmetic it has no
+reason to get right. `RATING_SPEC` D5 already fixed the direction: convert once, at the schema
+boundary, and never compare the float again.
+
+Conversion goes through `Decimal(str(value))`, never the float:
+
+```
+int(8.7 * 100)  = 869      to_pence(8.7)  = 870
+int(0.29 * 100) = 28       to_pence(0.29) = 29
+```
+
+Rounding is `ROUND_HALF_UP`, matching §4. Python's `round()` is half-even, so it would disagree
+with the rating engine on exact halves.
+
+**`to_domain()` raises `IncompleteExtraction` rather than substituting.** The never-guess rule
+produces nulls, but `Application` requires every rated field. Defaulting a missing revenue to
+zero would price the risk in the 0.8 band and bury that decision in a converter. What an
+unratable submission becomes — failed, or referred to a human — is UW-025's call.
+
+**`Decision` serialises by name.** It is an `IntEnum`, so the default would render `1`, which is
+opaque to a reader and reintroduces the ordering dependency D7 stores the name to avoid.
+Decimals serialise as strings for the same reason they are stored as strings (D-004): a JSON
+number is a double again by the time it reaches the browser.

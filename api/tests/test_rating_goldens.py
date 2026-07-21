@@ -13,6 +13,7 @@ import pytest
 
 from app.domain.enums import CompanyStatus, DataVolume, RequestedLimit, Sector
 from app.domain.rating import Enrichment
+from app.schemas import factor_to_json, reason_to_json
 from app.services.rating import RATING_VERSION, rate
 from tests.rating_baseline import CLEAN_ENRICHMENT, application, enrichment
 
@@ -78,24 +79,9 @@ def as_jsonable(result):
         "base_premium_pence": result.base_premium_pence,
         "indicative_premium_pence": result.indicative_premium_pence,
         "annual_premium_pence": result.annual_premium_pence,
-        "factors": [
-            {
-                "code": factor.code,
-                "band_label": factor.band_label,
-                # str, not float: a Decimal through JSON loses the exactness D6 exists to keep.
-                "multiplier": str(factor.multiplier),
-                "reason": factor.reason,
-                "premium_before_pence": str(factor.premium_before_pence),
-                "premium_after_pence": str(factor.premium_after_pence),
-            }
-            for factor in result.factors
-        ],
-        "refer_reasons": [
-            {"code": r.code.value, "message": r.message} for r in result.refer_reasons
-        ],
-        "decline_reasons": [
-            {"code": r.code.value, "message": r.message} for r in result.decline_reasons
-        ],
+        "factors": [factor_to_json(factor) for factor in result.factors],
+        "refer_reasons": [reason_to_json(reason) for reason in result.refer_reasons],
+        "decline_reasons": [reason_to_json(reason) for reason in result.decline_reasons],
     }
 
 
