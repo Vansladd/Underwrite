@@ -84,3 +84,46 @@ Multipliers and running premiums serialise as **strings**. `json.dumps` refuses 
 the reflex fix — `float(...)` — puts a float in the money path against D6 and stops the stored
 trace folding back to the premium. The same constraint applies to the `factors` JSONB column
 in UW-012.
+
+---
+
+## D-005 · Native enums store member *values* — except the two IntEnums
+
+**Ticket:** UW-012 · **Date:** 2026-07-21
+
+SQLAlchemy's `Enum` persists the member **name** by default. For a `StrEnum` written as
+`SAAS = "saas"` that means `'SAAS'` on disk, so `WHERE sector = 'saas'` matches nothing, seed
+files disagree with the API, and nothing raises — it is a silent data bug, not a crash.
+
+Every `StrEnum` column therefore goes through `pg_enum()`, which sets
+`values_callable=lambda cls: [m.value for m in cls]`. A test reads the raw column back with
+`::text` and asserts the literal, because the failure is invisible from Python.
+
+Two columns deliberately store names, via `pg_enum_by_name()`:
+
+- **`Decision`** — D7 in `RATING_SPEC.md` requires `'DECLINE'` on disk so that reordering the
+  `IntEnum` cannot silently reinterpret historical rows.
+- **`RequestedLimit`** — its values are integers, which a Postgres enum cannot hold.
+
+## D-006 · `RequestedLimit`'s integer value is pounds, not pence
+
+**Ticket:** UW-012 · **Date:** 2026-07-21
+
+D6 makes integer money pence everywhere. `RequestedLimit.GBP_250K = 250_000` is the single
+exception: it is a **label**, chosen so the enum renders directly (`£250,000 limit`), and it is
+never arithmetic in the money path.
+
+`Quote.limit_pence` holds the actual money. A `.pence` property exists for the one conversion
+anyone should ever need, so nobody reaches for `limit * 100` at a call site and nobody assumes
+the raw value is already pence.
+
+## D-007 · The audit trail is append-only at the database, not by convention
+
+**Ticket:** UW-012 · **Date:** 2026-07-21
+
+`audit_events.submission_id` is `ON DELETE RESTRICT`, while the four component tables are
+`ON DELETE CASCADE`. Deleting a submission that has history is refused by Postgres.
+
+UW-016 already states the model exposes no update or delete path. That is a promise about
+code; this is a property of the schema. An append-only trail that a stray `DELETE` can erase
+is not an audit trail, and the regulatory value of the whole feature rests on that.
