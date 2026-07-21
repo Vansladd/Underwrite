@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.domain.enums import DataVolume, RequestedLimit, Sector
 from app.domain.rating import Application
 
-RATED_FIELDS = (
+REQUIRED_FOR_RATING = (
     "company_name",
     "sector",
     "annual_revenue_gbp",
@@ -35,21 +35,22 @@ def to_months(years: float) -> int:
 class ExtractedApplication(BaseModel):
     """The `messages.parse()` output format — broker units, not storage units."""
 
-    model_config = ConfigDict(from_attributes=True)
+    # forbid + allow_inf_nan close two silent-null holes. See DECISIONS D-009.
+    model_config = ConfigDict(extra="forbid")
 
     company_name: str | None = None
     company_number: str | None = None
     sector: Sector | None = None
-    annual_revenue_gbp: float | None = Field(default=None, ge=0)
-    years_trading: float | None = Field(default=None, ge=0)
+    annual_revenue_gbp: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    years_trading: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     prior_claims_count: int | None = Field(default=None, ge=0)
     data_records_held: DataVolume | None = None
     requested_limit_gbp: RequestedLimit | None = None
-    extraction_confidence: float = Field(ge=0, le=1)
+    extraction_confidence: float = Field(ge=0, le=1, allow_inf_nan=False)
     missing_fields: list[str] = Field(default_factory=list)
 
     def missing_rated_fields(self) -> tuple[str, ...]:
-        return tuple(name for name in RATED_FIELDS if getattr(self, name) is None)
+        return tuple(name for name in REQUIRED_FOR_RATING if getattr(self, name) is None)
 
     def to_domain(self) -> Application:
         missing = self.missing_rated_fields()
@@ -68,21 +69,17 @@ class ExtractedApplication(BaseModel):
             missing_fields=tuple(self.missing_fields),
         )
 
+    # Only the three columns whose name or unit differs; a new field needs no edit here.
     def to_orm_kwargs(self, model: str) -> dict:
+        converted = {"annual_revenue_gbp", "years_trading", "requested_limit_gbp"}
         return {
-            "company_name": self.company_name,
-            "company_number": self.company_number,
-            "sector": self.sector,
+            **self.model_dump(exclude=converted),
             "annual_revenue_pence": (
                 None if self.annual_revenue_gbp is None else to_pence(self.annual_revenue_gbp)
             ),
             "months_trading": (
                 None if self.years_trading is None else to_months(self.years_trading)
             ),
-            "prior_claims_count": self.prior_claims_count,
-            "data_records_held": self.data_records_held,
             "requested_limit": self.requested_limit_gbp,
-            "extraction_confidence": self.extraction_confidence,
-            "missing_fields": list(self.missing_fields),
             "model": model,
         }

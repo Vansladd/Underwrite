@@ -2,11 +2,12 @@ import json
 from decimal import Decimal
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.domain.enums import DataVolume, Decision, InputMode, RequestedLimit, Sector
-from app.models import Submission
+from app.models import Extraction, Submission
 from app.schemas import (
     AuditEventRead,
     EnrichmentRead,
@@ -21,7 +22,7 @@ from app.schemas import (
     to_months,
     to_pence,
 )
-from tests.factories import make_full_submission
+from tests.factories import make_full_submission, make_submission
 
 BROKER_EMAIL = {
     "company_name": "Example Ltd",
@@ -38,6 +39,20 @@ BROKER_EMAIL = {
 
 def extracted(**overrides) -> ExtractedApplication:
     return ExtractedApplication(**{**BROKER_EMAIL, **overrides})
+
+
+async def load_full(db, submission_id) -> Submission:
+    return await db.scalar(
+        select(Submission)
+        .where(Submission.id == submission_id)
+        .options(
+            selectinload(Submission.extraction),
+            selectinload(Submission.enrichment),
+            selectinload(Submission.rating),
+            selectinload(Submission.quote),
+            selectinload(Submission.audit_events),
+        )
+    )
 
 
 # --- the conversion, which is the whole point of the boundary --------------------------
@@ -59,8 +74,7 @@ def test_the_obvious_conversion_would_have_been_wrong(pounds, pence):
 
 
 def test_two_calendar_years_of_trading_lands_in_the_two_year_band():
-    # RATING_SPEC D5: 730 days / 365.25 is genuinely below 2.0, so the float mis-bands a
-    # business that has traded exactly two years. Converting to months at the boundary does not.
+    # RATING_SPEC D5: the float mis-bands a business that has traded exactly two years.
     date_derived = 730 / 365.25
 
     assert date_derived < 2.0
@@ -116,6 +130,26 @@ def test_a_missing_company_number_does_not_block_rating():
     assert application.months_trading == 36
 
 
+def test_orm_kwargs_cover_every_extraction_column():
+    kwargs = set(extracted().to_orm_kwargs("claude-sonnet-5"))
+    columns = {c.name for c in Extraction.__table__.columns} - {"id", "submission_id", "created_at"}
+
+    # Derived from the schema, so a new field cannot silently miss the converter.
+    assert kwargs == columns
+
+
+def test_infinite_money_is_rejected_before_it_reaches_the_converter():
+    # inf satisfies ge=0; Decimal(str(inf)).quantize() then raises InvalidOperation.
+    with pytest.raises(ValueError, match="finite number"):
+        extracted(annual_revenue_gbp=float("inf"))
+
+
+def test_a_hallucinated_field_name_is_an_error_not_a_silent_null():
+    # Otherwise "annual_revenue" instead of "annual_revenue_gbp" looks like never-guess working.
+    with pytest.raises(ValueError, match="Extra inputs are not permitted"):
+        extracted(annual_revenue="750k")
+
+
 def test_orm_kwargs_keep_nulls_null_rather_than_defaulting_them():
     kwargs = extracted(annual_revenue_gbp=None, years_trading=None).to_orm_kwargs("claude-sonnet-5")
 
@@ -156,17 +190,7 @@ async def test_every_model_round_trips_into_its_read_schema(db):
     submission_id = (await make_full_submission(db)).id
     db.expire_all()
 
-    loaded = await db.scalar(
-        select(Submission)
-        .where(Submission.id == submission_id)
-        .options(
-            selectinload(Submission.extraction),
-            selectinload(Submission.enrichment),
-            selectinload(Submission.rating),
-            selectinload(Submission.quote),
-            selectinload(Submission.audit_events),
-        )
-    )
+    loaded = await load_full(db, submission_id)
 
     assert SubmissionRead.model_validate(loaded).status is loaded.status
     assert ExtractionRead.model_validate(loaded.extraction).sector is Sector.SAAS
@@ -180,17 +204,7 @@ async def test_submission_detail_nests_every_relation(db):
     submission_id = (await make_full_submission(db)).id
     db.expire_all()
 
-    loaded = await db.scalar(
-        select(Submission)
-        .where(Submission.id == submission_id)
-        .options(
-            selectinload(Submission.extraction),
-            selectinload(Submission.enrichment),
-            selectinload(Submission.rating),
-            selectinload(Submission.quote),
-            selectinload(Submission.audit_events),
-        )
-    )
+    loaded = await load_full(db, submission_id)
     detail = SubmissionDetail.model_validate(loaded)
 
     assert detail.extraction.company_name == "Example Ltd"
@@ -201,22 +215,10 @@ async def test_submission_detail_nests_every_relation(db):
 
 
 async def test_an_empty_submission_serialises_with_null_relations(db):
-    from tests.factories import make_submission
-
     submission_id = (await make_submission(db)).id
     db.expire_all()
 
-    loaded = await db.scalar(
-        select(Submission)
-        .where(Submission.id == submission_id)
-        .options(
-            selectinload(Submission.extraction),
-            selectinload(Submission.enrichment),
-            selectinload(Submission.rating),
-            selectinload(Submission.quote),
-            selectinload(Submission.audit_events),
-        )
-    )
+    loaded = await load_full(db, submission_id)
     detail = SubmissionDetail.model_validate(loaded)
 
     assert (detail.extraction, detail.rating, detail.quote) == (None, None, None)
@@ -272,8 +274,14 @@ def test_decision_serialises_by_name_not_as_an_integer():
 
 
 def test_a_pasted_submission_needs_raw_input():
-    with pytest.raises(ValueError, match="paste submissions must carry raw_input"):
+    with pytest.raises(ValueError, match="pasted submissions must carry raw_input"):
         SubmissionCreate(input_mode=InputMode.PASTE)
+
+
+def test_a_pdf_upload_carries_no_text_until_it_is_extracted():
+    created = SubmissionCreate(input_mode=InputMode.PDF_UPLOAD)
+
+    assert (created.raw_input, created.application) == (None, None)
 
 
 def test_a_form_submission_needs_an_application():
@@ -286,3 +294,9 @@ def test_a_form_submission_carries_its_application_instead_of_text():
 
     assert created.raw_input is None
     assert created.application.to_domain().months_trading == 36
+
+
+def test_an_unknown_decision_name_is_a_validation_error_not_a_keyerror():
+    # Decision["APPROVE"] would raise KeyError, which pydantic does not translate.
+    with pytest.raises(ValidationError):
+        RatingRead.model_validate({**STORED_RATING, "decision": "APPROVE"})

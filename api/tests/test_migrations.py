@@ -66,8 +66,7 @@ def scratch() -> str:
 def config(scratch):
     config = alembic_config(scratch)
     yield config
-    # create database copies template1 and is the slowest thing in the suite, so the
-    # database is shared and rewound instead of recreated per test.
+    # Rewound rather than recreated: create database copies template1 and is slow.
     command.downgrade(config, "base")
 
 

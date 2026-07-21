@@ -3,7 +3,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, PlainSerializer
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer
 
 from app.domain.enums import (
     AuditActor,
@@ -22,11 +22,10 @@ from app.domain.enums import (
 # String on the way out too: a JSON number would be a double again in the browser.
 ExactDecimal = Annotated[Decimal, PlainSerializer(str, return_type=str)]
 
-# By name, matching the database. The int an IntEnum would render is meaningless to a reader
-# and reintroduces exactly the ordering dependency RATING_SPEC D7 stores the name to avoid.
+# By name; unknown names fall through to pydantic. See DECISIONS D-009.
 DecisionName = Annotated[
     Decision,
-    BeforeValidator(lambda v: Decision[v] if isinstance(v, str) else v),
+    BeforeValidator(lambda v: Decision.__members__.get(v, v) if isinstance(v, str) else v),
     PlainSerializer(lambda d: d.name, return_type=str),
 ]
 
@@ -128,4 +127,4 @@ class SubmissionDetail(SubmissionRead):
     enrichment: EnrichmentRead | None = None
     rating: RatingRead | None = None
     quote: QuoteRead | None = None
-    audit_events: list[AuditEventRead] = []
+    audit_events: list[AuditEventRead] = Field(default_factory=list)

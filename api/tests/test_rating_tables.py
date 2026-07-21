@@ -448,8 +448,7 @@ def test_premium_composes_in_spec_order(overrides, multipliers, premium, decisio
 
 
 def test_exact_half_rounds_up_not_to_even():
-    # 90,000 × 1.0 × 1.0 × 1.0 × 1.25 × 1.0 × 1.0 = 112,500 — a dead-on £5 tie.
-    # Decimal.quantize defaults to ROUND_HALF_EVEN, which would give £1,120.
+    # 112,500 is a dead-on £5 tie; quantize defaults to HALF_EVEN, giving £1,120.
     result = rate_with(
         requested_limit=RequestedLimit.GBP_250K,
         annual_revenue_pence=25_000_000,
