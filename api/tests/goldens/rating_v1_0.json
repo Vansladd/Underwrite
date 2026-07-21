@@ -1,0 +1,1960 @@
+{
+  "rating_version": "v1.0",
+  "risks": {
+    "saas_micro": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 171000,
+      "annual_premium_pence": 171000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "under £100k",
+          "multiplier": "0.8",
+          "reason": "Annual revenue of £50,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "136800.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "136800.00",
+          "premium_after_pence": "136800.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "136800.000",
+          "premium_after_pence": "171000.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "171000.00000",
+          "premium_after_pence": "171000.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "171000.000000",
+          "premium_after_pence": "171000.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "saas_small": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 214000,
+      "annual_premium_pence": 214000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£100k – £500k",
+          "multiplier": "1.0",
+          "reason": "Annual revenue of £250,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "171000.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "171000.00",
+          "premium_after_pence": "171000.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "171000.000",
+          "premium_after_pence": "213750.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "213750.00000",
+          "premium_after_pence": "213750.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "213750.000000",
+          "premium_after_pence": "213750.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "saas_mid_spec_example": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 278000,
+      "annual_premium_pence": 278000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "277875.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "277875.000000",
+          "premium_after_pence": "277875.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "saas_large": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 363000,
+      "annual_premium_pence": 363000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£2m – £10m",
+          "multiplier": "1.7",
+          "reason": "Annual revenue of £5,000,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "290700.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "290700.00",
+          "premium_after_pence": "290700.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "290700.000",
+          "premium_after_pence": "363375.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "363375.00000",
+          "premium_after_pence": "363375.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "363375.000000",
+          "premium_after_pence": "363375.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "saas_above_authority": {
+      "decision": "REFER",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 470000,
+      "annual_premium_pence": 470000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£10m or more",
+          "multiplier": "2.2",
+          "reason": "Annual revenue of £20,000,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "376200.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "376200.00",
+          "premium_after_pence": "376200.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "376200.000",
+          "premium_after_pence": "470250.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "470250.00000",
+          "premium_after_pence": "470250.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "470250.000000",
+          "premium_after_pence": "470250.0000000"
+        }
+      ],
+      "refer_reasons": [
+        {
+          "code": "REVENUE_ABOVE_AUTHORITY",
+          "message": "Revenue is at or above £10m, which exceeds binding authority."
+        }
+      ],
+      "decline_reasons": []
+    },
+    "sector_ecommerce": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 306000,
+      "annual_premium_pence": 306000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "ecommerce",
+          "multiplier": "1.1",
+          "reason": "Sector is ecommerce.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "244530.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "244530.000",
+          "premium_after_pence": "305662.50000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "305662.50000",
+          "premium_after_pence": "305662.500000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "305662.500000",
+          "premium_after_pence": "305662.5000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "sector_marketplace": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 306000,
+      "annual_premium_pence": 306000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "marketplace",
+          "multiplier": "1.1",
+          "reason": "Sector is marketplace.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "244530.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "244530.000",
+          "premium_after_pence": "305662.50000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "305662.50000",
+          "premium_after_pence": "305662.500000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "305662.500000",
+          "premium_after_pence": "305662.5000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "sector_ai_ml": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 333000,
+      "annual_premium_pence": 333000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "ai_ml",
+          "multiplier": "1.2",
+          "reason": "Sector is ai_ml.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "266760.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "266760.000",
+          "premium_after_pence": "333450.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "333450.00000",
+          "premium_after_pence": "333450.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "333450.000000",
+          "premium_after_pence": "333450.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "sector_fintech": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 375000,
+      "annual_premium_pence": 375000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "fintech",
+          "multiplier": "1.35",
+          "reason": "Sector is fintech.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "300105.0000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "300105.0000",
+          "premium_after_pence": "375131.250000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "375131.250000",
+          "premium_after_pence": "375131.2500000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "375131.2500000",
+          "premium_after_pence": "375131.25000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "sector_healthtech": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 375000,
+      "annual_premium_pence": 375000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "healthtech",
+          "multiplier": "1.35",
+          "reason": "Sector is healthtech.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "300105.0000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "300105.0000",
+          "premium_after_pence": "375131.250000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "375131.250000",
+          "premium_after_pence": "375131.2500000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "375131.2500000",
+          "premium_after_pence": "375131.25000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "sector_other_unclassified": {
+      "decision": "REFER",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 375000,
+      "annual_premium_pence": 375000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "other",
+          "multiplier": "1.35",
+          "reason": "Sector is other.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "300105.0000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "300105.0000",
+          "premium_after_pence": "375131.250000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "375131.250000",
+          "premium_after_pence": "375131.2500000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "375131.2500000",
+          "premium_after_pence": "375131.25000000"
+        }
+      ],
+      "refer_reasons": [
+        {
+          "code": "SECTOR_UNCLASSIFIED",
+          "message": "Sector could not be classified, so it is priced at the highest in-appetite sector rate pending review."
+        }
+      ],
+      "decline_reasons": []
+    },
+    "sector_crypto_declined": {
+      "decision": "DECLINE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 417000,
+      "annual_premium_pence": null,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "crypto",
+          "multiplier": "1.5",
+          "reason": "Sector is crypto.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "333450.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "333450.000",
+          "premium_after_pence": "416812.50000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "416812.50000",
+          "premium_after_pence": "416812.500000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "416812.500000",
+          "premium_after_pence": "416812.5000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": [
+        {
+          "code": "SECTOR_OUT_OF_APPETITE",
+          "message": "Crypto is outside appetite for this product."
+        }
+      ]
+    },
+    "limit_250k": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 146000,
+      "annual_premium_pence": 146000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£250,000 limit",
+          "multiplier": "1.0",
+          "reason": "Requested limit of £250,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "90000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "90000.0",
+          "premium_after_pence": "117000.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "117000.00",
+          "premium_after_pence": "117000.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "117000.000",
+          "premium_after_pence": "146250.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "146250.00000",
+          "premium_after_pence": "146250.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "146250.000000",
+          "premium_after_pence": "146250.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "limit_500k": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 205000,
+      "annual_premium_pence": 205000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£500,000 limit",
+          "multiplier": "1.4",
+          "reason": "Requested limit of £500,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "126000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "126000.0",
+          "premium_after_pence": "163800.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "163800.00",
+          "premium_after_pence": "163800.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "163800.000",
+          "premium_after_pence": "204750.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "204750.00000",
+          "premium_after_pence": "204750.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "204750.000000",
+          "premium_after_pence": "204750.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "limit_1m": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 278000,
+      "annual_premium_pence": 278000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "277875.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "277875.000000",
+          "premium_after_pence": "277875.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "limit_2m": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 380000,
+      "annual_premium_pence": 380000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£2,000,000 limit",
+          "multiplier": "2.6",
+          "reason": "Requested limit of £2,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "234000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "234000.0",
+          "premium_after_pence": "304200.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "304200.00",
+          "premium_after_pence": "304200.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "304200.000",
+          "premium_after_pence": "380250.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "380250.00000",
+          "premium_after_pence": "380250.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "380250.000000",
+          "premium_after_pence": "380250.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "data_under_10k": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 200000,
+      "annual_premium_pence": 200000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "under_10k",
+          "multiplier": "0.9",
+          "reason": "Holds under_10k personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "200070.0000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "200070.0000",
+          "premium_after_pence": "200070.00000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "200070.00000",
+          "premium_after_pence": "200070.000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "data_10k_100k": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 222000,
+      "annual_premium_pence": 222000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "10k_100k",
+          "multiplier": "1.0",
+          "reason": "Holds 10k_100k personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "222300.0000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "222300.0000",
+          "premium_after_pence": "222300.00000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "222300.00000",
+          "premium_after_pence": "222300.000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "data_100k_1m": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 278000,
+      "annual_premium_pence": 278000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "277875.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "277875.000000",
+          "premium_after_pence": "277875.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "data_over_1m": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 333000,
+      "annual_premium_pence": 333000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "over_1m",
+          "multiplier": "1.5",
+          "reason": "Holds over_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "333450.0000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "333450.0000",
+          "premium_after_pence": "333450.00000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "333450.00000",
+          "premium_after_pence": "333450.000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "one_prior_claim": {
+      "decision": "REFER",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 389000,
+      "annual_premium_pence": 389000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "1 prior claim",
+          "multiplier": "1.4",
+          "reason": "Claims history: 1 prior claim.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "389025.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "389025.000000",
+          "premium_after_pence": "389025.0000000"
+        }
+      ],
+      "refer_reasons": [
+        {
+          "code": "PRIOR_CLAIM",
+          "message": "One prior claim was disclosed."
+        }
+      ],
+      "decline_reasons": []
+    },
+    "two_prior_claims": {
+      "decision": "DECLINE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 389000,
+      "annual_premium_pence": null,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "2 or more prior claims",
+          "multiplier": "1.4",
+          "reason": "Claims history: 2 or more prior claims.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "389025.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "389025.000000",
+          "premium_after_pence": "389025.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": [
+        {
+          "code": "CLAIMS_HISTORY",
+          "message": "2 prior claims were disclosed."
+        }
+      ]
+    },
+    "trading_5_months": {
+      "decision": "DECLINE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 333000,
+      "annual_premium_pence": null,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "277875.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "under 6 months",
+          "multiplier": "1.2",
+          "reason": "Trading for 5 months.",
+          "premium_before_pence": "277875.000000",
+          "premium_after_pence": "333450.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": [
+        {
+          "code": "TOO_NEW",
+          "message": "Trading for 5 months, below the 6-month minimum."
+        }
+      ]
+    },
+    "trading_exactly_6_months": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 333000,
+      "annual_premium_pence": 333000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "277875.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "6 months – under 2 years",
+          "multiplier": "1.2",
+          "reason": "Trading for 6 months.",
+          "premium_before_pence": "277875.000000",
+          "premium_after_pence": "333450.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "trading_exactly_24_months": {
+      "decision": "AUTO_APPROVE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 278000,
+      "annual_premium_pence": 278000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "277875.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 24 months.",
+          "premium_before_pence": "277875.000000",
+          "premium_after_pence": "277875.0000000"
+        }
+      ],
+      "refer_reasons": [],
+      "decline_reasons": []
+    },
+    "low_extraction_confidence": {
+      "decision": "REFER",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 278000,
+      "annual_premium_pence": 278000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "277875.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "277875.000000",
+          "premium_after_pence": "277875.0000000"
+        }
+      ],
+      "refer_reasons": [
+        {
+          "code": "LOW_EXTRACTION_CONFIDENCE",
+          "message": "Extraction confidence 0.55 is below 0.70."
+        }
+      ],
+      "decline_reasons": []
+    },
+    "missing_revenue": {
+      "decision": "REFER",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 278000,
+      "annual_premium_pence": 278000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "277875.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "277875.000000",
+          "premium_after_pence": "277875.0000000"
+        }
+      ],
+      "refer_reasons": [
+        {
+          "code": "MISSING_FIELDS",
+          "message": "Could not find annual_revenue_gbp in the submission."
+        }
+      ],
+      "decline_reasons": []
+    },
+    "companies_house_down": {
+      "decision": "REFER",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 278000,
+      "annual_premium_pence": 278000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "277875.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "277875.000000",
+          "premium_after_pence": "277875.0000000"
+        }
+      ],
+      "refer_reasons": [
+        {
+          "code": "CH_NOT_FOUND",
+          "message": "No matching company was found at Companies House."
+        }
+      ],
+      "decline_reasons": []
+    },
+    "name_mismatch": {
+      "decision": "REFER",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 278000,
+      "annual_premium_pence": 278000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "277875.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "277875.000000",
+          "premium_after_pence": "277875.0000000"
+        }
+      ],
+      "refer_reasons": [
+        {
+          "code": "CH_NAME_MISMATCH",
+          "message": "Submitted name matches the Companies House record at only 62%."
+        }
+      ],
+      "decline_reasons": []
+    },
+    "company_dissolved": {
+      "decision": "DECLINE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 278000,
+      "annual_premium_pence": null,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "277875.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "277875.000000",
+          "premium_after_pence": "277875.0000000"
+        }
+      ],
+      "refer_reasons": [
+        {
+          "code": "CH_STATUS_NOT_ACTIVE",
+          "message": "Companies House status is dissolved, not active."
+        }
+      ],
+      "decline_reasons": [
+        {
+          "code": "CH_STATUS_TERMINAL",
+          "message": "Companies House status is dissolved."
+        }
+      ]
+    },
+    "proposal_to_strike_off": {
+      "decision": "REFER",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 278000,
+      "annual_premium_pence": 278000,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£1,000,000 limit",
+          "multiplier": "1.9",
+          "reason": "Requested limit of £1,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "171000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£500k – £2m",
+          "multiplier": "1.3",
+          "reason": "Annual revenue of £750,000.",
+          "premium_before_pence": "171000.0",
+          "premium_after_pence": "222300.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "saas",
+          "multiplier": "1.0",
+          "reason": "Sector is saas.",
+          "premium_before_pence": "222300.00",
+          "premium_after_pence": "222300.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "100k_1m",
+          "multiplier": "1.25",
+          "reason": "Holds 100k_1m personal data records.",
+          "premium_before_pence": "222300.000",
+          "premium_after_pence": "277875.00000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "no prior claims",
+          "multiplier": "1.0",
+          "reason": "Claims history: no prior claims.",
+          "premium_before_pence": "277875.00000",
+          "premium_after_pence": "277875.000000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "2 years or more",
+          "multiplier": "1.0",
+          "reason": "Trading for 36 months.",
+          "premium_before_pence": "277875.000000",
+          "premium_after_pence": "277875.0000000"
+        }
+      ],
+      "refer_reasons": [
+        {
+          "code": "CH_DISCREPANCY",
+          "message": "Submission conflicts with Companies House: Companies House shows an active proposal to strike off.."
+        }
+      ],
+      "decline_reasons": []
+    },
+    "everything_wrong": {
+      "decision": "DECLINE",
+      "base_premium_pence": 90000,
+      "indicative_premium_pence": 1946000,
+      "annual_premium_pence": null,
+      "factors": [
+        {
+          "code": "LIMIT",
+          "band_label": "£2,000,000 limit",
+          "multiplier": "2.6",
+          "reason": "Requested limit of £2,000,000.",
+          "premium_before_pence": "90000",
+          "premium_after_pence": "234000.0"
+        },
+        {
+          "code": "REVENUE_BAND",
+          "band_label": "£10m or more",
+          "multiplier": "2.2",
+          "reason": "Annual revenue of £20,000,000.",
+          "premium_before_pence": "234000.0",
+          "premium_after_pence": "514800.00"
+        },
+        {
+          "code": "SECTOR",
+          "band_label": "crypto",
+          "multiplier": "1.5",
+          "reason": "Sector is crypto.",
+          "premium_before_pence": "514800.00",
+          "premium_after_pence": "772200.000"
+        },
+        {
+          "code": "DATA_VOLUME",
+          "band_label": "over_1m",
+          "multiplier": "1.5",
+          "reason": "Holds over_1m personal data records.",
+          "premium_before_pence": "772200.000",
+          "premium_after_pence": "1158300.0000"
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "band_label": "2 or more prior claims",
+          "multiplier": "1.4",
+          "reason": "Claims history: 2 or more prior claims.",
+          "premium_before_pence": "1158300.0000",
+          "premium_after_pence": "1621620.00000"
+        },
+        {
+          "code": "MONTHS_TRADING",
+          "band_label": "under 6 months",
+          "multiplier": "1.2",
+          "reason": "Trading for 3 months.",
+          "premium_before_pence": "1621620.00000",
+          "premium_after_pence": "1945944.000000"
+        }
+      ],
+      "refer_reasons": [
+        {
+          "code": "LOW_EXTRACTION_CONFIDENCE",
+          "message": "Extraction confidence 0.30 is below 0.70."
+        },
+        {
+          "code": "MISSING_FIELDS",
+          "message": "Could not find months_trading in the submission."
+        },
+        {
+          "code": "REVENUE_ABOVE_AUTHORITY",
+          "message": "Revenue is at or above £10m, which exceeds binding authority."
+        },
+        {
+          "code": "CH_DISCREPANCY",
+          "message": "Submission conflicts with Companies House: No such company.."
+        },
+        {
+          "code": "CH_NOT_FOUND",
+          "message": "No matching company was found at Companies House."
+        }
+      ],
+      "decline_reasons": [
+        {
+          "code": "SECTOR_OUT_OF_APPETITE",
+          "message": "Crypto is outside appetite for this product."
+        },
+        {
+          "code": "CLAIMS_HISTORY",
+          "message": "4 prior claims were disclosed."
+        },
+        {
+          "code": "TOO_NEW",
+          "message": "Trading for 3 months, below the 6-month minimum."
+        }
+      ]
+    }
+  }
+}
