@@ -17,6 +17,8 @@ from app.services.rating import rate
 from tests.factories import count_queries, make_submission
 from tests.rating_baseline import CLEAN_ENRICHMENT, application
 
+RESTRICT_VIOLATION = "23001"
+
 
 @dataclass
 class Coordinates:
@@ -271,23 +273,28 @@ def test_the_append_only_guard_does_not_depend_on_importing_the_service():
 # --- immutable at the database, not only in the ORM ---------------------------------------
 
 
-async def test_raw_sql_cannot_update_an_event(db):
+# TRUNCATE is the one a reset routine reaches for, and row triggers do not see it.
+TAMPERING = [
+    pytest.param("update audit_events set payload = '{\"tampered\": true}'", id="update"),
+    pytest.param("delete from audit_events", id="delete"),
+    pytest.param("truncate audit_events", id="truncate"),
+    pytest.param("truncate submissions cascade", id="truncate_cascade"),
+]
+
+
+@pytest.mark.parametrize("statement", TAMPERING)
+async def test_raw_sql_cannot_change_the_trail(db, statement):
     submission = await make_submission(db)
     await record_event(
         db, submission.id, AuditEventType.RATING_COMPLETED, AuditActor.SYSTEM, {"seq": 1}
     )
 
-    # Core and raw SQL never reach the mapper listeners, so only the trigger stops this.
-    with pytest.raises(IntegrityError, match="append-only"):
-        await db.execute(text("update audit_events set payload = '{\"tampered\": true}'"))
+    # Core and raw SQL never reach the mapper listeners, so only the triggers stop these.
+    with pytest.raises(IntegrityError) as raised:
+        await db.execute(text(statement))
 
-
-async def test_raw_sql_cannot_delete_an_event(db):
-    submission = await make_submission(db)
-    await record_event(db, submission.id, AuditEventType.RATING_COMPLETED, AuditActor.SYSTEM, {})
-
-    with pytest.raises(IntegrityError, match="append-only"):
-        await db.execute(text("delete from audit_events"))
+    # The SQLSTATE the migration declares, not the message text it happens to carry.
+    assert raised.value.orig.sqlstate == RESTRICT_VIOLATION
 
 
 async def test_the_trigger_does_not_block_appending(db):
