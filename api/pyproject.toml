@@ -1,0 +1,43 @@
+[project]
+name = "underwrite-api"
+version = "0.1.0"
+description = "Submission-to-quote pipeline for Tech E&O / Cyber"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "fastapi>=0.139.2",
+    "uvicorn[standard]>=0.51.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "sqlalchemy>=2.0.51,<2.1",
+    "asyncpg>=0.31.0",
+    "alembic>=1.18.5",
+    "httpx>=0.28",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4",
+    "pytest-asyncio>=1.0",
+    "hypothesis>=6.130",
+    "ruff>=0.12",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+# Staying on httpx until respx supports httpx2 — see docs/DECISIONS.md D-002.
+filterwarnings = [
+    "error",
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated:UserWarning",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

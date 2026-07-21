@@ -1,0 +1,35 @@
+.env
+*.local
+
+# Working docs are local by default; publish by exception.
+# Note: /docs/* not /docs/ — git cannot re-include a file whose parent dir is excluded.
+/docs/*
+!/docs/RATING_SPEC.md
+!/docs/DECISIONS.md
+
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+node_modules/
+dist/
+.vite/
+
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
+.DS_Store
+.idea/
+.vscode/
+
+var/
+*.pdf
+!api/tests/fixtures/*.pdf
