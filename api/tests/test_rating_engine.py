@@ -9,33 +9,14 @@ from app.domain.enums import (
     DataVolume,
     Decision,
     ReasonCode,
-    RequestedLimit,
     Sector,
 )
-from app.domain.rating import Application, Enrichment
+from app.domain.rating import Enrichment
 from app.services import rating
 from app.services.rating import rate
+from tests.rating_baseline import CLEAN_ENRICHMENT, application
 
 BANNED_IMPORTS = {"sqlalchemy", "httpx", "anthropic", "fastapi", "boto3", "app.db"}
-
-CLEAN_ENRICHMENT = Enrichment(
-    ch_found=True,
-    ch_company_status=CompanyStatus.ACTIVE,
-    ch_name_match_score=0.99,
-)
-
-
-def spec_example_application(**overrides):
-    defaults = dict(
-        company_name="Example Ltd",
-        sector=Sector.SAAS,
-        annual_revenue_pence=75_000_000,
-        months_trading=36,
-        prior_claims_count=0,
-        data_records_held=DataVolume.HUNDRED_K_TO_1M,
-        requested_limit=RequestedLimit.GBP_1M,
-    )
-    return Application(**{**defaults, **overrides})
 
 
 def test_rating_module_imports_nothing_impure():
@@ -52,7 +33,7 @@ def test_rating_module_imports_nothing_impure():
 
 
 def test_worked_example_from_the_spec():
-    result = rate(spec_example_application(), CLEAN_ENRICHMENT)
+    result = rate(application(), CLEAN_ENRICHMENT)
 
     assert result.indicative_premium_pence == 278_000
     assert result.annual_premium_pence == 278_000
@@ -63,7 +44,7 @@ def test_worked_example_from_the_spec():
 
 
 def test_worked_example_factor_sequence():
-    result = rate(spec_example_application(), CLEAN_ENRICHMENT)
+    result = rate(application(), CLEAN_ENRICHMENT)
 
     assert [(f.code, f.multiplier) for f in result.factors] == [
         ("LIMIT", Decimal("1.9")),
@@ -76,7 +57,7 @@ def test_worked_example_factor_sequence():
 
 
 def test_trace_folds_back_to_the_premium():
-    result = rate(spec_example_application(), CLEAN_ENRICHMENT)
+    result = rate(application(), CLEAN_ENRICHMENT)
 
     running = Decimal(result.base_premium_pence)
     for factor in result.factors:
@@ -88,7 +69,7 @@ def test_trace_folds_back_to_the_premium():
 
 
 def test_declined_risk_has_no_annual_premium_but_keeps_an_indication():
-    result = rate(spec_example_application(sector=Sector.CRYPTO), CLEAN_ENRICHMENT)
+    result = rate(application(sector=Sector.CRYPTO), CLEAN_ENRICHMENT)
 
     assert result.decision is Decision.DECLINE
     assert result.annual_premium_pence is None
@@ -98,7 +79,7 @@ def test_declined_risk_has_no_annual_premium_but_keeps_an_indication():
 
 def test_decline_outranks_refer_and_keeps_both_reason_sets():
     result = rate(
-        spec_example_application(sector=Sector.CRYPTO, prior_claims_count=1),
+        application(sector=Sector.CRYPTO, prior_claims_count=1),
         CLEAN_ENRICHMENT,
     )
 
@@ -108,7 +89,7 @@ def test_decline_outranks_refer_and_keeps_both_reason_sets():
 
 
 def test_unmatched_company_does_not_evaluate_companies_house_rules():
-    result = rate(spec_example_application(), Enrichment(ch_found=False))
+    result = rate(application(), Enrichment(ch_found=False))
 
     assert result.decision is Decision.REFER
     assert [r.code for r in result.refer_reasons] == [ReasonCode.CH_NOT_FOUND]
@@ -128,14 +109,14 @@ def test_malformed_band_tables_fail_loudly(edges, factors, labels, message):
 
 
 def test_enum_fields_coerce_from_raw_values():
-    application = spec_example_application(sector="crypto", data_records_held="over_1m")
-    enrichment = Enrichment(ch_found=True, ch_company_status="dissolved")
+    coerced = application(sector="crypto", data_records_held="over_1m")
+    found = Enrichment(ch_found=True, ch_company_status="dissolved")
 
-    assert application.sector is Sector.CRYPTO
-    assert application.data_records_held is DataVolume.OVER_1M
-    assert enrichment.ch_company_status is CompanyStatus.DISSOLVED
+    assert coerced.sector is Sector.CRYPTO
+    assert coerced.data_records_held is DataVolume.OVER_1M
+    assert found.ch_company_status is CompanyStatus.DISSOLVED
 
-    result = rate(application, enrichment)
+    result = rate(coerced, found)
     assert {r.code for r in result.decline_reasons} == {
         ReasonCode.SECTOR_OUT_OF_APPETITE,
         ReasonCode.CH_STATUS_TERMINAL,
@@ -144,7 +125,7 @@ def test_enum_fields_coerce_from_raw_values():
 
 def test_unknown_enum_value_is_rejected_at_construction():
     with pytest.raises(ValueError, match="not a valid Sector"):
-        spec_example_application(sector="quantum_blockchain")
+        application(sector="quantum_blockchain")
 
 
 @pytest.mark.parametrize(
@@ -157,13 +138,13 @@ def test_unknown_enum_value_is_rejected_at_construction():
 )
 def test_negative_numeric_fields_are_rejected(field, value):
     with pytest.raises(ValueError, match="must not be negative"):
-        spec_example_application(**{field: value})
+        application(**{field: value})
 
 
 @pytest.mark.parametrize("confidence", [-0.1, 1.1])
 def test_extraction_confidence_outside_zero_to_one_is_rejected(confidence):
     with pytest.raises(ValueError, match="between 0 and 1"):
-        spec_example_application(extraction_confidence=confidence)
+        application(extraction_confidence=confidence)
 
 
 def test_name_match_score_outside_zero_to_one_is_rejected():
@@ -172,18 +153,18 @@ def test_name_match_score_outside_zero_to_one_is_rejected():
 
 
 def test_mutable_sequences_are_frozen_into_tuples():
-    application = spec_example_application(missing_fields=["annual_revenue_pence"])
-    enrichment = Enrichment(ch_found=False, discrepancies=["incorporated 2024"])
+    frozen = application(missing_fields=["annual_revenue_pence"])
+    found = Enrichment(ch_found=False, discrepancies=["incorporated 2024"])
 
-    assert application.missing_fields == ("annual_revenue_pence",)
-    assert enrichment.discrepancies == ("incorporated 2024",)
-    assert isinstance(hash(application), int)
-    assert isinstance(hash(enrichment), int)
+    assert frozen.missing_fields == ("annual_revenue_pence",)
+    assert found.discrepancies == ("incorporated 2024",)
+    assert isinstance(hash(frozen), int)
+    assert isinstance(hash(found), int)
 
 
 def test_discrepancies_still_refer_when_no_company_was_matched():
     result = rate(
-        spec_example_application(),
+        application(),
         Enrichment(ch_found=False, discrepancies=("incorporated 2024, claims 5 years",)),
     )
 
@@ -194,27 +175,11 @@ def test_discrepancies_still_refer_when_no_company_was_matched():
 
 
 def test_missing_companies_house_status_reads_sensibly():
-    result = rate(spec_example_application(), Enrichment(ch_found=True, ch_name_match_score=0.99))
+    result = rate(application(), Enrichment(ch_found=True, ch_name_match_score=0.99))
 
     (reason,) = result.refer_reasons
     assert reason.code is ReasonCode.CH_STATUS_NOT_ACTIVE
     assert reason.message == "Companies House did not return a company status."
-
-
-@pytest.mark.parametrize(
-    ("claims", "factor", "label"),
-    [
-        (0, Decimal("1.0"), "no prior claims"),
-        (1, Decimal("1.4"), "1 prior claim"),
-        (2, Decimal("1.4"), "2 or more prior claims"),
-        (7, Decimal("1.4"), "2 or more prior claims"),
-    ],
-)
-def test_prior_claims_band(claims, factor, label):
-    result = rate(spec_example_application(prior_claims_count=claims), CLEAN_ENRICHMENT)
-
-    applied = next(f for f in result.factors if f.code == "CLAIMS_HISTORY")
-    assert (applied.multiplier, applied.band_label) == (factor, label)
 
 
 def test_missing_factor_for_an_enum_member_fails_loudly():
