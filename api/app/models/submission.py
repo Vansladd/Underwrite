@@ -6,11 +6,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.domain.enums import InputMode, SubmissionStatus
 from app.models.base import (
     Base,
-    created_at,
     optional_long_text,
     pg_enum,
     updated_at,
     uuid_pk,
+    written_at,
 )
 
 if TYPE_CHECKING:
@@ -34,7 +34,7 @@ class Submission(Base):
     input_mode: Mapped[InputMode] = mapped_column(pg_enum(InputMode, "input_mode"))
     # Null for form mode, which posts structured fields and never sees an LLM.
     raw_input: Mapped[optional_long_text]
-    created_at: Mapped[created_at]
+    created_at: Mapped[written_at]
     updated_at: Mapped[updated_at]
 
     extraction: Mapped["Extraction | None"] = relationship(back_populates="submission")

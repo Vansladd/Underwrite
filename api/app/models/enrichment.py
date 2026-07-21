@@ -6,7 +6,7 @@ from sqlalchemy import ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import CompanyStatus
-from app.models.base import Base, created_at, json_list, pg_enum, uuid_pk
+from app.models.base import Base, json_list, pg_enum, uuid_pk, written_at
 
 if TYPE_CHECKING:
     from app.models.submission import Submission
@@ -37,6 +37,6 @@ class Enrichment(Base):
     discrepancies: Mapped[json_list]
 
     rate_limited: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
-    created_at: Mapped[created_at]
+    created_at: Mapped[written_at]
 
     submission: Mapped["Submission"] = relationship(back_populates="enrichment")

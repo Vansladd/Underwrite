@@ -6,6 +6,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 from hypothesis import settings
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
@@ -58,7 +59,7 @@ def client_without_db() -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = broken_db
     with TestClient(app) as test_client:
         yield test_client
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_db, None)
 
 
 def derive_test_database_url() -> str:
@@ -119,3 +120,14 @@ async def db(engine) -> AsyncIterator:
         # An IntegrityError already unwound this, and a second rollback warns.
         if transaction.is_active:
             await transaction.rollback()
+
+
+@pytest.fixture
+async def api(db) -> AsyncIterator[AsyncClient]:
+    """In-loop and on the test transaction. TestClient would use its own loop and the dev DB."""
+    app.dependency_overrides[get_db] = lambda: db
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://underwrite.test") as client:
+        yield client
+    # pop, not clear: clear() would drop an override another fixture installed.
+    app.dependency_overrides.pop(get_db, None)

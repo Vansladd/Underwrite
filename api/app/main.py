@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from app.api.routes import submissions
 from app.config import get_settings
 from app.db import DbSession, build_engine, build_sessionmaker
 
@@ -21,6 +22,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Underwrite", version="0.1.0", lifespan=lifespan)
+app.include_router(submissions.router)
 
 
 @app.get("/health")

@@ -5,7 +5,7 @@ from sqlalchemy import ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import QuoteStatus
-from app.models.base import Base, calendar_date, created_at, pence, pg_enum, uuid_pk
+from app.models.base import Base, calendar_date, pence, pg_enum, uuid_pk, written_at
 
 if TYPE_CHECKING:
     from app.models.submission import Submission
@@ -36,6 +36,6 @@ class Quote(Base):
 
     # Nullable: a render failure must not lose the approval (UW-052).
     pdf_s3_key: Mapped[str | None]
-    created_at: Mapped[created_at]
+    created_at: Mapped[written_at]
 
     submission: Mapped["Submission"] = relationship(back_populates="quote")
