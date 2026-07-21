@@ -69,3 +69,21 @@ jobs:
 
       - name: pytest
         run: uv run --frozen pytest -q -m "not llm"
+
+  # Single stable context for branch protection to require. Requiring lint and
+  # test by name breaks whenever a job is renamed, a matrix is added, or a path
+  # filter stops a job reporting — and a required check that never reports
+  # blocks the PR forever with no timeout.
+  ci-ok:
+    name: ci-ok
+    if: always()
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify every job succeeded
+        env:
+          LINT: ${{ needs.lint.result }}
+          TEST: ${{ needs.test.result }}
+        run: |
+          echo "lint=$LINT test=$TEST"
+          [ "$LINT" = "success" ] && [ "$TEST" = "success" ]
