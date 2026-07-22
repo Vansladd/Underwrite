@@ -16,6 +16,12 @@ variable "domain" {
   type        = string
 }
 
+# No default, for the same reason as domain: this is an environment value, not the repo's.
+variable "alert_email" {
+  description = "Where budget notifications go"
+  type        = string
+}
+
 # force_destroy on the bucket and ECR repo. Off, so terraform destroy refuses while objects
 # exist; a deliberate -var allow_destroy=true enables teardown of this demo.
 variable "allow_destroy" {

@@ -398,3 +398,42 @@ every render-retry rewrite of a `generated/` PDF left a noncurrent version that 
 Each rule that must reclaim storage now also carries `noncurrent_version_expiration`:
 `bordereaux/` 365, `generated/` 30. This is the exact omission D-013 documented for the state
 bucket and did not carry across.
+
+---
+
+## D-015 · EC2 host: IMDSv2 hop limit 2, no port 22, and a two-budget split
+
+**Ticket:** UW-064 · **Date:** 2026-07-22
+
+`t4g.small`, AL2023 arm64, AMI resolved from the SSM public parameter (latest, region-portable)
+with `ignore_changes = [ami]` so a new release does not propose replacing a running box.
+
+**`http_put_response_hop_limit = 2`, not the default 1.** IMDSv2 is `http_tokens = required`, but
+at hop limit 1 the AWS SDK inside a Docker container cannot reach IMDS — a container is one
+network hop from the host — so the instance role silently yields no credentials and S3 fails.
+Set now because it bites at #36 (approve → S3), not here. Proven while the box was up: an IMDSv2
+token was fetched from a shell.
+
+**No SSH key, no port 22.** Security group is 80/443 inbound only; access is Session Manager via
+`AmazonSSMManagedInstanceCore`. Verified: SSM registered `Online` and a command ran as root with
+no key and no open 22.
+
+**Least privilege proven by refusal.** The instance role allows `s3:GetObject`/`PutObject` on
+`generated/*` only. A write to `generated/` succeeded and a write to `bordereaux/` was denied
+with `AccessDenied` — the scope confines the role, not just permits the happy path.
+
+**The stop-action halts compute, not the whole bill.** `STOP_EC2_INSTANCES` stops the ~$12/mo
+instance, but the Elastic IP (~$3.60/mo, charged even while stopped since Feb 2024) and the 20GB
+EBS volume persist — the backstop floors cost near ~$4/mo, it does not reach zero. Zeroing means
+`terraform destroy`, which is the normal teardown anyway.
+
+**Two budgets, deliberately.** The `$20` account-wide alert budget is created outside this stack
+(CLI) so `terraform destroy` never removes cost protection between deploys. The `$30`
+stop-action budget references the instance, so it lives and dies with it. `aws_budgets_budget_
+action` also requires a top-level `notification_type` — the schema validate caught that before
+any apply.
+
+**Security-group descriptions are ASCII-only.** An em-dash in the description passed `validate`
+and was rejected by the EC2 API at apply with `Character sets beyond ASCII are not supported` —
+an apply-time check no plan can make. This is why deploy tickets apply-verify rather than trust
+a clean plan.
