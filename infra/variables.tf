@@ -15,3 +15,11 @@ variable "domain" {
   description = "Hostname Caddy requests a certificate for (UW-067)"
   type        = string
 }
+
+# force_destroy on the bucket and ECR repo. Off, so terraform destroy refuses while objects
+# exist; a deliberate -var allow_destroy=true enables teardown of this demo.
+variable "allow_destroy" {
+  description = "Allow terraform destroy to remove non-empty buckets and repositories"
+  type        = bool
+  default     = false
+}
