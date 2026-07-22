@@ -28,12 +28,12 @@ resource "aws_ecr_lifecycle_policy" "pdf_render" {
       },
       {
         rulePriority = 2
-        description  = "keep last 5 tagged"
+        description  = "keep last 20 tagged"
         selection = {
           tagStatus      = "tagged"
           tagPatternList = ["*"]
           countType      = "imageCountMoreThan"
-          countNumber    = 5
+          countNumber    = 20
         }
         action = { type = "expire" }
       }

@@ -4,7 +4,8 @@ output "documents_bucket" {
 }
 
 output "documents_bucket_arn" {
-  value = aws_s3_bucket.documents.arn
+  description = "Bucket ARN the instance profile scopes s3 access to (#15)"
+  value       = aws_s3_bucket.documents.arn
 }
 
 output "ecr_repository_url" {

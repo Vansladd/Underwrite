@@ -391,3 +391,10 @@ on every rebuild.
 **DoD proven, not asserted.** "Cannot be made public" was tested by an admin attempting both a
 public-read ACL and a public bucket policy; both were refused with `AccessDenied` naming the
 Block Public Access setting that stopped them. Setting the flag is not evidence the flag works.
+
+**Correction (post-review):** the first version enabled versioning but expired only current
+versions, so `bordereaux/` objects were hidden behind a delete marker rather than deleted, and
+every render-retry rewrite of a `generated/` PDF left a noncurrent version that never expired.
+Each rule that must reclaim storage now also carries `noncurrent_version_expiration`:
+`bordereaux/` 365, `generated/` 30. This is the exact omission D-013 documented for the state
+bucket and did not carry across.
