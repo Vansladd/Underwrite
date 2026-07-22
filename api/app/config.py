@@ -6,6 +6,7 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ASYNC_DRIVER_PREFIX = "postgresql+asyncpg://"
+DEFAULT_OPS_PASSWORD = "changeme"
 
 
 class Settings(BaseSettings):
@@ -16,7 +17,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     companies_house_api_key: str = ""
 
-    ops_password: str = "changeme"
+    ops_password: str = DEFAULT_OPS_PASSWORD
     quote_base_url: str = "http://localhost:8000"
     local_pdf: bool = True
 
