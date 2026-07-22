@@ -80,9 +80,16 @@ def email(name: str) -> str:
     return (EMAILS / name).read_text()
 
 
+@pytest.fixture
+async def live_extractor():
+    # Context-managed so the real socket closes (filterwarnings=error rejects the leak).
+    async with AsyncAnthropic() as client:
+        yield AnthropicExtractor(Settings(), client=client)
+
+
 @pytest.mark.llm
-async def test_clean_email_extracts_all_rated_fields():
-    application = await AnthropicExtractor(Settings()).extract(email("clean.txt"))
+async def test_clean_email_extracts_all_rated_fields(live_extractor):
+    application = await live_extractor.extract(email("clean.txt"))
 
     assert application.company_name
     assert application.sector is Sector.SAAS
@@ -93,8 +100,8 @@ async def test_clean_email_extracts_all_rated_fields():
 
 
 @pytest.mark.llm
-async def test_rambling_email_resolves_buried_fields():
-    application = await AnthropicExtractor(Settings()).extract(email("rambling.txt"))
+async def test_rambling_email_resolves_buried_fields(live_extractor):
+    application = await live_extractor.extract(email("rambling.txt"))
 
     assert application.company_name
     assert application.sector is Sector.FINTECH
@@ -105,8 +112,8 @@ async def test_rambling_email_resolves_buried_fields():
 
 
 @pytest.mark.llm
-async def test_missing_revenue_email_never_guesses():
-    application = await AnthropicExtractor(Settings()).extract(email("missing_revenue.txt"))
+async def test_missing_revenue_email_never_guesses(live_extractor):
+    application = await live_extractor.extract(email("missing_revenue.txt"))
 
     # The assertion that proves the never-guess rule (UW-021 DoD).
     assert application.annual_revenue_gbp is None
