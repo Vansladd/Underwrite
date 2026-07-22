@@ -363,3 +363,38 @@ test asserts the allowlist matches live routes, which is what caught it.
 **Known gap:** `ops_password` defaults to `changeme`, so a deployment that forgets to set it is
 open. Startup logs a warning; that is visibility, not a control. #16 builds the prod `.env` and
 is where a real value belongs.
+
+---
+
+## D-014 · Documents bucket and ECR repo, and why they can be destroyed
+
+**Ticket:** UW-061 · **Date:** 2026-07-22
+
+The bucket name carries the account id (`underwrite-documents-564250611758`) because S3 names
+are **globally unique** — a bare name is one namespace collision from a clone whose `apply`
+fails. The id comes from `aws_caller_identity`, not a literal.
+
+`aws_s3_bucket` and its four sub-resources are **separate resources** (split out in provider v4):
+a monolithic bucket with inline `versioning`/`encryption` blocks silently no-ops on v6.
+
+**`force_destroy = var.allow_destroy`, default false.** Left off, a bucket refuses to delete
+while it holds objects, so `terraform destroy` fails once one PDF exists — the right default for
+anything holding real documents. Hardcoding `true` is how someone's `destroy` quietly deletes
+issued quotes. This is a demo that gets torn down, so a deliberate `-var allow_destroy=true`
+enables teardown without making it the default.
+
+**ECR is `IMMUTABLE`.** #21 tags images by git SHA; a SHA that can be overwritten defeats
+pinning a deploy to a commit. The lifecycle policy expires untagged after 7 days and keeps the
+last 5 tagged, because the 500MB free allowance is 12-month-only and untagged layers accumulate
+on every rebuild.
+
+**DoD proven, not asserted.** "Cannot be made public" was tested by an admin attempting both a
+public-read ACL and a public bucket policy; both were refused with `AccessDenied` naming the
+Block Public Access setting that stopped them. Setting the flag is not evidence the flag works.
+
+**Correction (post-review):** the first version enabled versioning but expired only current
+versions, so `bordereaux/` objects were hidden behind a delete marker rather than deleted, and
+every render-retry rewrite of a `generated/` PDF left a noncurrent version that never expired.
+Each rule that must reclaim storage now also carries `noncurrent_version_expiration`:
+`bordereaux/` 365, `generated/` 30. This is the exact omission D-013 documented for the state
+bucket and did not carry across.
