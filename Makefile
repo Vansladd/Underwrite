@@ -7,10 +7,11 @@ AWS_PROFILE ?= underwrite
 AWS_ACCOUNT ?= 564250611758
 REGION ?= eu-west-2
 ECR_API := $(AWS_ACCOUNT).dkr.ecr.$(REGION).amazonaws.com/underwrite/api
+ECR_PDF := $(AWS_ACCOUNT).dkr.ecr.$(REGION).amazonaws.com/underwrite/pdf-render
 PROD_COMPOSE := $(COMPOSE) -f docker-compose.prod.yml
 TF := AWS_PROFILE=$(AWS_PROFILE) terraform -chdir=infra
 
-.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply push-api prod-up prod-down deploy smoke pdf-lambda-test demo
+.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply push-api prod-up prod-down deploy smoke pdf-lambda-test push-pdf-lambda demo
 
 help:
 	@echo "Underwrite — available targets"
@@ -45,6 +46,7 @@ help:
 	@echo "  make deploy image=...  SSM the box to pull the tag and restart the unit"
 	@echo "  make smoke DOMAIN=...  curl https://DOMAIN/health (cold-box check)"
 	@echo "  make pdf-lambda-test   build the render Lambda + prove it via the RIE (no AWS)"
+	@echo "  make push-pdf-lambda   buildx arm64 + push the render image to ECR (tag = git sha)"
 	@echo "  make demo      up + render a quote PDF locally end-to-end (no AWS)"
 	@echo ""
 	@echo "  make psql      open a psql shell on the database"
@@ -165,6 +167,15 @@ smoke:
 
 pdf-lambda-test:
 	bash lambdas/pdf_render/rie_test.sh
+
+push-pdf-lambda: tf-account
+	@sha=$$(git rev-parse --short HEAD); \
+	AWS_PROFILE=$(AWS_PROFILE) aws ecr get-login-password --region $(REGION) \
+	  | docker login --username AWS --password-stdin $(ECR_PDF); \
+	docker buildx build --platform linux/arm64 --provenance=false \
+	  -t $(ECR_PDF):$$sha --load lambdas/pdf_render; \
+	docker push $(ECR_PDF):$$sha; \
+	echo "pushed $(ECR_PDF):$$sha  (deploy: make tf-apply then -var image_tag=$$sha)"
 
 demo: up
 	@echo "offline PDF demo (LOCAL_PDF=1, no AWS credentials needed)"

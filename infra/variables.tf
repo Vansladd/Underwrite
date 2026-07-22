@@ -34,6 +34,12 @@ variable "github_repo" {
   default     = "Underwrite"
 }
 
+variable "image_tag" {
+  description = "pdf-render image tag to deploy; empty means the Lambda is not created (see #21)"
+  type        = string
+  default     = ""
+}
+
 variable "compose_plugin_version" {
   description = "docker compose plugin version installed on the instance (no leading v)"
   type        = string

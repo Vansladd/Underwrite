@@ -30,6 +30,31 @@ compose plugin, and the ECR credential helper, and clones this repo for the depl
 app always runs from the ECR image. Secrets live in `/opt/underwrite/.env` (chmod 600). See
 `docs/DECISIONS.md` D-016.
 
+### PDF render Lambda (staged apply)
+
+The renderer is a container-image Lambda (`lambdas/pdf_render/`). `aws_lambda_function` can't apply
+until its image exists in ECR, so deployment is **staged, with the image tag as a Terraform
+variable**:
+
+```
+terraform apply -target=aws_ecr_repository.pdf_render   # once; the repo (done at #14)
+make push-pdf-lambda                                    # buildx arm64, tag = git sha, push
+make tf-apply … -var image_tag=$(git rev-parse --short HEAD)
+```
+
+The function is gated `count = var.image_tag != "" ? 1 : 0`, so a box-only apply needs no image;
+passing `-var image_tag=<sha>` creates it. Verify with `aws lambda invoke` — it writes a PDF to
+`s3://…/generated/`.
+
+Why this over the alternatives:
+- **`null_resource` + `local-exec`** to `docker push` inside `apply` couples Terraform to a Docker
+  daemon and hides the build in state — the push isn't a tracked resource and reruns are murky.
+- **A dummy `:bootstrap` image + `lifecycle { ignore_changes = [image_uri] }`** lets the first
+  apply succeed, but then Terraform never tracks the tag again, so deploys drift outside state.
+
+An explicit `image_tag` var keeps the image a build artifact and the deploy a plain, reviewable
+`apply` pinned to a commit.
+
 ### CD (GitHub Actions)
 
 `cd.yml` federates AWS via OIDC — no static keys. Build-and-push runs on every merge to `main`;
