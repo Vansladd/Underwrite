@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     quote_base_url: str = "http://localhost:8000"
     local_pdf: bool = True
 
+    # Empty bucket selects LocalStorage; a name selects S3Storage. See UW-050.
+    documents_bucket: str = ""
+    aws_region: str = "eu-west-2"
+    local_documents_dir: str = "var/documents"
+    presign_expiry_seconds: int = 900
+
     @field_validator("database_url")
     @classmethod
     def require_async_driver(cls, value: str) -> str:

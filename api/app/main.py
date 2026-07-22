@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from app.api.routes import submissions
+from app.api.routes import documents, submissions
 from app.config import DEFAULT_OPS_PASSWORD, get_settings
 from app.db import DbSession, build_engine, build_sessionmaker
 
@@ -37,6 +37,7 @@ app = FastAPI(
     swagger_ui_oauth2_redirect_url="/api/docs/oauth2-redirect",
 )
 app.include_router(submissions.router)
+app.include_router(documents.router)
 
 
 @app.get("/health")

@@ -12,6 +12,7 @@ dependencies = [
     "asyncpg>=0.31.0",
     "alembic>=1.18.5",
     "httpx>=0.28",
+    "boto3>=1.35",
 ]
 
 [dependency-groups]
@@ -20,6 +21,7 @@ dev = [
     "pytest-asyncio>=1.0",
     "hypothesis>=6.130",
     "ruff>=0.12",
+    "moto[s3,server]>=5.0",
 ]
 
 [tool.uv]
