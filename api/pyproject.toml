@@ -23,6 +23,10 @@ dev = [
     "ruff>=0.12",
     "moto[s3,server]>=5.0",
 ]
+# Dev-only: the in-process LOCAL_PDF renderer. Kept out of the prod image (R6). See D-020.
+local-pdf = [
+    "weasyprint==69.0",
+]
 
 [tool.uv]
 package = false

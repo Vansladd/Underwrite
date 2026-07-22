@@ -87,8 +87,11 @@ jobs:
           enable-cache: true
           cache-dependency-glob: api/uv.lock
 
+      - name: Install WeasyPrint system libs
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core shared-mime-info
+
       - name: Install dependencies
-        run: uv sync --frozen
+        run: uv sync --frozen --group local-pdf
 
       - name: pytest
         run: uv run --frozen pytest -q -m "not llm"

@@ -2,18 +2,17 @@ import os
 
 import boto3
 import weasyprint  # module scope: the ~2-5s init cost lands in cold start, not per invoke (R2)
+from weasyprint.urls import URLFetcher
 
 
-def _data_only_url_fetcher(url, *args, **kwargs):
-    # No network or file access during render: only inline data: URIs, so injected HTML
-    # (once submission data reaches the template) can't SSRF or read local files. See D-019.
-    if url.startswith("data:"):
-        return weasyprint.default_url_fetcher(url, *args, **kwargs)
-    raise ValueError(f"blocked non-data: URL during render: {url!r}")
+def _data_only_url_fetcher():
+    # data: only, so injected HTML (once submission data reaches the template) can't SSRF or
+    # read local files. WeasyPrint 69 URLFetcher; byte-identical to app/services/pdf.py. See D-019.
+    return URLFetcher(allowed_protocols=["data"])
 
 
 def render_pdf(html: str) -> bytes:
-    return weasyprint.HTML(string=html, url_fetcher=_data_only_url_fetcher).write_pdf()
+    return weasyprint.HTML(string=html, url_fetcher=_data_only_url_fetcher()).write_pdf()
 
 
 def handler(event, context):

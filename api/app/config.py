@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     aws_region: str = "eu-west-2"
     local_documents_dir: str = "var/documents"
     presign_expiry_seconds: int = 900
+    pdf_lambda_function: str = "underwrite-pdf-render"
 
     @field_validator("database_url")
     @classmethod

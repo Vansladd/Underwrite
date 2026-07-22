@@ -586,3 +586,29 @@ could SSRF the metadata endpoint or read local files from inside the Lambda. A `
 allows only `data:` and raises on everything else closes that off. A failed fetch is non-fatal in
 WeasyPrint (the render continues without the resource), so the guard is verified by calling the
 fetcher directly — an `http:` URL raises, a `data:` URI resolves — not by inspecting the PDF.
+
+---
+
+## D-020 · Local PDF fallback keeps WeasyPrint out of the prod image
+
+**Ticket:** UW-055 · **Date:** 2026-07-22
+
+`LOCAL_PDF=1` renders in-process; `=0` invokes the Lambda. A `PdfRenderer` seam
+(`render_and_store(quote_id, html) -> key`) has `LocalPdfRenderer` (WeasyPrint → `LocalStorage`)
+and `LambdaPdfRenderer` (`lambda:invoke` → `{s3_key}`), so everything downstream depends on the
+interface, not on which one runs. WeasyPrint lives in a **`local-pdf` dependency group**, not the
+main deps: the dev image and CI install it (plus the Debian pango stack), the prod runtime stage
+(`--no-dev`) never sees it — the API image stays free of Pango/HarfBuzz (R6). This is why the dev
+`api/Dockerfile` stage `apt-get`s the pango libs and CI has a matching step, while the runtime
+stage does not.
+
+**`default_url_fetcher` is deprecated in WeasyPrint 69; use `URLFetcher`.** The SSRF guard is now
+`URLFetcher(allowed_protocols=["data"])` — a callable that raises `ValueError` on any non-`data:`
+scheme. The same fetcher is duplicated in `lambdas/pdf_render/handler.py` and
+`app/services/pdf.py` because they deploy as separate units and can't share code; they are kept
+byte-identical, and the deprecation was fixed in both, not one.
+
+**The demo is the DoD.** `make demo` brings the stack up, POSTs a submission through the real API,
+renders a quote PDF in-process, and fetches it back through `/api/documents/*` — a valid PDF with
+no AWS credentials, bucket, or deployed Lambda. That "clone → `make up` → PDF" path is worth more
+to a reviewer than any single cloud resource, which is why it is built now, not at the end.
