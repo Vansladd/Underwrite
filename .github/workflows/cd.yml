@@ -84,3 +84,5 @@ jobs:
             --query Command.CommandId --output text)
           aws ssm wait command-executed --region "$AWS_REGION" --command-id "$cid" --instance-id "$iid" || true
           aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$cid" --instance-id "$iid"
+          status=$(aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$cid" --instance-id "$iid" --query Status --output text)
+          test "$status" = "Success" || { echo "SSM deploy did not succeed: $status"; exit 1; }
