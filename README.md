@@ -12,6 +12,18 @@ make lint fmt  # ruff
 
 Postgres is on host port **55432**; the API on **8000**.
 
+## LLM extraction
+
+Pasted submissions are parsed into a validated `ExtractedApplication` by
+`app/services/extraction.py` (`claude-sonnet-5`, structured outputs). `make test` excludes the
+live-LLM tests; run them against the real API with `make test-llm` (set `ANTHROPIC_API_KEY` in
+`.env` first — this spends). If the rambling-email case underperforms, escalate with
+`extraction_model=claude-opus-4-8` in `.env` — that's the lever, not a prompt rewrite.
+
+**`extraction_confidence` is LLM self-reported and weakly calibrated** — a legitimate signal to
+refer a risk for human review, not a statistical error rate. Treat a low value as "look at this",
+not "this is X% likely wrong".
+
 ## Production image & deploy
 
 The API runs from a multi-stage image (`api/Dockerfile`) that carries no build tooling and no

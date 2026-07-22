@@ -11,7 +11,7 @@ ECR_PDF := $(AWS_ACCOUNT).dkr.ecr.$(REGION).amazonaws.com/underwrite/pdf-render
 PROD_COMPOSE := $(COMPOSE) -f docker-compose.prod.yml
 TF := AWS_PROFILE=$(AWS_PROFILE) terraform -chdir=infra
 
-.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply push-api prod-up prod-down deploy smoke pdf-lambda-test push-pdf-lambda demo
+.PHONY: help up down restart logs ps health test test-llm lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply push-api prod-up prod-down deploy smoke pdf-lambda-test push-pdf-lambda demo
 
 help:
 	@echo "Underwrite — available targets"
@@ -23,7 +23,8 @@ help:
 	@echo "  make ps        service status"
 	@echo "  make health    curl /health"
 	@echo ""
-	@echo "  make test      run pytest inside the api container"
+	@echo "  make test      run pytest (excludes the live-LLM tests)"
+	@echo "  make test-llm  run the live extraction tests (spends; needs ANTHROPIC_API_KEY in .env)"
 	@echo "  make lint      ruff check"
 	@echo "  make fmt       ruff format + fix imports"
 	@echo "  make regen-goldens  rewrite the rating golden file"
@@ -86,7 +87,10 @@ health:
 	@curl -fsS http://localhost:$(API_PORT)/health && echo
 
 test:
-	$(COMPOSE) run --rm api uv run --frozen pytest -q
+	$(COMPOSE) run --rm api uv run --frozen pytest -q -m "not llm"
+
+test-llm:
+	$(COMPOSE) run --rm api uv run --frozen pytest -q -m llm tests/test_extraction.py
 
 regen-goldens:
 	$(COMPOSE) run --rm --no-deps api uv run --frozen pytest -q --regen-goldens tests/test_rating_goldens.py
