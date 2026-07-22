@@ -1,0 +1,88 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - ".github/workflows/cd.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-west-2
+
+jobs:
+  build-push:
+    name: build-push
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Federate into AWS via OIDC
+        run: |
+          curl -sS "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            | jq -r .value > "$RUNNER_TEMP/oidc-token"
+          {
+            echo "AWS_WEB_IDENTITY_TOKEN_FILE=$RUNNER_TEMP/oidc-token"
+            echo "AWS_ROLE_ARN=${{ vars.AWS_ROLE_ARN }}"
+            echo "AWS_ROLE_SESSION_NAME=gha-underwrite-${GITHUB_RUN_ID}"
+          } >> "$GITHUB_ENV"
+
+      - name: Build and push the API image
+        id: build
+        env:
+          ECR_API: ${{ vars.ECR_API_REPO }}
+        run: |
+          sha=$(git rev-parse --short HEAD)
+          image="${ECR_API}:${sha}"
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "${ECR_API%%/*}"
+          docker build -t "$image" ./api
+          docker push "$image"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+  # Gated: build-push runs on every merge (delivery); rollout is manual only.
+  deploy:
+    name: deploy
+    if: github.event_name == 'workflow_dispatch'
+    needs: build-push
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Federate into AWS via OIDC
+        run: |
+          curl -sS "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            | jq -r .value > "$RUNNER_TEMP/oidc-token"
+          {
+            echo "AWS_WEB_IDENTITY_TOKEN_FILE=$RUNNER_TEMP/oidc-token"
+            echo "AWS_ROLE_ARN=${{ vars.AWS_ROLE_ARN }}"
+            echo "AWS_ROLE_SESSION_NAME=gha-underwrite-${GITHUB_RUN_ID}"
+          } >> "$GITHUB_ENV"
+
+      - name: Deploy via SSM
+        env:
+          IMAGE: ${{ needs.build-push.outputs.image }}
+        run: |
+          iid=$(aws ec2 describe-instances --region "$AWS_REGION" \
+            --filters Name=tag:Name,Values=underwrite-app Name=instance-state-name,Values=running \
+            --query "Reservations[0].Instances[0].InstanceId" --output text)
+          test "$iid" != "None" || { echo "no running underwrite-app instance"; exit 1; }
+          cid=$(aws ssm send-command --region "$AWS_REGION" \
+            --instance-ids "$iid" --document-name AWS-RunShellScript \
+            --parameters commands="bash /opt/underwrite/deploy/remote-deploy.sh $IMAGE" \
+            --query Command.CommandId --output text)
+          aws ssm wait command-executed --region "$AWS_REGION" --command-id "$cid" --instance-id "$iid" || true
+          aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$cid" --instance-id "$iid"
+          status=$(aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$cid" --instance-id "$iid" --query Status --output text)
+          test "$status" = "Success" || { echo "SSM deploy did not succeed: $status"; exit 1; }

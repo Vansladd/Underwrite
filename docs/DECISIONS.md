@@ -437,3 +437,50 @@ any apply.
 and was rejected by the EC2 API at apply with `Character sets beyond ASCII are not supported` —
 an apply-time check no plan can make. This is why deploy tickets apply-verify rather than trust
 a clean plan.
+
+---
+
+## D-016 · Prod image, one registry, keyless CD, and reboot survival
+
+**Ticket:** UW-066 · **Date:** 2026-07-22
+
+**The prod image is multi-stage; the runtime carries no build tooling.** A `build` stage runs
+`uv sync --frozen --no-dev` into a venv; the runtime stage is a fresh `python:3.13-slim` that
+copies only that venv and the source, runs as a non-root user, and has no `uv`, no compiler, and
+**no Pango/HarfBuzz/fonts** — the WeasyPrint dependency tree stays out of the API image entirely,
+which is the whole point of splitting PDF rendering to the Lambda (#20). The dev stack builds the
+same Dockerfile at `target: dev`, which keeps `uv` and the dev group so `make test`/`lint`/
+`migrate` still run inside the container; the two targets share a `base` so the split costs no
+duplication.
+
+**One registry, both image types, deploy-by-SHA.** The API repo mirrors `pdf-render`:
+`IMMUTABLE`, scan-on-push, the same lifecycle policy. Images are tagged by git SHA and never by a
+moving `latest` — an immutable tag is what lets a deploy pin to a commit and a rollback re-point
+at a prior one. The instance pulls with the ECR **credential helper** configured in
+`~/.docker/config.json`, not a `docker login` token: the helper re-fetches credentials via the
+instance role on every pull, so auth survives a reboot where a 12-hour token would not.
+
+**Reboot survival is belt-and-suspenders.** Every service is `restart: unless-stopped` (the
+Docker daemon restarts them on boot) *and* a `systemd` unit runs `docker compose up` after
+`docker.service`. Postgres is a named volume and is **not** published to the host — it is reachable
+only on the container network. `user_data` provisions the platform (Docker, the compose plugin —
+AL2023 ships none —, git, the credential helper) and clones the **public** repo to
+`/opt/underwrite` for the deployment *manifests* only: the compose file, the Caddyfile, and the
+unit. The application itself always runs from the immutable ECR image, so cloning the repo never
+means running code from a git checkout. Secrets live in `/opt/underwrite/.env` (chmod 600),
+placed by the operator, never baked into an image or committed. `user_data_replace_on_change`
+recreates the box when the script changes — correct because the box is ephemeral.
+
+**CD is keyless, and delivery is separate from deployment.** GitHub Actions federates an IAM
+OIDC provider scoped to `repo:<owner>/<repo>:ref:refs/heads/main` — no long-lived AWS keys in
+the repo. The federation is done by hand (request the runner token, point the AWS CLI at it)
+rather than a marketplace action, so the only third-party action is `checkout`, pinned to a SHA
+like everything in `ci.yml`. Build-and-push runs on every merge to `main` — an artifact is
+always ready — but rollout is a **manual** `workflow_dispatch` that `SendCommand`s the box,
+because the environment is deliberately not always-on. `make deploy` and the deploy job invoke
+the *same* `deploy/remote-deploy.sh` on the box, so there is one deploy path, not a Makefile copy
+drifting from a YAML copy.
+
+**Caddy is an HTTP-only reverse proxy here.** The service, its port bindings, and its persisted
+`/data` volume land now; the domain block and automatic TLS are #17, where a live box and a DNS
+A record make an ACME challenge possible.

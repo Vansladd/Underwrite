@@ -22,6 +22,24 @@ variable "alert_email" {
   type        = string
 }
 
+variable "github_owner" {
+  description = "GitHub org/user allowed to assume the CI role via OIDC"
+  type        = string
+  default     = "Vansladd"
+}
+
+variable "github_repo" {
+  description = "GitHub repo (without owner) allowed to assume the CI role via OIDC"
+  type        = string
+  default     = "Underwrite"
+}
+
+variable "compose_plugin_version" {
+  description = "docker compose plugin version installed on the instance (no leading v)"
+  type        = string
+  default     = "2.31.0"
+}
+
 # force_destroy on the bucket and ECR repo. Off, so terraform destroy refuses while objects
 # exist; a deliberate -var allow_destroy=true enables teardown of this demo.
 variable "allow_destroy" {

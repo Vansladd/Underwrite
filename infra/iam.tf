@@ -28,6 +28,31 @@ resource "aws_iam_role_policy" "instance_s3" {
   policy = data.aws_iam_policy_document.instance_s3.json
 }
 
+# Pull the API image. GetAuthorizationToken has no resource scope; the pull verbs do.
+data "aws_iam_policy_document" "instance_ecr" {
+  statement {
+    sid       = "EcrAuth"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid = "PullApiImage"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:BatchGetImage",
+    ]
+    resources = [aws_ecr_repository.api.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "instance_ecr" {
+  name   = "pull-api-image"
+  role   = aws_iam_role.instance.id
+  policy = data.aws_iam_policy_document.instance_ecr.json
+}
+
 # Session Manager, so there is no SSH key and no port 22.
 resource "aws_iam_role_policy_attachment" "ssm" {
   role       = aws_iam_role.instance.name

@@ -7,8 +7,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-underwrite}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-underwrite}
       POSTGRES_DB: ${POSTGRES_DB:-underwrite}
-    ports:
-      - "${POSTGRES_PORT:-55432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -18,24 +16,18 @@ services:
       timeout: 3s
       retries: 12
       start_period: 5s
+    restart: unless-stopped
 
   api:
-    build:
-      context: ./api
-      target: dev
+    image: ${API_IMAGE:?set API_IMAGE to the ECR tag to run}
     depends_on:
       db:
         condition: service_healthy
     env_file:
       - path: .env
-        required: false
+        required: true
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://underwrite:underwrite@db:5432/underwrite}
-    ports:
-      - "${API_PORT:-8000}:8000"
-    volumes:
-      - ./api:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
       test:
         - CMD-SHELL
@@ -44,6 +36,22 @@ services:
       timeout: 3s
       retries: 12
       start_period: 10s
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:
