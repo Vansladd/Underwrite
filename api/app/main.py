@@ -9,6 +9,8 @@ from sqlalchemy import text
 from app.api.routes import documents, submissions
 from app.config import DEFAULT_OPS_PASSWORD, get_settings
 from app.db import DbSession, build_engine, build_sessionmaker
+from app.services.companies_house import CompaniesHouseClient
+from app.services.extraction import AnthropicExtractor
 
 
 @asynccontextmanager
@@ -21,9 +23,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     engine = build_engine(settings)
     app.state.engine = engine
     app.state.sessionmaker = build_sessionmaker(engine)
+    # One httpx/Anthropic connection pool per process, not per request.
+    app.state.extractor = AnthropicExtractor(settings)
+    app.state.ch_client = CompaniesHouseClient(settings)
     try:
         yield
     finally:
+        await app.state.extractor.aclose()
+        await app.state.ch_client.aclose()
         await engine.dispose()
 
 

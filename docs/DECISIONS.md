@@ -672,3 +672,43 @@ The strings render verbatim in the ops dashboard, so they read as prose. Beyond 
 four lines that show the spec was read, not just `status == "active"`.
 
 Built standalone; the pipeline assembles a persisted `Enrichment` from these pieces at UW-025.
+
+---
+
+## D-023 · Pipeline orchestration — a three-stage flow with a per-stage error model
+
+**Ticket:** UW-025 · **Date:** 2026-07-22
+
+`run_pipeline` runs **extract → enrich → rate** synchronously inside `POST /api/submissions`,
+writing one `AuditEvent` per transition and **committing after each stage**. The submission's
+`SUBMISSION_RECEIVED` is committed by the route *before* the pipeline, so a crash mid-pipeline
+leaves a durable, recoverable record rather than losing the submission.
+
+**Each stage fails differently, on purpose.** The three failure modes are not the same event and
+must not be flattened into one:
+
+- **Extract — hard stop.** A `paste` calls the LLM; `anthropic.APIStatusError` or an
+  `ExtractionRefused` is caught, audited as `EXTRACTION_FAILED`, the submission is set `failed`, and
+  the pipeline returns. `failed` is recoverable — a retry re-runs the model (no loop-to-fix, per
+  D-021). A `form` carries its fields already and skips the model; a `pdf_upload` has no text yet
+  (UW-026) and returns early, still `received`.
+- **Enrich — best-effort, never a hard stop.** `enrich()` wraps `CompaniesHouseClient.lookup()` in
+  `try/except Exception` (the #30-review fix — non-429 errors previously propagated). A CH outage,
+  a 429, or no match all degrade to `ch_found=False`, which the engine turns into a `CH_NOT_FOUND`
+  **REFER** — the safe underwriting outcome. The failure is recorded as `ENRICHMENT_FAILED` and the
+  pipeline **continues to rating**. (Proven live: a real CH `400` from a missing key was swallowed,
+  audited, and still produced a rating.)
+- **Rate — refer, or fail.** A valid extraction that lacks a required rating input raises
+  `IncompleteExtraction`; that is a **referral, not a crash** — status `referred`, audit
+  `RATING_FAILED{reason: incomplete_extraction}`, no `Rating` row (the engine can't run without the
+  value). An *unexpected* `rate()` exception (a bug — the engine is pure and validated) is caught
+  defensively → `failed` + `RATING_FAILED{reason: rating_error}`, leaving extract + enrich durable.
+
+`STATUS_FOR_DECISION` maps `Decision → SubmissionStatus` table-driven (auto_approve→auto_approved,
+refer→referred, decline→declined). **The pipeline stops at `Rating`** — no `Quote` is generated
+here; quote issuance is ops-gated (UW-036), which is where `quoted` is reached.
+
+**Long-lived clients live in `lifespan`.** The `AsyncAnthropic` and Companies House `httpx`
+connection pools are built once per process on `app.state` and closed on shutdown (each service
+grew an `aclose()`); FastAPI deps hand them to the route, which forwards them to `run_pipeline`.
+Tests inject fakes via `dependency_overrides`, so the suite stays offline — no network, no spend.

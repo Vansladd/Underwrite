@@ -69,3 +69,6 @@ class CompaniesHouseClient:
         response.raise_for_status()
         items = response.json().get("items", [])
         return (items[0]["company_number"] if items else None), False
+
+    async def aclose(self) -> None:
+        await self._client.aclose()

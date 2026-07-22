@@ -1,10 +1,12 @@
 import secrets
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from app.config import SettingsDep
+from app.services.companies_house import CompaniesHouseClient
+from app.services.extraction import AnthropicExtractor
 
 OPS_USERNAME = "ops"
 UNAUTHORISED = HTTPException(
@@ -38,3 +40,15 @@ async def require_ops(
 
 
 OpsUser = Annotated[str, Depends(require_ops)]
+
+
+def get_extractor(request: Request) -> AnthropicExtractor:
+    return request.app.state.extractor
+
+
+def get_ch_client(request: Request) -> CompaniesHouseClient:
+    return request.app.state.ch_client
+
+
+ExtractorDep = Annotated[AnthropicExtractor, Depends(get_extractor)]
+ChClientDep = Annotated[CompaniesHouseClient, Depends(get_ch_client)]

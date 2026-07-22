@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import OpsUser
+from app.api.deps import ChClientDep, ExtractorDep, OpsUser
 from app.db import DbSession
 from app.domain.enums import AuditActor, AuditEventType, SubmissionStatus
 from app.models import Submission
@@ -50,7 +50,12 @@ def submissions_query(submission_status: SubmissionStatus | None, limit: int, of
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_submission(payload: SubmissionCreate, db: DbSession) -> SubmissionDetail:
+async def create_submission(
+    payload: SubmissionCreate,
+    db: DbSession,
+    extractor: ExtractorDep,
+    ch_client: ChClientDep,
+) -> SubmissionDetail:
     submission = Submission(input_mode=payload.input_mode, raw_input=payload.raw_input)
     db.add(submission)
     await db.flush()
@@ -69,8 +74,8 @@ async def create_submission(payload: SubmissionCreate, db: DbSession) -> Submiss
     # Committed before the pipeline so a stage failure leaves it recoverable (UW-025).
     await db.commit()
 
-    await run_pipeline(db, submission, payload.application)
-    await db.commit()
+    # The pipeline commits after each stage; no trailing commit needed here.
+    await run_pipeline(db, submission, payload.application, extractor, ch_client)
 
     return await load_detail(db, submission.id)
 

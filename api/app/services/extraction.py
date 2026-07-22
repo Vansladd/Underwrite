@@ -45,6 +45,10 @@ class AnthropicExtractor:
         self._max_tokens = settings.extraction_max_tokens
         self._client = client or AsyncAnthropic(api_key=settings.anthropic_api_key or None)
 
+    @property
+    def model(self) -> str:
+        return self._model
+
     async def extract(self, raw_input: str) -> ExtractedApplication:
         response = await self._client.messages.parse(
             model=self._model,
@@ -64,3 +68,6 @@ class AnthropicExtractor:
         if response.stop_reason == "refusal":
             raise ExtractionRefused(response.stop_details)
         return response.parsed_output
+
+    async def aclose(self) -> None:
+        await self._client.close()
