@@ -549,3 +549,40 @@ non-zero or the `api`/`db` healthchecks never pass. That is the smoke test — a
 reports success has a migrated database and a healthy API, not just started containers. The
 cold-box DoD (`https://<domain>/health` = 200 from a fresh instance) is the same guarantee proven
 end to end on an apply-verify-destroy.
+
+---
+
+## D-019 · PDF render Lambda — minimal deps, a writable font cache, and how it's verified
+
+**Ticket:** UW-051 · **Date:** 2026-07-22
+
+The image installs **`pango shared-mime-info` + the DejaVu fonts only** — not the roadmap's
+literal `cairo`/`gdk-pixbuf2`. WeasyPrint 69 writes PDFs with `pydyf` (pure Python) and rasterises
+with Pillow, so cairo (dropped in WeasyPrint v53) and gdk-pixbuf are dead weight (R6). Verified,
+not assumed: the RIE render embeds `DejaVu-Sans` and `DejaVu-Sans-Bold` as subsets.
+
+**Fontconfig needs a writable cache or it renders tofu.** Lambda's filesystem is read-only except
+`/tmp`, so `fonts.conf` sets `<cachedir>/tmp/fonts-cache/</cachedir>` and lists `/usr/share/fonts`,
+with `FONTCONFIG_PATH=/var/task/fonts` and `XDG_CACHE_HOME=/tmp` (R2.3). Without the writable
+cachedir, fontconfig fails with "No writable cache directories" and falls back to tofu boxes.
+
+**arm64 needs `docker buildx build --platform linux/arm64 --provenance=false`** — the provenance
+attestation manifest makes Lambda reject the image (R2.4). WeasyPrint is imported at **module
+scope** so the ~2-5s init lands in the cold start, not every invoke (R2.5). Memory 2048 / timeout
+60 live in the function's Terraform (#22), not the image.
+
+**Handler contract is `{quote_id, html} → {s3_key}`**, deliberately template-independent, so a
+hardcoded HTML string proves the whole toolchain. A `PDF_OUTPUT_DIR` env is the no-AWS path: the
+handler writes to that dir instead of S3, so `make pdf-lambda-test` renders through the real
+Lambda RIE with no credentials or bucket.
+
+**Verifying fonts needs `pdffonts`, not `grep`.** WeasyPrint compresses the PDF streams, so
+grepping the raw bytes for "DejaVu" is a false negative even when the font is embedded. `pdffonts`
+parses the structure and reports embedded/subset per font — that is the DoD check.
+
+**Render only resolves `data:` URIs, never the network.** WeasyPrint fetches `url()` / `<img src>`
+/ `@import` while rendering, so once the quote template interpolates submission data, injected HTML
+could SSRF the metadata endpoint or read local files from inside the Lambda. A `url_fetcher` that
+allows only `data:` and raises on everything else closes that off. A failed fetch is non-fatal in
+WeasyPrint (the render continues without the resource), so the guard is verified by calling the
+fetcher directly — an `http:` URL raises, a `data:` URI resolves — not by inspecting the PDF.
