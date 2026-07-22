@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     companies_house_api_key: str = ""
 
+    # Sonnet 5, not Opus: extraction is schema-constrained and high-volume. See D-021.
+    extraction_model: str = "claude-sonnet-5"
+    extraction_max_tokens: int = 4096
+
     ops_password: str = DEFAULT_OPS_PASSWORD
     quote_base_url: str = "http://localhost:8000"
     local_pdf: bool = True

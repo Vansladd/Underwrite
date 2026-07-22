@@ -612,3 +612,32 @@ byte-identical, and the deprecation was fixed in both, not one.
 renders a quote PDF in-process, and fetches it back through `/api/documents/*` — a valid PDF with
 no AWS credentials, bucket, or deployed Lambda. That "clone → `make up` → PDF" path is worth more
 to a reviewer than any single cloud resource, which is why it is built now, not at the end.
+
+---
+
+## D-021 · LLM extraction — Sonnet 5, structured outputs, no retry loop
+
+**Ticket:** UW-020 · **Date:** 2026-07-22
+
+**`claude-sonnet-5`, not the Opus default.** Extraction is schema-constrained and the highest-volume
+LLM call in the pipeline (one per submission), so Sonnet 5 is the deliberate cost choice over
+Opus 4.8 — it's a config value (`extraction_model`), swappable per environment. **Thinking is
+disabled**: the task is mechanical and the output is pinned to a schema, so adaptive thinking (Sonnet
+5's default when the field is omitted) would only add tokens.
+
+**Structured outputs, not prompt-parsing.** `messages.parse(output_format=ExtractedApplication)`
+constrains the response to the Pydantic model and returns a validated `.parsed_output` — no
+`json.loads`, no hand-rolled validation. The system prompt carries a `cache_control` breakpoint;
+caching is marginal at demo volume (the prompt is under Sonnet 5's minimum cacheable prefix) but
+correct for when the prompt grows.
+
+**No validation-retry loop (R8).** The SDK auto-retries transport 429/5xx with backoff; a persistent
+`anthropic.APIStatusError` propagates and the caller leaves the submission `status='received'` and
+audits the failure — the pipeline never loops the model to "fix" a bad extraction. A
+`stop_reason == "refusal"` raises `ExtractionRefused` before `parsed_output` is read.
+
+**Cost stays out of CI.** Unit tests `respx`-replay a recorded API response fixture — the same
+transport-level mock D-002 chose for Companies House, which extends to Anthropic because its SDK is
+built on httpx. The live test is `@pytest.mark.llm` and excluded by `-m "not llm"`, so CI never
+spends. The genuinely unbounded Anthropic bill is capped account-side before the URL goes public
+(#31b). The client is constructor-injected so tests run it with `max_retries=0`.

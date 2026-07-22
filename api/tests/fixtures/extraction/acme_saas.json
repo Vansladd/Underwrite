@@ -1,0 +1,15 @@
+{
+  "id": "msg_01Recorded",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"company_name\":\"Acme Robotics Ltd\",\"company_number\":\"09876543\",\"sector\":\"saas\",\"annual_revenue_gbp\":2500000,\"years_trading\":6,\"prior_claims_count\":0,\"data_records_held\":\"100k_1m\",\"requested_limit_gbp\":1000000,\"extraction_confidence\":0.92,\"missing_fields\":[]}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {"input_tokens": 640, "output_tokens": 96, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}
+}
