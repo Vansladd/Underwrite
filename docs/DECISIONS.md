@@ -712,3 +712,26 @@ here; quote issuance is ops-gated (UW-036), which is where `quoted` is reached.
 connection pools are built once per process on `app.state` and closed on shutdown (each service
 grew an `aclose()`); FastAPI deps hand them to the route, which forwards them to `run_pipeline`.
 Tests inject fakes via `dependency_overrides`, so the suite stays offline — no network, no spend.
+
+---
+
+## D-024 · Seed data — the real pipeline, canned inputs, deterministic ids
+
+**Ticket:** UW-027 · **Date:** 2026-07-22
+
+`make seed` inserts **6 representative submissions** spanning the decision spectrum (1 auto-approve,
+3 refer — name-mismatch, missing-revenue, strike-off — and 2 decline — crypto, too-new), so the ops
+dashboard has varied data with **no LLM key and no Companies House network**. PRD §11's exact list
+was never saved to a file, so the six are a designed set, not a transcription.
+
+**The seed runs the real `run_pipeline`, not hand-written rows.** `app/seed.py` feeds each scenario
+a tiny `_CannedExtractor` (returns the canned `ExtractedApplication`) and `_CannedCh` (returns the
+canned `CompaniesHouseLookup`) — duck-typed against the same params the route injects. Every
+extraction/enrichment/rating row and audit event is therefore exactly what production would write,
+and premiums come from the pure `rate()` engine, never a literal. The incomplete-revenue scenario
+exercises the `IncompleteExtraction → referred, no Rating` path for free.
+
+**Idempotency is a `uuid5` primary key, not an upsert.** Each submission id is
+`uuid5(SEED_NAMESPACE, slug)`; the loop skips any id already present. Re-running is a no-op —
+"twice → 6, not 12" (the DoD). A mutation to `uuid4()` makes the second run insert duplicates and
+fails `test_seeding_twice_is_idempotent`, so the determinism is load-bearing, not incidental.
