@@ -73,13 +73,44 @@ async def test_server_error_propagates_without_retry_loop():
         await extractor(make_client()).extract("...")
 
 
+EMAILS = FIXTURES / "emails"
+
+
+def email(name: str) -> str:
+    return (EMAILS / name).read_text()
+
+
 @pytest.mark.llm
-async def test_live_extraction_returns_populated_application():
-    application = await AnthropicExtractor(Settings()).extract(
-        "Please quote Acme Robotics Ltd (company no 09876543), a SaaS platform. "
-        "Annual revenue about £2.5m, trading 6 years, no prior claims. They hold roughly "
-        "500,000 customer records and want a £1m limit."
-    )
+async def test_clean_email_extracts_all_rated_fields():
+    application = await AnthropicExtractor(Settings()).extract(email("clean.txt"))
+
     assert application.company_name
-    assert application.sector is not None
+    assert application.sector is Sector.SAAS
+    assert application.annual_revenue_gbp == 2_500_000
+    assert application.requested_limit_gbp is RequestedLimit.GBP_1M
+    assert application.prior_claims_count == 0
+    assert application.missing_fields == []
+
+
+@pytest.mark.llm
+async def test_rambling_email_resolves_buried_fields():
+    application = await AnthropicExtractor(Settings()).extract(email("rambling.txt"))
+
+    assert application.company_name
+    assert application.sector is Sector.FINTECH
+    assert application.requested_limit_gbp is RequestedLimit.GBP_2M
+    assert application.prior_claims_count == 0
+    assert application.data_records_held is DataVolume.OVER_1M
     assert 0 <= application.extraction_confidence <= 1
+
+
+@pytest.mark.llm
+async def test_missing_revenue_email_never_guesses():
+    application = await AnthropicExtractor(Settings()).extract(email("missing_revenue.txt"))
+
+    # The assertion that proves the never-guess rule (UW-021 DoD).
+    assert application.annual_revenue_gbp is None
+    assert "annual_revenue_gbp" in application.missing_fields
+    assert application.sector is Sector.HEALTHTECH
+    assert application.requested_limit_gbp is RequestedLimit.GBP_500K
+    assert application.prior_claims_count == 1

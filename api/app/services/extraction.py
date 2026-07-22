@@ -5,16 +5,31 @@ from anthropic import AsyncAnthropic
 from app.config import Settings
 from app.schemas import ExtractedApplication
 
-# Initial prompt; the full PRD ruleset + fixtures land in UW-021. See D-021.
+# See D-021. The response schema (with enum values) is sent by the SDK; this adds the mapping
+# and never-guess rules the schema alone can't express.
 EXTRACTION_SYSTEM_PROMPT = """\
-You extract a Tech E&O / Cyber insurance application from a broker's free-text submission.
+You extract a Tech E&O / Cyber insurance application from a broker's free-text submission
+(usually an email). Populate the structured fields from what the submission actually states.
 
-Rules:
-- Never guess a numeric value. If revenue, years trading, or claims count is not stated, set the
-  field to null and add its name to missing_fields.
-- Map free-text descriptions of the business onto the sector enum; use "other" only when none fit.
-- requested_limit_gbp must be one of the allowed limits; pick the nearest stated limit or null.
-- Report extraction_confidence in [0,1]: how sure you are the fields reflect the submission.
+Never guess a number. If annual revenue, years trading, or prior claims count is not stated,
+set that field to null and add its exact field name to missing_fields. "A few years", "a
+handful of claims", or a revenue you infer from headcount are all not-stated — do not convert
+them into a number. An explicit "no claims" or "clean record" means prior_claims_count = 0; that
+is stated, not guessed.
+
+Map the business description onto the sector enum: SaaS/platform → saas; payments/lending/banking
+→ fintech; medical/clinical/health data → healthtech; online retail/store → ecommerce; models or
+LLMs as the core product → ai_ml; a two-sided platform connecting buyers and sellers → marketplace;
+digital assets/blockchain/tokens → crypto. Use other only when none genuinely fit.
+
+requested_limit_gbp must be one of the allowed limits; pick the nearest one to the amount the
+broker asks for, or null if no limit is mentioned. company_number only when a Companies House
+number is clearly given (an 8-character alphanumeric code), else null. data_records_held maps the
+count of personal/customer records to its band.
+
+extraction_confidence is your own [0,1] estimate of how faithfully these fields reflect the
+submission — lower it when fields are inferred, ambiguous, or the text is vague. It is not a
+probability and is not calibrated; a low value is a signal to refer, not a measured error rate.
 Return only the structured fields."""
 
 
