@@ -1,7 +1,13 @@
 COMPOSE := docker compose
 API_PORT ?= 8000
 
-.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate migration downgrade seed psql shell clean
+# One place for the profile; Terraform reads credentials from the environment, never HCL.
+# ?= yields to an exported AWS_PROFILE, so tf-account asserts which account we reached.
+AWS_PROFILE ?= underwrite
+AWS_ACCOUNT ?= 564250611758
+TF := AWS_PROFILE=$(AWS_PROFILE) terraform -chdir=infra
+
+.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply
 
 help:
 	@echo "Underwrite — available targets"
@@ -22,6 +28,13 @@ help:
 	@echo "  make migration m=\"...\"  autogenerate a revision"
 	@echo "  make downgrade one revision back"
 	@echo "  make seed      insert the 6 canned submissions (UW-027)"
+	@echo ""
+	@echo "  make tf-bootstrap  create the state bucket (idempotent)"
+	@echo "  make tf-init   terraform init against the S3 backend"
+	@echo "  make tf-check  fmt -check + validate, no credentials needed"
+	@echo "  make tf-fmt    terraform fmt"
+	@echo "  make tf-plan   terraform plan"
+	@echo "  make tf-apply  terraform apply"
 	@echo ""
 	@echo "  make psql      open a psql shell on the database"
 	@echo "  make shell     open a bash shell in the api container"
@@ -81,6 +94,34 @@ migration:
 
 downgrade:
 	$(COMPOSE) run --rm -w /app api uv run --frozen alembic downgrade -1
+
+tf-account:
+	@got=$$(AWS_PROFILE=$(AWS_PROFILE) aws sts get-caller-identity --query Account --output text 2>/dev/null); \
+	if [ "$$got" != "$(AWS_ACCOUNT)" ]; then \
+		echo "refusing: profile $(AWS_PROFILE) is account $${got:-<none>}, expected $(AWS_ACCOUNT)"; \
+		exit 1; \
+	fi; \
+	echo "account $$got via profile $(AWS_PROFILE)"
+
+tf-bootstrap: tf-account
+	AWS_PROFILE=$(AWS_PROFILE) ./infra/bootstrap.sh
+
+tf-init: tf-account
+	$(TF) init
+
+tf-fmt:
+	$(TF) fmt
+
+tf-check:
+	$(TF) fmt -check
+	$(TF) init -backend=false -input=false
+	$(TF) validate
+
+tf-plan: tf-account
+	$(TF) plan
+
+tf-apply: tf-account
+	$(TF) apply
 
 seed:
 	@echo "not implemented yet — see UW-027 (seed data)"

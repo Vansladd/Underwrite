@@ -33,6 +33,27 @@ jobs:
       - name: ruff format
         run: uv run --frozen ruff format --check .
 
+  infra:
+    name: infra
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: 1.15.8
+
+      - name: fmt
+        run: terraform fmt -check -recursive
+
+      - name: validate
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
   test:
     name: test
     runs-on: ubuntu-latest
@@ -77,13 +98,14 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [lint, test]
+    needs: [lint, test, infra]
     runs-on: ubuntu-latest
     steps:
       - name: Verify every job succeeded
         env:
           LINT: ${{ needs.lint.result }}
           TEST: ${{ needs.test.result }}
+          INFRA: ${{ needs.infra.result }}
         run: |
-          echo "lint=$LINT test=$TEST"
-          [ "$LINT" = "success" ] && [ "$TEST" = "success" ]
+          echo "lint=$LINT test=$TEST infra=$INFRA"
+          [ "$LINT" = "success" ] && [ "$TEST" = "success" ] && [ "$INFRA" = "success" ]

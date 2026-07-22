@@ -1,0 +1,2 @@
+# Copy to terraform.tfvars and set for your environment.
+domain = "underwrite.example.com"
