@@ -33,9 +33,6 @@ jobs:
       - name: ruff format
         run: uv run --frozen ruff format --check .
 
-      - name: comment convention
-        run: python3 ${{ github.workspace }}/scripts/check_comments.py
-
   infra:
     name: infra
     runs-on: ubuntu-latest

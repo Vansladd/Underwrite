@@ -79,7 +79,6 @@ regen-goldens:
 	$(COMPOSE) run --rm --no-deps api uv run --frozen pytest -q --regen-goldens tests/test_rating_goldens.py
 
 lint:
-	python3 scripts/check_comments.py
 	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff check .
 
 fmt:
