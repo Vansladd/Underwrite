@@ -579,3 +579,10 @@ Lambda RIE with no credentials or bucket.
 **Verifying fonts needs `pdffonts`, not `grep`.** WeasyPrint compresses the PDF streams, so
 grepping the raw bytes for "DejaVu" is a false negative even when the font is embedded. `pdffonts`
 parses the structure and reports embedded/subset per font — that is the DoD check.
+
+**Render only resolves `data:` URIs, never the network.** WeasyPrint fetches `url()` / `<img src>`
+/ `@import` while rendering, so once the quote template interpolates submission data, injected HTML
+could SSRF the metadata endpoint or read local files from inside the Lambda. A `url_fetcher` that
+allows only `data:` and raises on everything else closes that off. A failed fetch is non-fatal in
+WeasyPrint (the render continues without the resource), so the guard is verified by calling the
+fetcher directly — an `http:` URL raises, a `data:` URI resolves — not by inspecting the PDF.

@@ -38,3 +38,16 @@ DEJAVU="$(echo "$FONTS" | grep -i 'DejaVu' || true)"
 [ -n "$DEJAVU" ] || { echo "FAIL: no DejaVu font in the PDF (fallback/tofu)"; exit 1; }
 echo "$DEJAVU" | grep -qi 'yes' || { echo "FAIL: DejaVu present but not embedded"; exit 1; }
 echo "PASS: DejaVu embedded (real fonts, not tofu)"
+
+echo "==> SSRF guard: the url_fetcher blocks network, allows data:"
+docker run --rm --entrypoint python "$IMAGE" -c '
+import handler
+try:
+    handler._data_only_url_fetcher("http://169.254.169.254/latest/meta-data/")
+except ValueError:
+    pass
+else:
+    raise SystemExit("FAIL: external URL not blocked")
+assert handler._data_only_url_fetcher("data:text/plain;base64,aGk="), "data: should be allowed"
+print("PASS: fetcher blocks http/file, allows data: (no SSRF)")
+'
