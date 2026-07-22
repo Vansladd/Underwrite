@@ -1,0 +1,4 @@
+# HTTP-only reverse proxy. The domain block + automatic TLS lands at UW-067.
+:80 {
+	reverse_proxy api:8000
+}

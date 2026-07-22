@@ -5,9 +5,12 @@ API_PORT ?= 8000
 # ?= yields to an exported AWS_PROFILE, so tf-account asserts which account we reached.
 AWS_PROFILE ?= underwrite
 AWS_ACCOUNT ?= 564250611758
+REGION ?= eu-west-2
+ECR_API := $(AWS_ACCOUNT).dkr.ecr.$(REGION).amazonaws.com/underwrite/api
+PROD_COMPOSE := $(COMPOSE) -f docker-compose.prod.yml
 TF := AWS_PROFILE=$(AWS_PROFILE) terraform -chdir=infra
 
-.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply
+.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply push-api prod-up prod-down deploy
 
 help:
 	@echo "Underwrite — available targets"
@@ -35,6 +38,11 @@ help:
 	@echo "  make tf-fmt    terraform fmt"
 	@echo "  make tf-plan   terraform plan"
 	@echo "  make tf-apply  terraform apply"
+	@echo ""
+	@echo "  make push-api  buildx arm64 + push the API image to ECR (tag = git sha)"
+	@echo "  make prod-up   run docker-compose.prod.yml locally (build + health check)"
+	@echo "  make prod-down stop the local prod stack"
+	@echo "  make deploy image=...  SSM the box to pull the tag and restart the unit"
 	@echo ""
 	@echo "  make psql      open a psql shell on the database"
 	@echo "  make shell     open a bash shell in the api container"
@@ -122,6 +130,38 @@ tf-plan: tf-account
 
 tf-apply: tf-account
 	$(TF) apply
+
+push-api: tf-account
+	@sha=$$(git rev-parse --short HEAD); \
+	AWS_PROFILE=$(AWS_PROFILE) aws ecr get-login-password --region $(REGION) \
+	  | docker login --username AWS --password-stdin $(ECR_API); \
+	docker build --platform linux/arm64 -t $(ECR_API):$$sha ./api; \
+	docker push $(ECR_API):$$sha; \
+	echo "pushed $(ECR_API):$$sha"
+
+prod-up: .env
+	docker build -t underwrite/api:local ./api
+	API_IMAGE=underwrite/api:local $(PROD_COMPOSE) up -d
+	@printf "waiting for api via caddy"; \
+	for i in $$(seq 1 40); do \
+		if curl -fsS http://localhost/health >/dev/null 2>&1; then \
+			echo " ok"; curl -fsS http://localhost/health; echo; exit 0; \
+		fi; \
+		printf "."; sleep 1; \
+	done; \
+	echo " timed out"; API_IMAGE=underwrite/api:local $(PROD_COMPOSE) logs --tail=40; exit 1
+
+prod-down:
+	API_IMAGE=underwrite/api:local $(PROD_COMPOSE) down
+
+deploy: tf-account
+	@test -n "$(image)" || (echo 'usage: make deploy image=$(ECR_API):<sha>'; exit 1)
+	@iid=$$($(TF) output -raw instance_id); \
+	cid=$$(AWS_PROFILE=$(AWS_PROFILE) aws ssm send-command --region $(REGION) \
+		--instance-ids $$iid --document-name AWS-RunShellScript \
+		--parameters commands="bash /opt/underwrite/deploy/remote-deploy.sh $(image)" \
+		--query Command.CommandId --output text); \
+	echo "sent $$cid to $$iid; poll: aws ssm get-command-invocation --command-id $$cid --instance-id $$iid"
 
 seed:
 	@echo "not implemented yet — see UW-027 (seed data)"

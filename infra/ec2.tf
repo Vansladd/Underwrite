@@ -40,6 +40,16 @@ resource "aws_instance" "app" {
   vpc_security_group_ids = [aws_security_group.instance.id]
   iam_instance_profile   = aws_iam_instance_profile.instance.name
 
+  # First-boot only; changing it recreates the box (fine — the box is ephemeral). See D-016.
+  user_data_replace_on_change = true
+  user_data = templatefile("${path.module}/user_data.sh.tftpl", {
+    account         = data.aws_caller_identity.current.account_id
+    region          = var.region
+    compose_version = var.compose_plugin_version
+    owner           = var.github_owner
+    repo            = var.github_repo
+  })
+
   metadata_options {
     http_tokens = "required"
     # 2, not 1: a container is a hop from the host and needs IMDS. See DECISIONS D-015.
