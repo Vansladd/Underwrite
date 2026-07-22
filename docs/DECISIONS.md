@@ -473,9 +473,12 @@ recreates the box when the script changes — correct because the box is ephemer
 
 **CD is keyless, and delivery is separate from deployment.** GitHub Actions federates an IAM
 OIDC provider scoped by the `repository` and `ref` claims to `<owner>/<repo>` on
-`refs/heads/main` — no long-lived AWS keys in the repo. The trust matches those two claims, not
-`sub`: this account emits immutable-ID subjects (`repo:owner@ID/repo@ID:...`), which a plain
-`repo:owner/repo:...` string never equals, so a `sub` condition silently denies every assume. The federation is done by hand (request the runner token, point the AWS CLI at it)
+`refs/heads/main` — no long-lived AWS keys in the repo. This account emits immutable-ID subjects
+(`repo:owner@ID/repo@ID:...`), which a plain `repo:owner/repo:...` `StringEquals` never matches —
+so a naive `sub` condition silently denies every assume. AWS *requires* a `sub` (or
+`job_workflow_ref`) condition on this provider and rejects `repository`+`ref` alone, so the trust
+carries both: exact `StringEquals` on `repository`+`ref`, plus a `StringLike` on `sub`
+(`repo:owner*/repo*:...`) that tolerates the `@ID` segments and satisfies the requirement. The federation is done by hand (request the runner token, point the AWS CLI at it)
 rather than a marketplace action, so the only third-party action is `checkout`, pinned to a SHA
 like everything in `ci.yml`. Build-and-push runs on every merge to `main` — an artifact is
 always ready — but rollout is a **manual** `workflow_dispatch` that `SendCommand`s the box,

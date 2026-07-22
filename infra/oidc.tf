@@ -17,8 +17,7 @@ data "aws_iam_policy_document" "github_assume" {
       variable = "token.actions.githubusercontent.com:aud"
       values   = ["sts.amazonaws.com"]
     }
-    # Match `repository` + `ref`, not `sub`: this account emits immutable-ID subs
-    # (repo:owner@ID/repo@ID:...) that a plain owner/repo string never equals. See D-016.
+    # Exact scope on the id-free claims: this repo, main only, format-independent.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:repository"
@@ -29,6 +28,13 @@ data "aws_iam_policy_document" "github_assume" {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:ref"
       values   = ["refs/heads/main"]
+    }
+    # AWS requires a sub (or job_workflow_ref) condition on this provider. StringLike with
+    # wildcards tolerates immutable-ID subs (repo:owner@ID/repo@ID:...) and plain ones. See D-016.
+    condition {
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:${var.github_owner}*/${var.github_repo}*:ref:refs/heads/main"]
     }
   }
 }
