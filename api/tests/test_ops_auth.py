@@ -11,10 +11,10 @@ PUBLIC = {
     ("GET", "/health"),
     ("POST", "/api/submissions"),
     ("GET", "/api/submissions/{submission_id}"),
-    ("GET", "/openapi.json"),
-    ("GET", "/docs"),
-    ("GET", "/docs/oauth2-redirect"),
-    ("GET", "/redoc"),
+    ("GET", "/api/openapi.json"),
+    ("GET", "/api/docs"),
+    ("GET", "/api/docs/oauth2-redirect"),
+    ("GET", "/api/redoc"),
 }
 
 
