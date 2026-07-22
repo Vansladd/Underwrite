@@ -141,18 +141,20 @@ push-api: tf-account
 
 prod-up: .env
 	docker build -t underwrite/api:local ./api
-	API_IMAGE=underwrite/api:local $(PROD_COMPOSE) up -d
-	@printf "waiting for api via caddy"; \
+	API_IMAGE=underwrite/api:local DOMAIN=localhost $(PROD_COMPOSE) up -d
+	@printf "waiting for api via caddy (https, internal cert)"; \
 	for i in $$(seq 1 40); do \
-		if curl -fsS http://localhost/health >/dev/null 2>&1; then \
-			echo " ok"; curl -fsS http://localhost/health; echo; exit 0; \
+		if curl -fsSk https://localhost/health >/dev/null 2>&1; then \
+			echo " ok"; curl -fsSk https://localhost/health; echo; \
+			printf "http->https redirect: "; curl -s -o /dev/null -w '%{http_code}\n' http://localhost/health; \
+			exit 0; \
 		fi; \
 		printf "."; sleep 1; \
 	done; \
-	echo " timed out"; API_IMAGE=underwrite/api:local $(PROD_COMPOSE) logs --tail=40; exit 1
+	echo " timed out"; API_IMAGE=underwrite/api:local DOMAIN=localhost $(PROD_COMPOSE) logs --tail=40; exit 1
 
 prod-down:
-	API_IMAGE=underwrite/api:local $(PROD_COMPOSE) down
+	API_IMAGE=underwrite/api:local DOMAIN=localhost $(PROD_COMPOSE) down
 
 deploy: tf-account
 	@test -n "$(image)" || (echo 'usage: make deploy image=$(ECR_API):<sha>'; exit 1)

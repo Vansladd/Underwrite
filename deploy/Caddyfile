@@ -1,4 +1,15 @@
-# HTTP-only reverse proxy. The domain block + automatic TLS lands at UW-067.
-:80 {
-	reverse_proxy api:8000
+# Automatic TLS (Let's Encrypt) + HTTP->HTTPS redirect from the site address. See D-017.
+# DOMAIN=localhost locally gives an internal cert; a real hostname gets a public one.
+{$DOMAIN} {
+	encode zstd gzip
+
+	@api path /api/* /health
+	handle @api {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv/static
+		file_server
+	}
 }
