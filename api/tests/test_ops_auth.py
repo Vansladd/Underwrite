@@ -11,6 +11,7 @@ PUBLIC = {
     ("GET", "/health"),
     ("POST", "/api/submissions"),
     ("GET", "/api/submissions/{submission_id}"),
+    ("GET", "/api/documents/{key:path}"),
     ("GET", "/api/openapi.json"),
     ("GET", "/api/docs"),
     ("GET", "/api/docs/oauth2-redirect"),
