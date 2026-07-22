@@ -1,5 +1,6 @@
 COMPOSE := docker compose
 API_PORT ?= 8000
+WEB_PORT ?= 5173
 
 # One place for the profile; Terraform reads credentials from the environment, never HCL.
 # ?= yields to an exported AWS_PROFILE, so tf-account asserts which account we reached.
@@ -11,7 +12,7 @@ ECR_PDF := $(AWS_ACCOUNT).dkr.ecr.$(REGION).amazonaws.com/underwrite/pdf-render
 PROD_COMPOSE := $(COMPOSE) -f docker-compose.prod.yml
 TF := AWS_PROFILE=$(AWS_PROFILE) terraform -chdir=infra
 
-.PHONY: help up down restart logs ps health test test-llm lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply push-api prod-up prod-down deploy smoke pdf-lambda-test push-pdf-lambda demo
+.PHONY: help up down restart logs ps health test test-llm lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply push-api prod-up prod-down deploy smoke pdf-lambda-test push-pdf-lambda demo web-types web-lint web-build
 
 help:
 	@echo "Underwrite — available targets"
@@ -33,6 +34,10 @@ help:
 	@echo "  make migration m=\"...\"  autogenerate a revision"
 	@echo "  make downgrade one revision back"
 	@echo "  make seed      insert the 6 canned submissions (UW-027)"
+	@echo ""
+	@echo "  make web-types regenerate src/api/schema.d.ts from the live OpenAPI"
+	@echo "  make web-lint  eslint + tsc typecheck the frontend"
+	@echo "  make web-build build the frontend static bundle (web/dist)"
 	@echo ""
 	@echo "  make tf-bootstrap  create the state bucket (idempotent)"
 	@echo "  make tf-init   terraform init against the S3 backend"
@@ -66,6 +71,8 @@ up: .env
 		if curl -fsS http://localhost:$(API_PORT)/health >/dev/null 2>&1; then \
 			echo " ok"; \
 			curl -fsS http://localhost:$(API_PORT)/health; echo; \
+			echo "api:  http://localhost:$(API_PORT)/api/docs"; \
+			echo "web:  http://localhost:$(WEB_PORT)/  (run 'make seed' for sample data)"; \
 			exit 0; \
 		fi; \
 		printf "."; sleep 1; \
@@ -197,6 +204,16 @@ deploy: tf-account
 seed: up
 	@echo "seeding 6 canned submissions (no LLM, no network)"
 	$(COMPOSE) exec -T api python -m app.seed
+
+web-types:
+	$(COMPOSE) exec -T web npm run gen:api
+
+web-lint:
+	$(COMPOSE) run --rm --no-deps web sh -c "npm run lint && npm run typecheck"
+
+web-build:
+	$(COMPOSE) run --rm --no-deps web npm run build
+	@echo "built web/dist — CD ships it to Caddy's docroot (deploy/static)"
 
 psql:
 	$(COMPOSE) exec db psql -U underwrite -d underwrite

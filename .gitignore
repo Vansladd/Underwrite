@@ -20,6 +20,7 @@ htmlcov/
 node_modules/
 dist/
 .vite/
+*.tsbuildinfo
 
 .terraform/
 *.tfstate
