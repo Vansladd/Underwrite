@@ -17,11 +17,18 @@ data "aws_iam_policy_document" "github_assume" {
       variable = "token.actions.githubusercontent.com:aud"
       values   = ["sts.amazonaws.com"]
     }
+    # Match `repository` + `ref`, not `sub`: this account emits immutable-ID subs
+    # (repo:owner@ID/repo@ID:...) that a plain owner/repo string never equals. See D-016.
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:repository"
+      values   = ["${var.github_owner}/${var.github_repo}"]
+    }
     # Only main can assume it; a fork or feature branch cannot push or deploy.
     condition {
       test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_owner}/${var.github_repo}:ref:refs/heads/main"]
+      variable = "token.actions.githubusercontent.com:ref"
+      values   = ["refs/heads/main"]
     }
   }
 }
