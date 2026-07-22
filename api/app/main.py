@@ -27,7 +27,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await engine.dispose()
 
 
-app = FastAPI(title="Underwrite", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="Underwrite",
+    version="0.1.0",
+    lifespan=lifespan,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
+    swagger_ui_oauth2_redirect_url="/api/docs/oauth2-redirect",
+)
 app.include_router(submissions.router)
 
 
