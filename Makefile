@@ -10,7 +10,7 @@ ECR_API := $(AWS_ACCOUNT).dkr.ecr.$(REGION).amazonaws.com/underwrite/api
 PROD_COMPOSE := $(COMPOSE) -f docker-compose.prod.yml
 TF := AWS_PROFILE=$(AWS_PROFILE) terraform -chdir=infra
 
-.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply push-api prod-up prod-down deploy smoke pdf-lambda-test
+.PHONY: help up down restart logs ps health test lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply push-api prod-up prod-down deploy smoke pdf-lambda-test demo
 
 help:
 	@echo "Underwrite — available targets"
@@ -45,6 +45,7 @@ help:
 	@echo "  make deploy image=...  SSM the box to pull the tag and restart the unit"
 	@echo "  make smoke DOMAIN=...  curl https://DOMAIN/health (cold-box check)"
 	@echo "  make pdf-lambda-test   build the render Lambda + prove it via the RIE (no AWS)"
+	@echo "  make demo      up + render a quote PDF locally end-to-end (no AWS)"
 	@echo ""
 	@echo "  make psql      open a psql shell on the database"
 	@echo "  make shell     open a bash shell in the api container"
@@ -164,6 +165,10 @@ smoke:
 
 pdf-lambda-test:
 	bash lambdas/pdf_render/rie_test.sh
+
+demo: up
+	@echo "offline PDF demo (LOCAL_PDF=1, no AWS credentials needed)"
+	$(COMPOSE) exec -T api python -m app.demo
 
 deploy: tf-account
 	@test -n "$(image)" || (echo 'usage: make deploy image=$(ECR_API):<sha>'; exit 1)

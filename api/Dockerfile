@@ -15,7 +15,12 @@ COPY pyproject.toml uv.lock ./
 
 # Dev target for docker-compose.yml: keeps uv and the dev group, source is mounted.
 FROM base AS dev
-RUN uv sync --frozen
+# WeasyPrint's pango stack for the LOCAL_PDF fallback; dev-only, never in the runtime stage.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core shared-mime-info \
+ && rm -rf /var/lib/apt/lists/*
+RUN uv sync --frozen --group local-pdf
 
 # Prod dependency layer: no dev group, cached on the lockfile alone.
 FROM base AS build
