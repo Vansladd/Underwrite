@@ -14,12 +14,27 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.api.deps import OPS_USERNAME
+from app.api.deps import OPS_USERNAME, get_ch_client, get_extractor
 from app.config import DEFAULT_OPS_PASSWORD, get_settings
 from app.db import get_db
+from app.domain.enums import DataVolume, RequestedLimit, Sector
 from app.main import app
+from app.schemas import ExtractedApplication
+from tests.fakes import FakeChClient, FakeExtractor
 
 ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
+
+CANNED_EXTRACTION = ExtractedApplication(
+    company_name="Example Ltd",
+    company_number="00000006",
+    sector=Sector.SAAS,
+    annual_revenue_gbp=750_000.0,
+    years_trading=3.0,
+    prior_claims_count=0,
+    data_records_held=DataVolume.HUNDRED_K_TO_1M,
+    requested_limit_gbp=RequestedLimit.GBP_1M,
+    extraction_confidence=0.94,
+)
 
 
 def alembic_config(url: str) -> Config:
@@ -124,14 +139,30 @@ async def db(engine) -> AsyncIterator:
 
 
 @pytest.fixture
-async def api(db) -> AsyncIterator[AsyncClient]:
-    """In-loop and on the test transaction. TestClient would use its own loop and the dev DB."""
+def fake_extractor() -> FakeExtractor:
+    return FakeExtractor(result=CANNED_EXTRACTION)
+
+
+@pytest.fixture
+def fake_ch_client() -> FakeChClient:
+    return FakeChClient()
+
+
+@pytest.fixture
+async def api(db, fake_extractor, fake_ch_client) -> AsyncIterator[AsyncClient]:
+    """In-loop and on the test transaction. TestClient would use its own loop and the dev DB.
+
+    The ASGI transport never runs lifespan, so the pipeline clients are injected here as fakes.
+    """
     app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_extractor] = lambda: fake_extractor
+    app.dependency_overrides[get_ch_client] = lambda: fake_ch_client
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://underwrite.test") as client:
         yield client
     # pop, not clear: clear() would drop an override another fixture installed.
-    app.dependency_overrides.pop(get_db, None)
+    for dependency in (get_db, get_extractor, get_ch_client):
+        app.dependency_overrides.pop(dependency, None)
 
 
 @pytest.fixture

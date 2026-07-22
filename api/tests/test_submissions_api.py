@@ -36,10 +36,14 @@ async def test_pasting_a_broker_email_creates_a_submission(api):
 
     assert response.status_code == 201
     body = response.json()
-    assert body["status"] == "received"
     assert body["input_mode"] == "paste"
     assert body["raw_input"] == BROKER_EMAIL
-    assert (body["extraction"], body["rating"], body["quote"]) == (None, None, None)
+    # Paste runs the whole pipeline: extracted, enriched, rated. CH not found -> referred.
+    assert body["status"] == "referred"
+    assert body["extraction"]["company_name"] == "Example Ltd"
+    assert body["rating"]["decision"] == "REFER"
+    # Quote generation is a later, ops-gated step (UW-036); the pipeline stops at rating.
+    assert body["quote"] is None
     assert uuid.UUID(body["id"])
 
 
@@ -50,11 +54,18 @@ async def test_a_new_submission_starts_its_audit_trail(api, db):
 
     events = (
         await db.scalars(
-            select(AuditEvent).where(AuditEvent.submission_id == uuid.UUID(response.json()["id"]))
+            select(AuditEvent)
+            .where(AuditEvent.submission_id == uuid.UUID(response.json()["id"]))
+            .order_by(AuditEvent.occurred_at)
         )
     ).all()
 
-    assert [each.event_type for each in events] == [AuditEventType.SUBMISSION_RECEIVED]
+    assert [each.event_type for each in events] == [
+        AuditEventType.SUBMISSION_RECEIVED,
+        AuditEventType.EXTRACTION_COMPLETED,
+        AuditEventType.ENRICHMENT_COMPLETED,
+        AuditEventType.RATING_COMPLETED,
+    ]
     assert events[0].payload == {
         "input_mode": "paste",
         "raw_input_chars": len(BROKER_EMAIL),
@@ -66,7 +77,10 @@ async def test_the_audit_payload_references_the_email_rather_than_copying_it(api
         "/api/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL}
     )
     event = await db.scalar(
-        select(AuditEvent).where(AuditEvent.submission_id == uuid.UUID(response.json()["id"]))
+        select(AuditEvent).where(
+            AuditEvent.submission_id == uuid.UUID(response.json()["id"]),
+            AuditEvent.event_type == AuditEventType.SUBMISSION_RECEIVED,
+        )
     )
 
     # An append-only payload is the one place personal data cannot be redacted (D-010).
@@ -116,6 +130,8 @@ async def test_a_form_submission_records_extraction_in_the_trail(api, db):
     assert [each.event_type for each in events] == [
         AuditEventType.SUBMISSION_RECEIVED,
         AuditEventType.EXTRACTION_COMPLETED,
+        AuditEventType.ENRICHMENT_COMPLETED,
+        AuditEventType.RATING_COMPLETED,
     ]
 
 
@@ -178,7 +194,8 @@ async def test_rows_written_together_still_get_distinct_timestamps(api):
 
 async def test_listing_filters_by_status(api, db, ops_auth):
     await make_submission(db, status="referred")
-    await api.post("/api/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL})
+    # pdf_upload has no text yet, so the pipeline leaves it 'received' (UW-026).
+    await api.post("/api/submissions", json={"input_mode": "pdf_upload"})
 
     referred = (
         await api.get("/api/submissions", auth=ops_auth, params={"status": "referred"})
