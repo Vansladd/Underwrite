@@ -52,14 +52,20 @@ data "aws_iam_policy_document" "github_actions" {
     resources = [aws_ecr_repository.api.arn]
   }
 
-  # Gated deploy: SendCommand runs the pull+up script on the one instance.
+  # Tag-scoped, not instance-id: keeps this policy (hence ECR-push delivery) decoupled
+  # from the ephemeral box, so a box teardown never revokes push access. See D-016.
   statement {
     sid     = "DeployViaSsm"
     actions = ["ssm:SendCommand"]
     resources = [
-      "arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:instance/${aws_instance.app.id}",
+      "arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:instance/*",
       "arn:aws:ssm:${var.region}::document/AWS-RunShellScript",
     ]
+    condition {
+      test     = "StringEquals"
+      variable = "ssm:resourceTag/Name"
+      values   = ["${var.project}-app"]
+    }
   }
 
   # Resolve the ephemeral instance by tag; poll the command. Neither takes a resource scope.
