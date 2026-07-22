@@ -8,5 +8,6 @@ cd /opt/underwrite
 git pull --ff-only
 sed -i "s|^API_IMAGE=.*|API_IMAGE=${image}|" .env
 docker compose -f docker-compose.prod.yml pull
-# up -d, not `systemctl restart`: recreate only the changed service, don't bounce postgres.
-docker compose -f docker-compose.prod.yml up -d
+# --wait fails the deploy if migrate doesn't exit 0 or the api/db healthchecks don't pass.
+# up -d (not `systemctl restart`) recreates only the changed service, doesn't bounce postgres.
+docker compose -f docker-compose.prod.yml up -d --wait

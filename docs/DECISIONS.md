@@ -528,3 +528,24 @@ HSTS, so the brief HTTP-first window during issuance is safe.
 A record is re-pointed per verify — the deliberate `$0`-standing-cost trade (D-015). A stable
 public URL would mean splitting the EIP into a standing resource (~$3.60/mo even while the box is
 down); deferred until the demo needs to stay continuously live.
+
+---
+
+## D-018 · Prod migrations as a one-shot service, and a self-verifying deploy
+
+**Ticket:** UW-068 · **Date:** 2026-07-22
+
+Migrations run as a dedicated `migrate` compose service (`alembic upgrade head`, `restart: "no"`)
+that `api` waits on with `depends_on: { condition: service_completed_successfully }`, not as a
+step inside `remote-deploy.sh`. The schema is therefore guaranteed current **before** the API
+starts, on every `up` — deploy *and* reboot — and `upgrade head` is a no-op once at head, so
+re-running it each boot is safe. Keeping it declarative in compose means the ordering is enforced
+by the runtime, not by a shell script that a future reboot path might skip. `alembic` is a
+runtime dependency (async migrations via `run_async_migrations`, URL from `DATABASE_URL`), so it
+is already in the prod image — no dev extras leak in.
+
+`remote-deploy.sh` uses `docker compose up -d --wait`: the deploy **fails** if `migrate` exits
+non-zero or the `api`/`db` healthchecks never pass. That is the smoke test — a deploy that
+reports success has a migrated database and a healthy API, not just started containers. The
+cold-box DoD (`https://<domain>/health` = 200 from a fresh instance) is the same guarantee proven
+end to end on an apply-verify-destroy.

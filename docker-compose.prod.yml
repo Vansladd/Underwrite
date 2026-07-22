@@ -18,11 +18,27 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  # One-shot: runs before the API on every up (deploy and reboot), idempotent at head.
+  migrate:
+    image: ${API_IMAGE:?set API_IMAGE to the ECR tag to run}
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://underwrite:underwrite@db:5432/underwrite}
+    restart: "no"
+
   api:
     image: ${API_IMAGE:?set API_IMAGE to the ECR tag to run}
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     env_file:
       - path: .env
         required: true
