@@ -30,6 +30,7 @@ jobs:
 
       - name: Federate into AWS via OIDC
         run: |
+          test -n "${{ vars.AWS_ROLE_ARN }}" || { echo "repo variable AWS_ROLE_ARN is not set (Settings -> Actions -> Variables)"; exit 1; }
           curl -sS "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             | jq -r .value > "$RUNNER_TEMP/oidc-token"
@@ -44,6 +45,7 @@ jobs:
         env:
           ECR_API: ${{ vars.ECR_API_REPO }}
         run: |
+          test -n "$ECR_API" || { echo "repo variable ECR_API_REPO is not set (Settings -> Actions -> Variables)"; exit 1; }
           sha=$(git rev-parse --short HEAD)
           image="${ECR_API}:${sha}"
           aws ecr get-login-password --region "$AWS_REGION" \
@@ -61,6 +63,7 @@ jobs:
     steps:
       - name: Federate into AWS via OIDC
         run: |
+          test -n "${{ vars.AWS_ROLE_ARN }}" || { echo "repo variable AWS_ROLE_ARN is not set (Settings -> Actions -> Variables)"; exit 1; }
           curl -sS "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             | jq -r .value > "$RUNNER_TEMP/oidc-token"

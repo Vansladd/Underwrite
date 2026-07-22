@@ -481,6 +481,12 @@ because the environment is deliberately not always-on. `make deploy` and the dep
 the *same* `deploy/remote-deploy.sh` on the box, so there is one deploy path, not a Makefile copy
 drifting from a YAML copy.
 
+The CI role's `SendCommand` is scoped by the `Name=underwrite-app` **tag**, not the instance id.
+An earlier version referenced `aws_instance.app.id`, which made the whole policy — including the
+ECR-**push** statements — depend on the box; a targeted teardown of the instance then revoked
+push access, coupling delivery to the ephemeral environment. Tag-scoping keeps the role and its
+policy permanent (free) so build-push works whether or not a box exists.
+
 **Caddy is an HTTP-only reverse proxy here.** The service, its port bindings, and its persisted
 `/data` volume land now; the domain block and automatic TLS are #17, where a live box and a DNS
 A record make an ACME challenge possible.
