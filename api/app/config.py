@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     extraction_model: str = "claude-sonnet-5"
     extraction_max_tokens: int = 4096
 
+    companies_house_base_url: str = "https://api.company-information.service.gov.uk"
+
     ops_password: str = DEFAULT_OPS_PASSWORD
     quote_base_url: str = "http://localhost:8000"
     local_pdf: bool = True

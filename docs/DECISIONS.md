@@ -641,3 +641,34 @@ transport-level mock D-002 chose for Companies House, which extends to Anthropic
 built on httpx. The live test is `@pytest.mark.llm` and excluded by `-m "not llm"`, so CI never
 spends. The genuinely unbounded Anthropic bill is capped account-side before the URL goes public
 (#31b). The client is constructor-injected so tests run it with `max_retries=0`.
+
+---
+
+## D-022 · Companies House enrichment — the R5 gotchas, encoded
+
+**Ticket:** UW-022/023/024 · **Date:** 2026-07-22
+
+**Company numbers are 8-char alphanumerics, not integers.** `normalise_company_number` splits the
+leading alpha prefix (`SC`/`NI`/`OC`/`FC`/…) and zero-pads only the digits (`6` → `00000006`,
+`SC1234` → `SC001234`). Integer parsing silently drops Scotland, NI, and every LLP — R5.1. Lookup
+is number-first; on 404 (or no number) it searches, then **refetches the full `/company/{number}`
+profile** because search hits carry no `sic_codes` (R5). `sic_codes` is absent (not empty) on many
+companies and kept as **strings** (leading zeros).
+
+**429 never blocks the pipeline.** A rate-limited lookup returns `CompaniesHouseLookup(None,
+rate_limited=True)` immediately — enrichment is best-effort, and a strict `600 req / 5 min` limit
+can't stall a submission. The client is `httpx.AsyncClient` with `BasicAuth(key, "")` (key as
+username, empty password).
+
+**Fuzzy-match normalises both sides before scoring.** `LTD`→`LIMITED`, `PLC`→`PUBLIC LIMITED
+COMPANY`, `LLP`→`LIMITED LIABILITY PARTNERSHIP`, `&`↔`AND`, drop leading `THE`, strip punctuation,
+uppercase — then `rapidfuzz.token_sort_ratio`, scaled 0–1. Without this, `Acme Ltd` vs
+`ACME LIMITED` scores below 0.85 and every correct match is wrongly referred (R5.2).
+
+**Discrepancies are sentences, and `active` + `active-proposal-to-strike-off` is its own signal.**
+The strings render verbatim in the ops dashboard, so they read as prose. Beyond age-vs-incorporation
+(±1 year) and non-active status, a company whose status is `active` but whose
+`company_status_detail` says it is being struck off is the sharpest signal in the payload (R5.3) —
+four lines that show the spec was read, not just `status == "active"`.
+
+Built standalone; the pipeline assembles a persisted `Enrichment` from these pieces at UW-025.

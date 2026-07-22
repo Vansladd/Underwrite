@@ -24,7 +24,6 @@ def test_rejects_non_asyncpg_dsn(dsn):
 
 
 def test_external_api_keys_default_to_empty():
-    settings = Settings()
-
-    assert settings.anthropic_api_key == ""
-    assert settings.companies_house_api_key == ""
+    # The field defaults, not Settings() — which reads a real key from .env when one is present.
+    assert Settings.model_fields["anthropic_api_key"].default == ""
+    assert Settings.model_fields["companies_house_api_key"].default == ""

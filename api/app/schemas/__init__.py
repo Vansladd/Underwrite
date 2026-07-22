@@ -1,3 +1,4 @@
+from app.schemas.companies_house import CompanyProfile
 from app.schemas.extraction import (
     ExtractedApplication,
     IncompleteExtraction,
@@ -24,6 +25,7 @@ from app.schemas.write import DeclineRequest, SubmissionCreate
 
 __all__ = [
     "AuditEventRead",
+    "CompanyProfile",
     "DeclineRequest",
     "EnrichmentRead",
     "ExtractedApplication",
