@@ -13,6 +13,11 @@ output "ecr_repository_url" {
   value       = aws_ecr_repository.pdf_render.repository_url
 }
 
+output "pdf_render_function_name" {
+  description = "aws lambda invoke target; null until -var image_tag is set (#21/#22)"
+  value       = one(aws_lambda_function.pdf_render[*].function_name)
+}
+
 output "api_ecr_repository_url" {
   description = "Push target for make push-api; the tag goes in API_IMAGE on the box (#16)"
   value       = aws_ecr_repository.api.repository_url
