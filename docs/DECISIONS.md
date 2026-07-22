@@ -472,8 +472,10 @@ placed by the operator, never baked into an image or committed. `user_data_repla
 recreates the box when the script changes — correct because the box is ephemeral.
 
 **CD is keyless, and delivery is separate from deployment.** GitHub Actions federates an IAM
-OIDC provider scoped to `repo:<owner>/<repo>:ref:refs/heads/main` — no long-lived AWS keys in
-the repo. The federation is done by hand (request the runner token, point the AWS CLI at it)
+OIDC provider scoped by the `repository` and `ref` claims to `<owner>/<repo>` on
+`refs/heads/main` — no long-lived AWS keys in the repo. The trust matches those two claims, not
+`sub`: this account emits immutable-ID subjects (`repo:owner@ID/repo@ID:...`), which a plain
+`repo:owner/repo:...` string never equals, so a `sub` condition silently denies every assume. The federation is done by hand (request the runner token, point the AWS CLI at it)
 rather than a marketplace action, so the only third-party action is `checkout`, pinned to a SHA
 like everything in `ci.yml`. Build-and-push runs on every merge to `main` — an artifact is
 always ready — but rollout is a **manual** `workflow_dispatch` that `SendCommand`s the box,
