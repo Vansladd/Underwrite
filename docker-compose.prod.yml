@@ -42,11 +42,14 @@ services:
     image: caddy:2-alpine
     depends_on:
       - api
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN to the public hostname Caddy serves}
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/static:/srv/static:ro
       - caddy_data:/data
       - caddy_config:/config
     restart: unless-stopped

@@ -495,3 +495,36 @@ policy permanent (free) so build-push works whether or not a box exists.
 **Caddy is an HTTP-only reverse proxy here.** The service, its port bindings, and its persisted
 `/data` volume land now; the domain block and automatic TLS are #17, where a live box and a DNS
 A record make an ACME challenge possible.
+
+---
+
+## D-017 · Caddy automatic TLS, routing, and the Cloudflare grey-cloud requirement
+
+**Ticket:** UW-067 · **Date:** 2026-07-22
+
+The site address is `{$DOMAIN}`, an env var, so one Caddyfile serves the real hostname in prod and
+`localhost` locally. A real hostname triggers **automatic Let's Encrypt** (cert + renewal) and the
+**HTTP→HTTPS redirect** for free; `localhost` gets Caddy's internal cert, so `make prod-up` proves
+routing and the redirect without a public domain or ACME.
+
+**Routing.** `@api path /api/* /health` reverse-proxies to `api:8000`; everything else is
+`file_server` over `/srv/static`. `/health` is matched at the **root**, not under `/api`, because
+the deploy smoke test (#18) and uptime checks hit `https://<domain>/health` — the API already
+namespaces its real endpoints under `/api/submissions`, so the two coexist without an app change.
+`/srv/static` is an empty placeholder (`deploy/static/`) until the frontend lands; `web/dist/` is
+gitignored, so the committed placeholder lives under `deploy/`.
+
+**Certs persist in the `/data` named volume** (from #16), so a redeploy reuses the issued cert
+instead of re-hitting Let's Encrypt — the LE rate limit is low enough that re-issuing on every
+deploy would lock issuance out.
+
+**Cloudflare must be DNS-only (grey cloud), not proxied.** The A record points
+`underwrite.nexusstechnologies.com` at the Elastic IP with the orange cloud **off**; a proxied
+record terminates TLS at Cloudflare and intercepts the ACME HTTP-01 challenge, so Caddy never
+gets its cert. The record must exist **before** Caddy first starts. The parent domain sets no
+HSTS, so the brief HTTP-first window during issuance is safe.
+
+**The Elastic IP is ephemeral.** It is released on teardown, so each apply gets a new IP and the
+A record is re-pointed per verify — the deliberate `$0`-standing-cost trade (D-015). A stable
+public URL would mean splitting the EIP into a standing resource (~$3.60/mo even while the box is
+down); deferred until the demo needs to stay continuously live.
