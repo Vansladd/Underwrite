@@ -1,5 +1,4 @@
-# Stop-action budget lives with the instance, so destroy takes it too. The $20 account-wide
-# alert budget is separate and permanent, so a teardown never removes cost protection. D-015.
+# Stop-action budget lives with the instance; the $20 alert budget is separate. See D-015.
 data "aws_iam_policy_document" "budget_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -57,7 +56,7 @@ resource "aws_budgets_budget_action" "stop_instance" {
   }
 
   subscriber {
-    address           = "taiwoajoms@gmail.com"
+    address           = var.alert_email
     subscription_type = "EMAIL"
   }
 }

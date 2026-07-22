@@ -1,7 +1,12 @@
 resource "aws_security_group" "instance" {
-  name        = "${var.project}-instance"
+  # name_prefix + create_before_destroy: a fixed name collides with itself on replacement.
+  name_prefix = "${var.project}-instance-"
   description = "80/443 in, all out. No 22, access is Session Manager"
   vpc_id      = data.aws_vpc.default.id
+
+  lifecycle {
+    create_before_destroy = true
+  }
 
   ingress {
     description = "HTTP"
@@ -31,14 +36,13 @@ resource "aws_security_group" "instance" {
 resource "aws_instance" "app" {
   ami                    = data.aws_ssm_parameter.al2023_arm64.value
   instance_type          = "t4g.small"
-  subnet_id              = data.aws_subnets.default.ids[0]
+  subnet_id              = sort(data.aws_subnets.default.ids)[0]
   vpc_security_group_ids = [aws_security_group.instance.id]
   iam_instance_profile   = aws_iam_instance_profile.instance.name
 
   metadata_options {
     http_tokens = "required"
-    # 2, not the default 1: a container is one hop from the host, so the SDK in the API
-    # container cannot reach IMDS for the instance role at hop limit 1. See DECISIONS D-015.
+    # 2, not 1: a container is a hop from the host and needs IMDS. See DECISIONS D-015.
     http_put_response_hop_limit = 2
   }
 
@@ -59,6 +63,10 @@ resource "aws_instance" "app" {
 }
 
 resource "aws_eip" "app" {
-  instance = aws_instance.app.id
-  domain   = "vpc"
+  domain = "vpc"
+}
+
+resource "aws_eip_association" "app" {
+  instance_id   = aws_instance.app.id
+  allocation_id = aws_eip.app.id
 }

@@ -422,6 +422,11 @@ no key and no open 22.
 `generated/*` only. A write to `generated/` succeeded and a write to `bordereaux/` was denied
 with `AccessDenied` — the scope confines the role, not just permits the happy path.
 
+**The stop-action halts compute, not the whole bill.** `STOP_EC2_INSTANCES` stops the ~$12/mo
+instance, but the Elastic IP (~$3.60/mo, charged even while stopped since Feb 2024) and the 20GB
+EBS volume persist — the backstop floors cost near ~$4/mo, it does not reach zero. Zeroing means
+`terraform destroy`, which is the normal teardown anyway.
+
 **Two budgets, deliberately.** The `$20` account-wide alert budget is created outside this stack
 (CLI) so `terraform destroy` never removes cost protection between deploys. The `$30`
 stop-action budget references the instance, so it lives and dies with it. `aws_budgets_budget_
