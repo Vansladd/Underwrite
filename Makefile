@@ -194,9 +194,9 @@ deploy: tf-account
 		--query Command.CommandId --output text); \
 	echo "sent $$cid to $$iid; poll: aws ssm get-command-invocation --command-id $$cid --instance-id $$iid"
 
-seed:
-	@echo "not implemented yet — see UW-027 (seed data)"
-	@exit 1
+seed: up
+	@echo "seeding 6 canned submissions (no LLM, no network)"
+	$(COMPOSE) exec -T api python -m app.seed
 
 psql:
 	$(COMPOSE) exec db psql -U underwrite -d underwrite
