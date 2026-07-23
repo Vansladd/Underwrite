@@ -96,12 +96,39 @@ jobs:
       - name: pytest
         run: uv run --frozen pytest -q -m "not llm"
 
+  web:
+    name: web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: eslint
+        run: npm run lint
+
+      - name: typecheck
+        run: npm run typecheck
+
+      - name: build
+        run: npm run build
+
   # The one context branch protection requires: job names change, and a
   # required check that never reports blocks the PR permanently.
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [lint, test, infra]
+    needs: [lint, test, infra, web]
     runs-on: ubuntu-latest
     steps:
       - name: Verify every job succeeded
@@ -109,6 +136,7 @@ jobs:
           LINT: ${{ needs.lint.result }}
           TEST: ${{ needs.test.result }}
           INFRA: ${{ needs.infra.result }}
+          WEB: ${{ needs.web.result }}
         run: |
-          echo "lint=$LINT test=$TEST infra=$INFRA"
-          [ "$LINT" = "success" ] && [ "$TEST" = "success" ] && [ "$INFRA" = "success" ]
+          echo "lint=$LINT test=$TEST infra=$INFRA web=$WEB"
+          [ "$LINT" = "success" ] && [ "$TEST" = "success" ] && [ "$INFRA" = "success" ] && [ "$WEB" = "success" ]
