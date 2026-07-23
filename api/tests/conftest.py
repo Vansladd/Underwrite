@@ -15,14 +15,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.api.deps import get_ch_client, get_current_user, get_extractor
+from app.api.deps import get_ch_client, get_current_user, get_extractor, get_renderer
 from app.config import get_settings
 from app.db import get_db
 from app.domain.enums import DataVolume, RequestedLimit, Sector
 from app.main import app
 from app.models import User
 from app.schemas import ExtractedApplication
-from tests.fakes import FakeChClient, FakeExtractor
+from tests.fakes import FakeChClient, FakeExtractor, FakeRenderer
 
 ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
@@ -159,27 +159,33 @@ def fake_ch_client() -> FakeChClient:
     return FakeChClient()
 
 
-def _install_overrides(db, fake_extractor, fake_ch_client, *, authed: bool) -> None:
+@pytest.fixture
+def fake_renderer() -> FakeRenderer:
+    return FakeRenderer()
+
+
+def _install_overrides(db, fake_extractor, fake_ch_client, fake_renderer, *, authed: bool) -> None:
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_extractor] = lambda: fake_extractor
     app.dependency_overrides[get_ch_client] = lambda: fake_ch_client
+    app.dependency_overrides[get_renderer] = lambda: fake_renderer
     if authed:
         app.dependency_overrides[get_current_user] = lambda: TEST_USER
 
 
 def _clear_overrides() -> None:
     # pop, not clear: clear() would drop an override another fixture installed.
-    for dependency in (get_db, get_extractor, get_ch_client, get_current_user):
+    for dependency in (get_db, get_extractor, get_ch_client, get_renderer, get_current_user):
         app.dependency_overrides.pop(dependency, None)
 
 
 @pytest.fixture
-async def api(db, fake_extractor, fake_ch_client) -> AsyncIterator[AsyncClient]:
+async def api(db, fake_extractor, fake_ch_client, fake_renderer) -> AsyncIterator[AsyncClient]:
     """In-loop, on the test transaction, and authed as TEST_USER via a dependency override.
 
     The ASGI transport never runs lifespan, so the pipeline clients are injected here as fakes.
     """
-    _install_overrides(db, fake_extractor, fake_ch_client, authed=True)
+    _install_overrides(db, fake_extractor, fake_ch_client, fake_renderer, authed=True)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://underwrite.test") as client:
         yield client
@@ -187,9 +193,9 @@ async def api(db, fake_extractor, fake_ch_client) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture
-async def anon_api(db, fake_extractor, fake_ch_client) -> AsyncIterator[AsyncClient]:
+async def anon_api(db, fake_extractor, fake_ch_client, fake_renderer) -> AsyncIterator[AsyncClient]:
     """Like `api` but with no auth override — exercises the real session/login flow and the gate."""
-    _install_overrides(db, fake_extractor, fake_ch_client, authed=False)
+    _install_overrides(db, fake_extractor, fake_ch_client, fake_renderer, authed=False)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://underwrite.test") as client:
         yield client

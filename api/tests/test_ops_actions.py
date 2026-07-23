@@ -189,3 +189,71 @@ async def test_cannot_decline_a_non_referred_submission(api, db, operator):
     response = await api.post(f"/api/submissions/{submission.id}/decline", json={"reason": "no"})
 
     assert response.status_code == 409
+
+
+async def test_approve_renders_and_stores_the_quote_pdf(api, db, operator, fake_renderer):
+    submission = await referred(db)
+
+    body = (await api.post(f"/api/submissions/{submission.id}/approve")).json()
+
+    quote_ref = body["quote"]["quote_ref"]
+    assert body["quote"]["pdf_s3_key"] == f"generated/{quote_ref}.pdf"
+    assert len(fake_renderer.calls) == 1
+    rendered_id, html = fake_renderer.calls[0]
+    assert rendered_id == quote_ref
+    assert "SPECIMEN" in html  # the real quote template was rendered
+    assert "quote_generated" in [e["event_type"] for e in body["audit_events"]]
+
+
+async def test_approval_survives_a_render_failure(api, db, operator, fake_renderer):
+    fake_renderer.error = RuntimeError("lambda boom")
+    submission = await referred(db)
+
+    body = (await api.post(f"/api/submissions/{submission.id}/approve")).json()
+
+    assert body["status"] == "quoted"  # the approval is durable
+    assert body["quote"]["pdf_s3_key"] is None
+    events = [e["event_type"] for e in body["audit_events"]]
+    assert "quote_render_failed" in events
+    assert "quote_generated" not in events
+
+
+async def test_quote_pdf_redirects_to_the_stored_document(api, db, operator):
+    submission = await referred(db)
+    await api.post(f"/api/submissions/{submission.id}/approve")
+
+    response = await api.get(f"/api/submissions/{submission.id}/quote.pdf")
+
+    assert response.status_code == 302
+    assert "/api/documents/generated/" in response.headers["location"]
+
+
+async def test_quote_pdf_conflicts_before_it_is_generated(api, db, operator, fake_renderer):
+    fake_renderer.error = RuntimeError("lambda boom")
+    submission = await referred(db)
+    await api.post(f"/api/submissions/{submission.id}/approve")
+
+    response = await api.get(f"/api/submissions/{submission.id}/quote.pdf")
+
+    assert response.status_code == 409
+
+
+async def test_render_retry_generates_after_an_earlier_failure(api, db, operator, fake_renderer):
+    fake_renderer.error = RuntimeError("lambda boom")
+    submission = await referred(db)
+    await api.post(f"/api/submissions/{submission.id}/approve")  # render fails -> pdf null
+
+    fake_renderer.error = None
+    body = (await api.post(f"/api/submissions/{submission.id}/quote/render")).json()
+
+    assert body["quote"]["pdf_s3_key"] is not None
+
+
+async def test_render_retry_502_when_rendering_fails(api, db, operator, fake_renderer):
+    fake_renderer.error = RuntimeError("lambda boom")
+    submission = await referred(db)
+    await api.post(f"/api/submissions/{submission.id}/approve")
+
+    response = await api.post(f"/api/submissions/{submission.id}/quote/render")
+
+    assert response.status_code == 502

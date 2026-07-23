@@ -51,6 +51,20 @@ export function useDeclineSubmission(id: string) {
   })
 }
 
+export function useRenderQuote(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await api.POST('/api/submissions/{submission_id}/quote/render', {
+        params: { path: { submission_id: id } },
+      })
+      if (error) throw actionError(error)
+      return data
+    },
+    onSuccess: () => invalidateSubmission(queryClient, id),
+  })
+}
+
 export function useSubmissions(status?: SubmissionStatus) {
   return useQuery({
     queryKey: ['submissions', status ?? 'all'],

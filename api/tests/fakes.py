@@ -31,6 +31,20 @@ class FakeExtractor:
         pass
 
 
+class FakeRenderer:
+    """Records calls and returns a key, or raises `error` to exercise the best-effort path."""
+
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+        self.calls: list[tuple[str, str]] = []
+
+    def render_and_store(self, quote_id: str, html: str) -> str:
+        self.calls.append((quote_id, html))
+        if self.error is not None:
+            raise self.error
+        return f"generated/{quote_id}.pdf"
+
+
 class FakeChClient:
     def __init__(
         self,

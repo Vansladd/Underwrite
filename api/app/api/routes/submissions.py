@@ -3,12 +3,13 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import ChClientDep, CurrentUser, ExtractorDep
+from app.api.deps import ChClientDep, CurrentUser, ExtractorDep, RendererDep
 from app.db import DbSession
 from app.domain.enums import AuditActor, AuditEventType, SubmissionStatus
 from app.models import AuditEvent, Submission
@@ -22,6 +23,8 @@ from app.schemas import (
 from app.services.audit import record_event
 from app.services.pipeline import run_pipeline
 from app.services.quote import NotQuotable, build_quote
+from app.services.quote_render import generate_quote_pdf
+from app.services.storage import StorageDep
 
 router = APIRouter(prefix="/api/submissions", tags=["submissions"])
 
@@ -191,7 +194,7 @@ def _require_referred(submission: Submission, action: str) -> None:
 
 @router.post("/{submission_id}/approve")
 async def approve_submission(
-    submission_id: uuid.UUID, db: DbSession, user: CurrentUser
+    submission_id: uuid.UUID, db: DbSession, user: CurrentUser, renderer: RendererDep
 ) -> SubmissionDetail:
     # Only the two relations build_quote reads; the full detail is loaded once, after the write.
     submission = await db.scalar(
@@ -224,7 +227,42 @@ async def approve_submission(
         # A concurrent approve won the race and already quoted this submission (quote unique key).
         await db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, "submission already has a quote") from exc
+
+    # Approval is durable now; render the PDF best-effort (failure leaves pdf_s3_key null + retry).
+    await generate_quote_pdf(db, await load_detail(db, submission.id), renderer)
     return await load_detail(db, submission.id)
+
+
+@router.post("/{submission_id}/quote/render")
+async def render_quote(
+    submission_id: uuid.UUID, db: DbSession, user: CurrentUser, renderer: RendererDep
+) -> SubmissionDetail:
+    submission = await load_detail(db, submission_id)
+    if submission.quote is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "submission has no quote to render")
+    key = await generate_quote_pdf(db, submission, renderer)
+    if key is None:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "quote render failed; try again")
+    return await load_detail(db, submission.id)
+
+
+@router.get("/{submission_id}/quote.pdf")
+async def get_quote_pdf(
+    submission_id: uuid.UUID, db: DbSession, user: CurrentUser, storage: StorageDep
+) -> RedirectResponse:
+    submission = await db.scalar(
+        select(Submission)
+        .where(Submission.id == submission_id)
+        .options(selectinload(Submission.quote))
+    )
+    if submission is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"no submission {submission_id}")
+    if submission.quote is None or submission.quote.pdf_s3_key is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "quote PDF has not been generated")
+    # A fresh presigned URL per call (S3) or the local documents path (dev); never cache it.
+    return RedirectResponse(
+        storage.url_for(submission.quote.pdf_s3_key), status_code=status.HTTP_302_FOUND
+    )
 
 
 @router.post("/{submission_id}/decline")
