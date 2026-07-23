@@ -109,6 +109,7 @@ class AuditEventRead(Read):
     id: uuid.UUID
     event_type: AuditEventType
     actor: AuditActor
+    actor_name: str | None = None
     payload: dict[str, Any]
     occurred_at: datetime
 
