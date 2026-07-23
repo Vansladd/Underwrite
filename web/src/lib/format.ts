@@ -76,7 +76,15 @@ export function poundsFromPence(pence: string | number | null): string {
   if (pence == null) return '—'
   const n = typeof pence === 'string' ? Number(pence) : pence
   if (Number.isNaN(n)) return '—'
-  return `£${Math.round(n / 100).toLocaleString('en-GB')}`
+  return formatPremium(n)
+}
+
+// Mirrors api normalise_company_number: leading alpha prefix, digits zero-padded to 8.
+export function normaliseCompanyNumber(raw: string): string {
+  const cleaned = raw.replace(/\s+/g, '').toUpperCase()
+  const prefix = cleaned.match(/^[A-Z]*/)?.[0] ?? ''
+  const digits = cleaned.slice(prefix.length)
+  return prefix + digits.padStart(8 - prefix.length, '0')
 }
 
 // months → "5 yrs trading", the extracted side of the incorporation row.

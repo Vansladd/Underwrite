@@ -5,6 +5,7 @@ import {
   factorLabel,
   fieldLabel,
   inputModeLabel,
+  normaliseCompanyNumber,
   poundsFromPence,
   relativeTime,
   sectorLabel,
@@ -71,7 +72,8 @@ function Comparison({ extraction, enrichment }: { extraction: Extraction; enrich
   const numberMismatch =
     extraction.company_number != null &&
     enrichment.ch_company_number != null &&
-    extraction.company_number !== enrichment.ch_company_number
+    normaliseCompanyNumber(extraction.company_number) !==
+      normaliseCompanyNumber(enrichment.ch_company_number)
 
   return (
     <>
@@ -165,8 +167,8 @@ function Reasons({ reasons, tone }: { reasons: Reason[]; tone: 'refer' | 'declin
       : 'bg-[color:var(--rf-bg)] text-[color:var(--rf-fg)]'
   return (
     <div className="flex flex-col gap-1.5">
-      {reasons.map((r) => (
-        <div key={r.code} className="flex items-baseline gap-2 text-[13px]">
+      {reasons.map((r, i) => (
+        <div key={`${r.code}-${i}`} className="flex items-baseline gap-2 text-[13px]">
           <span className={`tnum whitespace-nowrap rounded px-1.5 py-px text-[11px] ${chip}`}>
             {r.code}
           </span>
@@ -315,6 +317,14 @@ export function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
   // transition finishes (see onPanelTransitionEnd).
   const [open, setOpen] = useState(false)
   const closing = useRef(false)
+  const openRef = useRef(false)
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    openRef.current = open
+  }, [open])
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
 
   // Double rAF: paint the closed state once before flipping to open, so the enter transition runs.
   useEffect(() => {
@@ -329,6 +339,11 @@ export function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
   }, [])
 
   const requestClose = useCallback(() => {
+    // Closed before it ever opened (still off-screen): nothing to animate, unmount now.
+    if (!openRef.current) {
+      onCloseRef.current()
+      return
+    }
     closing.current = true
     setOpen(false)
   }, [])
@@ -396,7 +411,7 @@ export function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
         aria-modal="true"
         aria-labelledby="drawer-title"
         onTransitionEnd={onPanelTransitionEnd}
-        className={`absolute inset-y-0 right-0 flex w-full max-w-[600px] flex-col bg-surface shadow-[var(--float)] transition-transform duration-200 ease-out will-change-transform ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`absolute inset-y-0 right-0 flex w-full max-w-[600px] flex-col bg-surface shadow-[var(--float)] transition-transform duration-200 ease-out will-change-[translate] ${open ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {isPending && (
           <div className="grid flex-1 place-items-center text-sm text-ink-muted">Loading…</div>
