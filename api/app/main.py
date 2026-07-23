@@ -48,11 +48,12 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
     swagger_ui_oauth2_redirect_url="/api/docs/oauth2-redirect",
 )
+_settings = get_settings()
 app.add_middleware(
     SessionMiddleware,
-    secret_key=get_settings().secret_key,
+    secret_key=_settings.secret_key,
     session_cookie="uw_session",
-    https_only=get_settings().session_secure,
+    https_only=_settings.session_secure,
     same_site="lax",
 )
 app.include_router(auth.router)

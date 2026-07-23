@@ -1,5 +1,10 @@
 from app.models import User
-from app.services.auth import hash_password
+from app.services.auth import hash_password, verify_password
+
+
+def test_a_malformed_stored_hash_fails_closed_rather_than_raising():
+    # A corrupt / non-argon2 hash must read as "not authenticated", never a 500.
+    assert verify_password("not-an-argon2-hash", "whatever") is False
 
 
 async def make_operator(db, username="jane", password="s3cret-pw", display="Jane Underwriter"):

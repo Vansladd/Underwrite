@@ -103,12 +103,21 @@ function Queue({ operator }: { operator: Operator }) {
 }
 
 export function App() {
-  const { data: operator, isPending } = useMe()
+  const { data: operator, isPending, isError } = useMe()
 
   if (isPending) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500">
         Loading…
+      </div>
+    )
+  }
+  // isError is a transport/server failure, not a 401 (useMe returns null for that) — don't sign a
+  // valid session out over a blip; surface it instead.
+  if (isError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6 text-center text-sm text-rose-700">
+        Could not reach the server. Refresh to try again.
       </div>
     )
   }

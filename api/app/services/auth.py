@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
+from argon2.exceptions import InvalidHashError, VerificationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,9 +18,11 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password_hash: str, password: str) -> bool:
+    # A mismatch (VerificationError) and a malformed/corrupt hash (InvalidHashError, a ValueError,
+    # not an Argon2Error) both mean "not authenticated" — never a 500.
     try:
         return _hasher.verify(password_hash, password)
-    except VerifyMismatchError:
+    except (VerificationError, InvalidHashError):
         return False
 
 
