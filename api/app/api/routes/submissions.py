@@ -1,16 +1,19 @@
 import uuid
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import ChClientDep, CurrentUser, ExtractorDep
 from app.db import DbSession
 from app.domain.enums import AuditActor, AuditEventType, SubmissionStatus
-from app.models import Submission
+from app.models import AuditEvent, Submission
 from app.schemas import (
+    DeclineRequest,
     SubmissionCreate,
     SubmissionDetail,
     SubmissionListItem,
@@ -18,6 +21,7 @@ from app.schemas import (
 )
 from app.services.audit import record_event
 from app.services.pipeline import run_pipeline
+from app.services.quote import NotQuotable, build_quote
 
 router = APIRouter(prefix="/api/submissions", tags=["submissions"])
 
@@ -28,7 +32,8 @@ NESTED = (
     selectinload(Submission.enrichment),
     selectinload(Submission.rating),
     selectinload(Submission.quote),
-    selectinload(Submission.audit_events),
+    # operator too: the timeline names the underwriter, not just the role (D-026).
+    selectinload(Submission.audit_events).selectinload(AuditEvent.operator),
 )
 
 # The list needs the three the queue row reads; not quote/audit_events.
@@ -88,8 +93,13 @@ def _to_list_item(submission: Submission) -> SubmissionListItem:
 
 
 async def load_detail(db: AsyncSession, submission_id: uuid.UUID) -> Submission:
+    # populate_existing: after approve/decline mutates in-session, refresh the eager relationships
+    # (quote, audit_events) rather than returning the stale versions loaded before the write.
     submission = await db.scalar(
-        select(Submission).where(Submission.id == submission_id).options(*NESTED)
+        select(Submission)
+        .where(Submission.id == submission_id)
+        .options(*NESTED)
+        .execution_options(populate_existing=True)
     )
     if submission is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"no submission {submission_id}")
@@ -168,3 +178,72 @@ async def get_submission(
     submission_id: uuid.UUID, db: DbSession, user: CurrentUser
 ) -> SubmissionDetail:
     return await load_detail(db, submission_id)
+
+
+def _require_referred(submission: Submission, action: str) -> None:
+    # Only a referral is an operator's to decide; anything else is already terminal.
+    if submission.status is not SubmissionStatus.REFERRED:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"cannot {action} a {submission.status.value} submission",
+        )
+
+
+@router.post("/{submission_id}/approve")
+async def approve_submission(
+    submission_id: uuid.UUID, db: DbSession, user: CurrentUser
+) -> SubmissionDetail:
+    # Only the two relations build_quote reads; the full detail is loaded once, after the write.
+    submission = await db.scalar(
+        select(Submission)
+        .where(Submission.id == submission_id)
+        .options(selectinload(Submission.rating), selectinload(Submission.extraction))
+    )
+    if submission is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"no submission {submission_id}")
+    _require_referred(submission, "approve")
+    try:
+        quote = build_quote(submission, today=date.today())
+    except NotQuotable as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+
+    db.add(quote)
+    submission.status = SubmissionStatus.QUOTED
+    try:
+        # record_event flushes, so a racing approve's duplicate quote fails here, not at commit.
+        await record_event(
+            db,
+            submission.id,
+            AuditEventType.SUBMISSION_APPROVED,
+            AuditActor.OPS,
+            {"quote_ref": quote.quote_ref, "gross_premium_pence": quote.gross_premium_pence},
+            actor_id=user.id,
+        )
+        await db.commit()
+    except IntegrityError as exc:
+        # A concurrent approve won the race and already quoted this submission (quote unique key).
+        await db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "submission already has a quote") from exc
+    return await load_detail(db, submission.id)
+
+
+@router.post("/{submission_id}/decline")
+async def decline_submission(
+    submission_id: uuid.UUID, payload: DeclineRequest, db: DbSession, user: CurrentUser
+) -> SubmissionDetail:
+    submission = await db.get(Submission, submission_id)
+    if submission is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"no submission {submission_id}")
+    _require_referred(submission, "decline")
+
+    submission.status = SubmissionStatus.DECLINED
+    await record_event(
+        db,
+        submission.id,
+        AuditEventType.SUBMISSION_DECLINED,
+        AuditActor.OPS,
+        {"reason": payload.reason},
+        actor_id=user.id,
+    )
+    await db.commit()
+    return await load_detail(db, submission.id)

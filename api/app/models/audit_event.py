@@ -1,7 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Index, event
+from sqlalchemy import ForeignKey, Index, event, inspect
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import AuditActor, AuditEventType
@@ -9,6 +9,7 @@ from app.models.base import Base, json_object, pg_enum, uuid_pk, written_at
 
 if TYPE_CHECKING:
     from app.models.submission import Submission
+    from app.models.user import User
 
 
 class AuditTrailIsAppendOnly(Exception):
@@ -33,6 +34,15 @@ class AuditEvent(Base):
     occurred_at: Mapped[written_at]
 
     submission: Mapped["Submission"] = relationship(back_populates="audit_events")
+    # Read-only join on actor_id; selectinload it to populate actor_name (async, no lazy load).
+    operator: Mapped["User | None"] = relationship(viewonly=True, lazy="raise")
+
+    @property
+    def actor_name(self) -> str | None:
+        # None when not eager-loaded, rather than tripping lazy='raise' during serialization.
+        if "operator" in inspect(self).unloaded:
+            return None
+        return self.operator.display_name if self.operator is not None else None
 
 
 # Registered here so a Lambda importing only models still gets the guard. See DECISIONS D-010.
