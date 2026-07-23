@@ -218,67 +218,64 @@ function Actions({ s }: { s: SubmissionDetail }) {
   const [reason, setReason] = useState('')
   const canApprove = s.rating?.annual_premium_pence != null
   const busy = approve.isPending || decline.isPending
-  const failed = approve.isError || decline.isError
+  const errorText = (approve.error ?? decline.error)?.message
 
-  if (reasoning) {
-    return (
-      <div className="mt-4">
-        <textarea
-          autoFocus
-          rows={2}
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Why is this being declined?"
-          className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-[13px] text-ink placeholder:text-ink-subtle"
-        />
-        <div className="mt-2 flex gap-2">
+  return (
+    <div className="mt-4">
+      {reasoning ? (
+        <>
+          <textarea
+            autoFocus
+            rows={2}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Why is this being declined?"
+            className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-[13px] text-ink placeholder:text-ink-subtle"
+          />
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              disabled={!reason.trim() || busy}
+              onClick={() => decline.mutate(reason.trim())}
+              className="rounded-md bg-[color:var(--dc-fg)] px-3.5 py-2 text-[13px] font-medium text-on-accent disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {decline.isPending ? 'Declining…' : 'Confirm decline'}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setReasoning(false)
+                setReason('')
+              }}
+              className="rounded-md border border-border-strong bg-surface px-3.5 py-2 text-[13px] font-medium text-ink"
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="flex gap-2">
           <button
             type="button"
-            disabled={!reason.trim() || busy}
-            onClick={() => decline.mutate(reason.trim())}
-            className="rounded-md bg-[color:var(--dc-fg)] px-3.5 py-2 text-[13px] font-medium text-on-accent disabled:cursor-not-allowed disabled:opacity-45"
+            disabled={!canApprove || busy}
+            title={canApprove ? undefined : 'No premium to bind — request the missing details first.'}
+            onClick={() => approve.mutate()}
+            className="rounded-md bg-accent px-3.5 py-2 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-45"
           >
-            {decline.isPending ? 'Declining…' : 'Confirm decline'}
+            {approve.isPending ? 'Approving…' : 'Approve & bind'}
           </button>
           <button
             type="button"
             disabled={busy}
-            onClick={() => {
-              setReasoning(false)
-              setReason('')
-            }}
-            className="rounded-md border border-border-strong bg-surface px-3.5 py-2 text-[13px] font-medium text-ink"
+            onClick={() => setReasoning(true)}
+            className="rounded-md border border-border-strong bg-surface px-3.5 py-2 text-[13px] font-medium text-ink disabled:opacity-45"
           >
-            Cancel
+            Decline
           </button>
         </div>
-        {failed && <p className="mt-2 text-[13px] text-[color:var(--dc-fg)]">Something went wrong. Try again.</p>}
-      </div>
-    )
-  }
-
-  return (
-    <div className="mt-4">
-      <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={!canApprove || busy}
-          title={canApprove ? undefined : 'No premium to bind — request the missing details first.'}
-          onClick={() => approve.mutate()}
-          className="rounded-md bg-accent px-3.5 py-2 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-45"
-        >
-          {approve.isPending ? 'Approving…' : 'Approve & bind'}
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => setReasoning(true)}
-          className="rounded-md border border-border-strong bg-surface px-3.5 py-2 text-[13px] font-medium text-ink disabled:opacity-45"
-        >
-          Decline
-        </button>
-      </div>
-      {failed && <p className="mt-2 text-[13px] text-[color:var(--dc-fg)]">Something went wrong. Try again.</p>}
+      )}
+      {errorText && <p className="mt-2 text-[13px] text-[color:var(--dc-fg)]">{errorText}</p>}
     </div>
   )
 }

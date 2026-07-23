@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.domain.enums import InputMode
 from app.schemas.extraction import ExtractedApplication
@@ -21,3 +21,12 @@ class SubmissionCreate(BaseModel):
 
 class DeclineRequest(BaseModel):
     reason: str = Field(min_length=1)
+
+    @field_validator("reason")
+    @classmethod
+    def reason_is_not_blank(cls, value: str) -> str:
+        # min_length counts characters; a reason of only whitespace is no reason.
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("reason must not be blank")
+        return stripped

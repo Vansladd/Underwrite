@@ -15,6 +15,13 @@ function invalidateSubmission(queryClient: ReturnType<typeof useQueryClient>, id
   queryClient.invalidateQueries({ queryKey: ['submission-stats'] })
 }
 
+// Surface the server's reason (FastAPI 409/422 detail) so the operator sees "already has a quote"
+// or "no bound premium to quote" instead of a generic retry prompt on a permanent failure.
+function actionError(error: unknown): Error {
+  const detail = (error as { detail?: unknown } | undefined)?.detail
+  return new Error(typeof detail === 'string' ? detail : 'Something went wrong. Please try again.')
+}
+
 export function useApproveSubmission(id: string) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -22,7 +29,7 @@ export function useApproveSubmission(id: string) {
       const { data, error } = await api.POST('/api/submissions/{submission_id}/approve', {
         params: { path: { submission_id: id } },
       })
-      if (error) throw new Error('could not approve submission')
+      if (error) throw actionError(error)
       return data
     },
     onSuccess: () => invalidateSubmission(queryClient, id),
@@ -37,7 +44,7 @@ export function useDeclineSubmission(id: string) {
         params: { path: { submission_id: id } },
         body: { reason },
       })
-      if (error) throw new Error('could not decline submission')
+      if (error) throw actionError(error)
       return data
     },
     onSuccess: () => invalidateSubmission(queryClient, id),

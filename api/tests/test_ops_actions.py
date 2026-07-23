@@ -11,7 +11,7 @@ from app.domain.enums import (
     Sector,
     SubmissionStatus,
 )
-from app.models import AuditEvent, Extraction, Rating, Submission, User
+from app.models import AuditEvent, Extraction, Quote, Rating, Submission, User
 from app.schemas import rating_to_orm_kwargs
 from app.services.rating import rate
 from tests.conftest import TEST_USER
@@ -120,12 +120,14 @@ async def test_cannot_approve_a_referral_without_a_premium(api, db, operator):
     assert (await db.get(Submission, submission.id)).status is SubmissionStatus.REFERRED
 
 
-async def test_declining_a_referral_flips_to_declined_and_is_attributed(api, db, operator):
+async def test_declining_a_referral_flips_to_declined_and_stores_a_trimmed_reason(
+    api, db, operator
+):
     submission = await make_submission(db, status=SubmissionStatus.REFERRED)
 
     body = (
         await api.post(
-            f"/api/submissions/{submission.id}/decline", json={"reason": "Outside appetite."}
+            f"/api/submissions/{submission.id}/decline", json={"reason": "  Outside appetite.  "}
         )
     ).json()
 
@@ -149,6 +151,36 @@ async def test_decline_requires_a_reason(api, db, operator):
     response = await api.post(f"/api/submissions/{submission.id}/decline", json={"reason": ""})
 
     assert response.status_code == 422
+
+
+async def test_decline_rejects_a_blank_reason(api, db, operator):
+    submission = await make_submission(db, status=SubmissionStatus.REFERRED)
+
+    response = await api.post(f"/api/submissions/{submission.id}/decline", json={"reason": "   "})
+
+    assert response.status_code == 422
+    assert (await db.get(Submission, submission.id)).status is SubmissionStatus.REFERRED
+
+
+async def test_approve_conflicts_when_a_quote_already_exists(api, db, operator):
+    # Stand in for a lost approve/approve race: the quote row is already present.
+    submission = await referred(db)
+    db.add(
+        Quote(
+            submission_id=submission.id,
+            quote_ref="Q-EXISTING",
+            limit_pence=1,
+            excess_pence=1,
+            gross_premium_pence=1,
+            inception_date=date(2026, 1, 1),
+            valid_until=date(2026, 2, 1),
+        )
+    )
+    await db.flush()
+
+    response = await api.post(f"/api/submissions/{submission.id}/approve")
+
+    assert response.status_code == 409
 
 
 async def test_cannot_decline_a_non_referred_submission(api, db, operator):
