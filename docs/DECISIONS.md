@@ -5,6 +5,39 @@ Running log of non-obvious technical choices. Domain and pricing decisions live 
 
 ---
 
+## D-027 · Operator-console visual system — refined desk, copper accent, token-swap themes
+
+**Ticket:** console redesign · **Date:** 2026-07-23
+
+The frontend gets a committed visual system, captured in root **`PRODUCT.md`** (register: product) and
+**`DESIGN.md`** (tokens), with the shaping process in `design/`. Direction: a **refined product desk**
+(Linear/Stripe-dashboard register) — crisp cool-neutral canvas, quiet 1px structure, one warm
+**copper** accent, IBM Plex Sans + Mono, shipping **light and dark**.
+
+**Themes are a pure token swap.** Every colour is a CSS variable; Tailwind v4 `@theme inline` maps
+`--color-*` onto them so utilities (`bg-surface`, `text-ink-muted`) resolve live. `:root` holds light;
+`@media (prefers-color-scheme: dark) :root:not([data-theme=light])` follows the OS; `:root[data-theme]`
+lets the toggle override either way. An inline `<head>` script stamps `data-theme` before first paint,
+so there is no light/dark flash. No per-component `dark:` classes. Fonts self-host via `@fontsource`
+(offline-safe, matches the clone-and-run ethos).
+
+**Copper is interaction and identity only; amber is the `referred` status.** Named Rule 1 —
+different hue (47 vs 85), different treatment (copper = saturated solid/underline; amber = soft pill),
+so the brand accent never reads as a status. Numbers are mono + tabular everywhere (premium, score,
+company number, time). Status is a dot + word pill; the row stays neutral (no row-fills, no
+side-stripes). Signals never rely on colour alone (status = dot+word; discrepancy = red + ▲ + label).
+
+**The queue row defends its own decision** — the upgrade over a plain list. A read-only
+`SubmissionListItem` flattens what the operator scans before opening a row: company, sector, revenue,
+limit, number, premium, decision, and a **one-line `headline`** derived server-side from the rating's
+first refer/decline reason (or the first missing field, humanised). The list endpoint eager-loads
+extraction+rating+enrichment and maps to it; the detail endpoint is unchanged. So each row previews
+the machine's reason in the status hue, making the deterministic-pricing thesis visible at the queue
+level. The detail drawer (the extracted-vs-CH + factor-ladder centrepiece) is mocked in
+`design/operator-console/mockups/drawer.html` and lands with UW-035.
+
+---
+
 ## D-026 · Operator identity — session cookie, Argon2id, and the money paths behind login
 
 **Ticket:** UW-019 · **Date:** 2026-07-23 · **Supersedes:** D-012 (applicant-anonymous)

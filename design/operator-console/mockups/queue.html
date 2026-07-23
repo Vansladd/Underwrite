@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Underwrite — Queue mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:oklch(0.985 0.002 250); --surface:oklch(1 0 0); --surface-2:oklch(0.972 0.004 250);
+    --border:oklch(0.918 0.005 250); --border-strong:oklch(0.855 0.006 250);
+    --ink:oklch(0.235 0.012 260); --ink-muted:oklch(0.470 0.012 260); --ink-subtle:oklch(0.520 0.012 260);
+    --accent:oklch(0.530 0.130 47); --accent-hover:oklch(0.480 0.130 45); --accent-text:oklch(0.500 0.140 45);
+    --accent-ring:oklch(0.530 0.130 47); --on-accent:oklch(0.995 0 0);
+    --ap-bg:oklch(0.950 0.040 155); --ap-fg:oklch(0.420 0.110 155);
+    --rf-bg:oklch(0.960 0.055 88);  --rf-fg:oklch(0.455 0.090 78);
+    --dc-bg:oklch(0.952 0.035 26);  --dc-fg:oklch(0.500 0.165 27);
+    --e-float:0 8px 24px -8px oklch(0.2 0.02 260 / .18), 0 1px 0 var(--border);
+  }
+  :root[data-theme="dark"]{
+    --bg:oklch(0.180 0.008 260); --surface:oklch(0.212 0.008 260); --surface-2:oklch(0.242 0.009 260);
+    --border:oklch(0.300 0.010 260); --border-strong:oklch(0.380 0.012 260);
+    --ink:oklch(0.950 0.004 260); --ink-muted:oklch(0.730 0.007 260); --ink-subtle:oklch(0.640 0.007 260);
+    --accent:oklch(0.580 0.135 48); --accent-hover:oklch(0.640 0.135 50); --accent-text:oklch(0.760 0.120 55);
+    --accent-ring:oklch(0.680 0.130 52); --on-accent:oklch(0.170 0.010 260);
+    --ap-bg:oklch(0.300 0.045 155 / .45); --ap-fg:oklch(0.800 0.130 155);
+    --rf-bg:oklch(0.320 0.060 85 / .40);  --rf-fg:oklch(0.840 0.120 88);
+    --dc-bg:oklch(0.330 0.070 27 / .40);  --dc-fg:oklch(0.800 0.150 27);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  /* top bar */
+  .topbar{position:sticky;top:0;height:56px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 24px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.01em}
+  .mark{width:22px;height:22px;border-radius:6px;background:var(--accent);position:relative}
+  .mark::after{content:"";position:absolute;inset:6px 6px auto 6px;height:3px;border-radius:2px;background:var(--on-accent);box-shadow:0 5px 0 var(--on-accent)}
+  .barR{display:flex;align-items:center;gap:16px;color:var(--ink-muted);font-size:13px}
+  .toggle{width:30px;height:30px;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface);color:var(--ink-muted);display:grid;place-items:center;cursor:pointer}
+  .who{display:flex;align-items:center;gap:8px}
+  .avatar{width:26px;height:26px;border-radius:999px;background:var(--surface);border:1px solid var(--border-strong);display:grid;place-items:center;font-size:11px;font-weight:500;color:var(--ink-muted)}
+  .signout{color:var(--ink-subtle);cursor:pointer}
+  /* column */
+  .col{max-width:1100px;margin:0 auto;padding:32px 24px 64px}
+  h1{font-size:22px;font-weight:600;letter-spacing:-.01em}
+  .sub{margin-top:2px;color:var(--ink-muted);font-size:13px}
+  /* tabs */
+  .tabs{display:flex;gap:24px;margin:24px 0 0;border-bottom:1px solid var(--border)}
+  .tab{position:relative;padding:0 0 12px;color:var(--ink-muted);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .tab .count{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-subtle);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:1px 6px}
+  .tab.active{color:var(--ink)}
+  .tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent);border-radius:2px}
+  .tab.active .count{color:var(--accent-text);border-color:var(--accent-text)}
+  /* table */
+  .table{margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .thead,.row{display:grid;grid-template-columns:1fr 130px 120px 90px;align-items:center;gap:16px;padding:0 18px}
+  .thead{height:38px;background:var(--surface-2);border-bottom:1px solid var(--border);
+    font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-subtle);font-weight:500}
+  .thead .r,.row .r{text-align:right}
+  .row{min-height:56px;border-bottom:1px solid var(--border);cursor:pointer;padding-top:8px;padding-bottom:8px}
+  .row:last-child{border-bottom:0}
+  .row:hover{background:var(--surface-2)}
+  .co{font-weight:500;color:var(--ink)}
+  .meta{color:var(--ink-muted);font-size:13px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52ch}
+  .hint{font-family:"IBM Plex Mono",monospace;font-size:12px;margin-top:4px;display:inline-flex;align-items:center;gap:6px}
+  .hint.warn{color:var(--rf-fg)} .hint.bad{color:var(--dc-fg)} .hint.ok{color:var(--ink-subtle)}
+  .pill{display:inline-flex;align-items:center;gap:7px;padding:3px 10px 3px 8px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+  .dot{width:6px;height:6px;border-radius:999px;background:currentColor}
+  .ap{background:var(--ap-bg);color:var(--ap-fg)} .rf{background:var(--rf-bg);color:var(--rf-fg)} .dc{background:var(--dc-bg);color:var(--dc-fg)}
+  .prem{color:var(--ink)} .prem.none{color:var(--ink-subtle)}
+  .time{color:var(--ink-muted);font-size:13px}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="mark"></span>Underwrite</div>
+    <div class="barR">
+      <button class="toggle" title="Toggle theme">◐</button>
+      <div class="who"><span class="avatar">JU</span>Jane Underwriter</div>
+      <span class="signout">Sign out</span>
+    </div>
+  </div>
+
+  <div class="col">
+    <h1>Submissions</h1>
+    <p class="sub">Tech E&amp;O / Cyber intake · 6 in the queue</p>
+
+    <div class="tabs">
+      <div class="tab active">Referred <span class="count">3</span></div>
+      <div class="tab">Declined <span class="count">2</span></div>
+      <div class="tab">Auto-approved <span class="count">1</span></div>
+      <div class="tab">All <span class="count">6</span></div>
+    </div>
+
+    <div class="table">
+      <div class="thead"><div>Submission</div><div>Status</div><div class="r">Premium</div><div class="r">Received</div></div>
+
+      <div class="row">
+        <div>
+          <div class="co">Ledgerline Capital Ltd</div>
+          <div class="meta">fintech · £4.2m · £2m limit · SC123456</div>
+          <div class="hint warn">▲ name match 0.75 vs “LEDGERLINE HOLDINGS LIMITED”</div>
+        </div>
+        <div><span class="pill rf"><span class="dot"></span>Referred</span></div>
+        <div class="r mono prem">£8,060</div>
+        <div class="r mono time">18h</div>
+      </div>
+
+      <div class="row">
+        <div>
+          <div class="co">Nimbus Health Ltd</div>
+          <div class="meta">healthtech · revenue not stated · 07654321</div>
+          <div class="hint warn">▲ annual revenue not stated</div>
+        </div>
+        <div><span class="pill rf"><span class="dot"></span>Referred</span></div>
+        <div class="r mono prem none">—</div>
+        <div class="r mono time">18h</div>
+      </div>
+
+      <div class="row">
+        <div>
+          <div class="co">Harbor Point Systems Ltd</div>
+          <div class="meta">SaaS · £1.8m · £500k limit · 10234567</div>
+          <div class="hint warn">▲ active, proposed strike-off</div>
+        </div>
+        <div><span class="pill rf"><span class="dot"></span>Referred</span></div>
+        <div class="r mono prem">£1,640</div>
+        <div class="r mono time">18h</div>
+      </div>
+
+      <div class="row">
+        <div>
+          <div class="co">Blockspire Ltd</div>
+          <div class="meta">crypto · £3m · £1m limit · 11223344</div>
+          <div class="hint bad">● crypto, out of appetite</div>
+        </div>
+        <div><span class="pill dc"><span class="dot"></span>Declined</span></div>
+        <div class="r mono prem none">—</div>
+        <div class="r mono time">18h</div>
+      </div>
+
+      <div class="row">
+        <div>
+          <div class="co">Dayzero Labs Ltd</div>
+          <div class="meta">ai_ml · £400k · £250k limit · 13571357</div>
+          <div class="hint bad">● trading 3 months, below minimum</div>
+        </div>
+        <div><span class="pill dc"><span class="dot"></span>Declined</span></div>
+        <div class="r mono prem none">—</div>
+        <div class="r mono time">19h</div>
+      </div>
+
+      <div class="row">
+        <div>
+          <div class="co">Acme Robotics Ltd</div>
+          <div class="meta">SaaS · £2.5m · £1m limit · 09876543</div>
+          <div class="hint ok">● Companies House matched, active</div>
+        </div>
+        <div><span class="pill ap"><span class="dot"></span>Auto-approved</span></div>
+        <div class="r mono prem">£3,630</div>
+        <div class="r mono time">19h</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.querySelector('.toggle').addEventListener('click',()=>{
+      const r=document.documentElement; r.dataset.theme = r.dataset.theme==='dark'?'light':'dark';
+    });
+  </script>
+</body>
+</html>

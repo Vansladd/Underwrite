@@ -20,7 +20,9 @@ from app.schemas.read import (
     RatingRead,
     ReasonRead,
     SubmissionDetail,
+    SubmissionListItem,
     SubmissionRead,
+    SubmissionStats,
 )
 from app.schemas.write import DeclineRequest, SubmissionCreate
 
@@ -39,7 +41,9 @@ __all__ = [
     "ReasonRead",
     "SubmissionCreate",
     "SubmissionDetail",
+    "SubmissionListItem",
     "SubmissionRead",
+    "SubmissionStats",
     "UserRead",
     "factor_to_json",
     "rating_to_orm_kwargs",

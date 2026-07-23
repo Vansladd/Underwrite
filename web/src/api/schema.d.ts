@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/submissions/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Submission Stats */
+        get: operations["submission_stats_api_submissions_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/submissions/{submission_id}": {
         parameters: {
             query?: never;
@@ -414,8 +431,8 @@ export interface components {
             /** Audit Events */
             audit_events?: components["schemas"]["AuditEventRead"][];
         };
-        /** SubmissionRead */
-        SubmissionRead: {
+        /** SubmissionListItem */
+        SubmissionListItem: {
             /**
              * Id
              * Format: uuid
@@ -423,18 +440,33 @@ export interface components {
             id: string;
             status: components["schemas"]["SubmissionStatus"];
             input_mode: components["schemas"]["InputMode"];
-            /** Raw Input */
-            raw_input: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
+            /** Company Name */
+            company_name: string | null;
+            /** Company Number */
+            company_number: string | null;
+            sector: components["schemas"]["Sector"] | null;
+            /** Annual Revenue Pence */
+            annual_revenue_pence: number | null;
+            requested_limit: components["schemas"]["RequestedLimit"] | null;
+            /** Premium Pence */
+            premium_pence: number | null;
+            decision: string | null;
+            /** Headline */
+            headline: string | null;
+        };
+        /** SubmissionStats */
+        SubmissionStats: {
+            /** Total */
+            total: number;
+            /** By Status */
+            by_status: {
+                [key: string]: number;
+            };
         };
         /**
          * SubmissionStatus
@@ -565,7 +597,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SubmissionRead"][];
+                    "application/json": components["schemas"]["SubmissionListItem"][];
                 };
             };
             /** @description Validation Error */
@@ -608,6 +640,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submission_stats_api_submissions_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionStats"];
                 };
             };
         };
