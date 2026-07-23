@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { type SubmissionDetail, useSubmission } from '../hooks/useSubmissions'
 import {
@@ -311,6 +311,36 @@ export function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null)
   const ready = Boolean(data) || isError
 
+  // Slide in on the frame after mount; slide out on close, unmounting only once the panel
+  // transition finishes (see onPanelTransitionEnd).
+  const [open, setOpen] = useState(false)
+  const closing = useRef(false)
+
+  // Double rAF: paint the closed state once before flipping to open, so the enter transition runs.
+  useEffect(() => {
+    let inner = 0
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setOpen(true))
+    })
+    return () => {
+      cancelAnimationFrame(outer)
+      cancelAnimationFrame(inner)
+    }
+  }, [])
+
+  const requestClose = useCallback(() => {
+    closing.current = true
+    setOpen(false)
+  }, [])
+
+  // Tailwind v4 animates the `translate` property (not `transform`); accept either.
+  function onPanelTransitionEnd(e: React.TransitionEvent) {
+    const prop = e.propertyName
+    if (e.target === panelRef.current && (prop === 'translate' || prop === 'transform') && closing.current) {
+      onClose()
+    }
+  }
+
   // Land focus on the close button once the header (or error) is actually rendered.
   useEffect(() => {
     if (ready) closeRef.current?.focus()
@@ -322,7 +352,7 @@ export function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
 
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        onClose()
+        requestClose()
         return
       }
       if (e.key !== 'Tab' || !panelRef.current) return
@@ -349,7 +379,7 @@ export function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
       document.body.style.overflow = ''
       restore?.focus()
     }
-  }, [onClose, id])
+  }, [requestClose, id])
 
   return (
     <div className="fixed inset-0 z-50">
@@ -357,15 +387,16 @@ export function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
         type="button"
         aria-label="Close"
         tabIndex={-1}
-        onClick={onClose}
-        className="absolute inset-0 bg-[oklch(0.2_0.02_260/.38)]"
+        onClick={requestClose}
+        className={`absolute inset-0 bg-[oklch(0.2_0.02_260/.38)] transition-opacity duration-200 ease-out ${open ? 'opacity-100' : 'opacity-0'}`}
       />
       <aside
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="drawer-title"
-        className="absolute inset-y-0 right-0 flex w-full max-w-[600px] flex-col bg-surface shadow-[var(--float)]"
+        onTransitionEnd={onPanelTransitionEnd}
+        className={`absolute inset-y-0 right-0 flex w-full max-w-[600px] flex-col bg-surface shadow-[var(--float)] transition-transform duration-200 ease-out will-change-transform ${open ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {isPending && (
           <div className="grid flex-1 place-items-center text-sm text-ink-muted">Loading…</div>
@@ -373,14 +404,14 @@ export function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
         {isError && (
           <div className="grid flex-1 place-items-center px-6 text-center text-sm text-[color:var(--dc-fg)]">
             Could not load this submission.
-            <button ref={closeRef} type="button" onClick={onClose} className="mt-3 underline">
+            <button ref={closeRef} type="button" onClick={requestClose} className="mt-3 underline">
               Close
             </button>
           </div>
         )}
         {data && (
           <>
-            <Header s={data} onClose={onClose} closeRef={closeRef} />
+            <Header s={data} onClose={requestClose} closeRef={closeRef} />
             <DrawerBody s={data} />
           </>
         )}
