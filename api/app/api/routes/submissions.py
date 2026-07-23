@@ -2,7 +2,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -14,6 +14,7 @@ from app.schemas import (
     SubmissionCreate,
     SubmissionDetail,
     SubmissionListItem,
+    SubmissionStats,
 )
 from app.services.audit import record_event
 from app.services.pipeline import run_pipeline
@@ -150,6 +151,16 @@ async def list_submissions(
 ) -> list[SubmissionListItem]:
     query = submissions_query(submission_status, limit, offset).options(*LIST_NESTED)
     return [_to_list_item(each) for each in (await db.scalars(query)).all()]
+
+
+# Before /{submission_id}: "stats" is not a UUID and would 422 against the detail route.
+@router.get("/stats")
+async def submission_stats(db: DbSession, user: CurrentUser) -> SubmissionStats:
+    rows = (
+        await db.execute(select(Submission.status, func.count()).group_by(Submission.status))
+    ).all()
+    by_status = {status.value: count for status, count in rows}
+    return SubmissionStats(total=sum(by_status.values()), by_status=by_status)
 
 
 @router.get("/{submission_id}")

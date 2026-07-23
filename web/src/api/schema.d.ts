@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/submissions/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Submission Stats */
+        get: operations["submission_stats_api_submissions_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/submissions/{submission_id}": {
         parameters: {
             query?: never;
@@ -442,6 +459,15 @@ export interface components {
             /** Headline */
             headline: string | null;
         };
+        /** SubmissionStats */
+        SubmissionStats: {
+            /** Total */
+            total: number;
+            /** By Status */
+            by_status: {
+                [key: string]: number;
+            };
+        };
         /**
          * SubmissionStatus
          * @enum {string}
@@ -614,6 +640,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submission_stats_api_submissions_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionStats"];
                 };
             };
         };

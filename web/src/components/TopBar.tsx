@@ -3,12 +3,15 @@ import { BrandMark } from './BrandMark'
 import { ThemeToggle } from './ThemeToggle'
 
 function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || '—'
+  )
 }
 
 export function TopBar({ operator }: { operator: Operator }) {

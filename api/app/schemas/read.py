@@ -144,3 +144,9 @@ class SubmissionDetail(SubmissionRead):
     rating: RatingRead | None = None
     quote: QuoteRead | None = None
     audit_events: list[AuditEventRead] = Field(default_factory=list)
+
+
+# Whole-table counts for the queue tabs, so they don't under-report a paginated page.
+class SubmissionStats(BaseModel):
+    total: int
+    by_status: dict[str, int]

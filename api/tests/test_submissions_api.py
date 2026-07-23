@@ -176,6 +176,17 @@ async def test_the_queue_row_carries_the_scannable_fields(api, db):
     assert "strike" in row["headline"].lower()
 
 
+async def test_stats_counts_the_whole_table_not_just_a_page(api, db):
+    await make_full_submission(db)  # referred
+    await make_submission(db, status="declined")
+    await make_submission(db, status="declined")
+
+    stats = (await api.get("/api/submissions/stats")).json()
+
+    assert stats["total"] == 3
+    assert stats["by_status"] == {"referred": 1, "declined": 2}
+
+
 async def test_listing_returns_newest_first(api):
     written = [
         (
