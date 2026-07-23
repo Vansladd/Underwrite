@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from '../api/client'
 import type { components } from '../api/schema'
@@ -6,6 +6,43 @@ import type { components } from '../api/schema'
 export type Submission = components['schemas']['SubmissionListItem']
 export type SubmissionStatus = NonNullable<Submission['status']>
 export type SubmissionDetail = components['schemas']['SubmissionDetail']
+
+// Approve/decline change the row's status and premium, so the queue, tabs, and this submission
+// all go stale — invalidate the three query families the drawer and queue read from.
+function invalidateSubmission(queryClient: ReturnType<typeof useQueryClient>, id: string) {
+  queryClient.invalidateQueries({ queryKey: ['submission', id] })
+  queryClient.invalidateQueries({ queryKey: ['submissions'] })
+  queryClient.invalidateQueries({ queryKey: ['submission-stats'] })
+}
+
+export function useApproveSubmission(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await api.POST('/api/submissions/{submission_id}/approve', {
+        params: { path: { submission_id: id } },
+      })
+      if (error) throw new Error('could not approve submission')
+      return data
+    },
+    onSuccess: () => invalidateSubmission(queryClient, id),
+  })
+}
+
+export function useDeclineSubmission(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (reason: string) => {
+      const { data, error } = await api.POST('/api/submissions/{submission_id}/decline', {
+        params: { path: { submission_id: id } },
+        body: { reason },
+      })
+      if (error) throw new Error('could not decline submission')
+      return data
+    },
+    onSuccess: () => invalidateSubmission(queryClient, id),
+  })
+}
 
 export function useSubmissions(status?: SubmissionStatus) {
   return useQuery({

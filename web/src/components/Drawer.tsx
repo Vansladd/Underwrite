@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { type SubmissionDetail, useSubmission } from '../hooks/useSubmissions'
 import {
+  type SubmissionDetail,
+  useApproveSubmission,
+  useDeclineSubmission,
+  useSubmission,
+} from '../hooks/useSubmissions'
+import {
+  eventLabel,
   factorLabel,
   fieldLabel,
   inputModeLabel,
@@ -18,6 +24,8 @@ const NAME_MATCH_THRESHOLD = 0.85
 type Extraction = NonNullable<SubmissionDetail['extraction']>
 type Enrichment = NonNullable<SubmissionDetail['enrichment']>
 type Rating = NonNullable<SubmissionDetail['rating']>
+type Quote = NonNullable<SubmissionDetail['quote']>
+type AuditEvent = NonNullable<SubmissionDetail['audit_events']>[number]
 type Reason = Rating['refer_reasons'][number]
 
 function CompareRow({
@@ -203,6 +211,118 @@ function MissingInfo({ fields }: { fields: string[] }) {
   )
 }
 
+function Actions({ s }: { s: SubmissionDetail }) {
+  const approve = useApproveSubmission(s.id)
+  const decline = useDeclineSubmission(s.id)
+  const [reasoning, setReasoning] = useState(false)
+  const [reason, setReason] = useState('')
+  const canApprove = s.rating?.annual_premium_pence != null
+  const busy = approve.isPending || decline.isPending
+  const failed = approve.isError || decline.isError
+
+  if (reasoning) {
+    return (
+      <div className="mt-4">
+        <textarea
+          autoFocus
+          rows={2}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Why is this being declined?"
+          className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-[13px] text-ink placeholder:text-ink-subtle"
+        />
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            disabled={!reason.trim() || busy}
+            onClick={() => decline.mutate(reason.trim())}
+            className="rounded-md bg-[color:var(--dc-fg)] px-3.5 py-2 text-[13px] font-medium text-on-accent disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {decline.isPending ? 'Declining…' : 'Confirm decline'}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setReasoning(false)
+              setReason('')
+            }}
+            className="rounded-md border border-border-strong bg-surface px-3.5 py-2 text-[13px] font-medium text-ink"
+          >
+            Cancel
+          </button>
+        </div>
+        {failed && <p className="mt-2 text-[13px] text-[color:var(--dc-fg)]">Something went wrong. Try again.</p>}
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-4">
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={!canApprove || busy}
+          title={canApprove ? undefined : 'No premium to bind — request the missing details first.'}
+          onClick={() => approve.mutate()}
+          className="rounded-md bg-accent px-3.5 py-2 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          {approve.isPending ? 'Approving…' : 'Approve & bind'}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => setReasoning(true)}
+          className="rounded-md border border-border-strong bg-surface px-3.5 py-2 text-[13px] font-medium text-ink disabled:opacity-45"
+        >
+          Decline
+        </button>
+      </div>
+      {failed && <p className="mt-2 text-[13px] text-[color:var(--dc-fg)]">Something went wrong. Try again.</p>}
+    </div>
+  )
+}
+
+function QuotePanel({ quote }: { quote: Quote }) {
+  const rows: [string, string][] = [
+    ['Limit', poundsFromPence(quote.limit_pence)],
+    ['Excess', poundsFromPence(quote.excess_pence)],
+    ['Gross premium', poundsFromPence(quote.gross_premium_pence)],
+  ]
+  return (
+    <div className="overflow-hidden rounded-lg border border-border">
+      <div className="flex items-center justify-between border-b border-border bg-surface-2 px-3.5 py-2.5">
+        <span className="tnum text-[13px] font-medium text-ink">{quote.quote_ref}</span>
+        <span className="tnum text-xs text-ink-subtle">valid until {quote.valid_until}</span>
+      </div>
+      <dl className="flex flex-col gap-2 px-3.5 py-3 text-[13px]">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex justify-between">
+            <dt className="text-ink-muted">{label}</dt>
+            <dd className="tnum text-ink">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  )
+}
+
+function Timeline({ events }: { events: AuditEvent[] }) {
+  return (
+    <ol className="flex flex-col gap-2">
+      {events.map((e) => (
+        <li key={e.id} className="flex items-baseline justify-between gap-3 text-[13px]">
+          <span className="text-ink">
+            {eventLabel(e.event_type)}
+            {e.actor_name && <span className="text-ink-muted"> · {e.actor_name}</span>}
+          </span>
+          <span className="tnum shrink-0 text-xs text-ink-subtle">{relativeTime(e.occurred_at)} ago</span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 function DrawerBody({ s }: { s: SubmissionDetail }) {
   const { extraction, enrichment, rating } = s
   const referReasons = rating?.refer_reasons ?? []
@@ -232,6 +352,12 @@ function DrawerBody({ s }: { s: SubmissionDetail }) {
         </Section>
       )}
 
+      {s.quote && (
+        <Section title="Quote">
+          <QuotePanel quote={s.quote} />
+        </Section>
+      )}
+
       {declineReasons.length > 0 && (
         <Section title="Why it declined">
           <Reasons reasons={declineReasons} tone="decline" />
@@ -245,6 +371,12 @@ function DrawerBody({ s }: { s: SubmissionDetail }) {
       {missingFields.length > 0 && (
         <Section title="Why it referred">
           <MissingInfo fields={missingFields} />
+        </Section>
+      )}
+
+      {s.audit_events && s.audit_events.length > 0 && (
+        <Section title="Activity">
+          <Timeline events={s.audit_events} />
         </Section>
       )}
     </div>
@@ -284,25 +416,8 @@ function Header({ s, onClose, closeRef }: { s: SubmissionDetail; onClose: () => 
         <StatusBadge status={s.status} />
       </div>
       <p className="mt-1.5 text-[13px] text-ink-muted">{meta}</p>
-      <div className="mt-4 flex gap-2">
-        {/* Wired in UW-034 (approve/decline actions + operator attribution). */}
-        <button
-          type="button"
-          disabled
-          title="Enabled in the actions update (UW-034)"
-          className="cursor-not-allowed rounded-md bg-accent px-3.5 py-2 text-[13px] font-medium text-on-accent opacity-45"
-        >
-          Approve &amp; bind
-        </button>
-        <button
-          type="button"
-          disabled
-          title="Enabled in the actions update (UW-034)"
-          className="cursor-not-allowed rounded-md border border-border-strong bg-surface px-3.5 py-2 text-[13px] font-medium text-ink opacity-45"
-        >
-          Decline
-        </button>
-      </div>
+      {/* A referral is the only thing an operator decides; other states are terminal. */}
+      {s.status === 'referred' && <Actions s={s} />}
     </div>
   )
 }

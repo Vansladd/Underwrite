@@ -60,6 +60,24 @@ export function fieldLabel(field: string): string {
   return FIELD_LABELS[field] ?? field
 }
 
+const EVENT_LABELS: Record<string, string> = {
+  submission_received: 'Received',
+  extraction_completed: 'Extracted',
+  extraction_failed: 'Extraction failed',
+  enrichment_completed: 'Companies House checked',
+  enrichment_failed: 'Companies House lookup failed',
+  rating_completed: 'Rated',
+  rating_failed: 'Rating failed',
+  submission_approved: 'Approved',
+  submission_declined: 'Declined',
+  quote_generated: 'Quote generated',
+  quote_expired: 'Quote expired',
+}
+
+export function eventLabel(eventType: string): string {
+  return EVENT_LABELS[eventType] ?? eventType.replace(/_/g, ' ')
+}
+
 export function sectorLabel(sector: string | null): string | null {
   if (!sector) return null
   return SECTOR_LABELS[sector] ?? sector
