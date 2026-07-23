@@ -162,7 +162,7 @@ async def test_an_invalid_submission_is_rejected_not_stored(api, db, payload, ex
 # --- reading -------------------------------------------------------------------------------
 
 
-async def test_listing_returns_newest_first(api, ops_auth):
+async def test_listing_returns_newest_first(api):
     written = [
         (
             await api.post(
@@ -172,7 +172,7 @@ async def test_listing_returns_newest_first(api, ops_auth):
         for _ in range(3)
     ]
 
-    listed = [each["id"] for each in (await api.get("/api/submissions", auth=ops_auth)).json()]
+    listed = [each["id"] for each in (await api.get("/api/submissions")).json()]
 
     # Identity, not timestamps: three rows sharing a created_at compare equal to their own sort.
     assert listed == list(reversed(written))
@@ -192,38 +192,28 @@ async def test_rows_written_together_still_get_distinct_timestamps(api):
     assert len(set(body)) == 3
 
 
-async def test_listing_filters_by_status(api, db, ops_auth):
+async def test_listing_filters_by_status(api, db):
     await make_submission(db, status="referred")
     # pdf_upload has no text yet, so the pipeline leaves it 'received' (UW-026).
     await api.post("/api/submissions", json={"input_mode": "pdf_upload"})
 
-    referred = (
-        await api.get("/api/submissions", auth=ops_auth, params={"status": "referred"})
-    ).json()
-    received = (
-        await api.get("/api/submissions", auth=ops_auth, params={"status": "received"})
-    ).json()
+    referred = (await api.get("/api/submissions", params={"status": "referred"})).json()
+    received = (await api.get("/api/submissions", params={"status": "received"})).json()
 
     assert [each["status"] for each in referred] == ["referred"]
     assert [each["status"] for each in received] == ["received"]
 
 
-async def test_listing_rejects_an_unknown_status(api, ops_auth):
-    response = await api.get("/api/submissions", auth=ops_auth, params={"status": "vibes"})
+async def test_listing_rejects_an_unknown_status(api):
+    response = await api.get("/api/submissions", params={"status": "vibes"})
 
     assert response.status_code == 422
 
 
-async def test_listing_is_bounded(api, ops_auth):
-    assert (
-        await api.get("/api/submissions", auth=ops_auth, params={"limit": 201})
-    ).status_code == 422
-    assert (
-        await api.get("/api/submissions", auth=ops_auth, params={"limit": 0})
-    ).status_code == 422
-    assert (
-        await api.get("/api/submissions", auth=ops_auth, params={"limit": 200})
-    ).status_code == 200
+async def test_listing_is_bounded(api):
+    assert (await api.get("/api/submissions", params={"limit": 201})).status_code == 422
+    assert (await api.get("/api/submissions", params={"limit": 0})).status_code == 422
+    assert (await api.get("/api/submissions", params={"limit": 200})).status_code == 200
 
 
 def test_the_listing_query_breaks_timestamp_ties():
@@ -233,14 +223,12 @@ def test_the_listing_query_breaks_timestamp_ties():
     assert "ORDER BY submissions.created_at DESC, submissions.id DESC" in compiled
 
 
-async def test_listing_pages(api, ops_auth):
+async def test_listing_pages(api):
     for _ in range(3):
         await api.post("/api/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL})
 
-    first = (await api.get("/api/submissions", auth=ops_auth, params={"limit": 2})).json()
-    second = (
-        await api.get("/api/submissions", auth=ops_auth, params={"limit": 2, "offset": 2})
-    ).json()
+    first = (await api.get("/api/submissions", params={"limit": 2})).json()
+    second = (await api.get("/api/submissions", params={"limit": 2, "offset": 2})).json()
 
     assert len(first) == 2
     assert len(second) == 1

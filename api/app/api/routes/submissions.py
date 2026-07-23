@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import ChClientDep, ExtractorDep, OpsUser
+from app.api.deps import ChClientDep, CurrentUser, ExtractorDep
 from app.db import DbSession
 from app.domain.enums import AuditActor, AuditEventType, SubmissionStatus
 from app.models import Submission
@@ -53,6 +53,7 @@ def submissions_query(submission_status: SubmissionStatus | None, limit: int, of
 async def create_submission(
     payload: SubmissionCreate,
     db: DbSession,
+    user: CurrentUser,
     extractor: ExtractorDep,
     ch_client: ChClientDep,
 ) -> SubmissionDetail:
@@ -83,7 +84,7 @@ async def create_submission(
 @router.get("")
 async def list_submissions(
     db: DbSession,
-    ops: OpsUser,
+    user: CurrentUser,
     submission_status: Annotated[SubmissionStatus | None, Query(alias="status")] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -93,5 +94,7 @@ async def list_submissions(
 
 
 @router.get("/{submission_id}")
-async def get_submission(submission_id: uuid.UUID, db: DbSession) -> SubmissionDetail:
+async def get_submission(
+    submission_id: uuid.UUID, db: DbSession, user: CurrentUser
+) -> SubmissionDetail:
     return await load_detail(db, submission_id)

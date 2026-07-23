@@ -21,15 +21,18 @@ from app.domain.enums import (
     RequestedLimit,
     Sector,
 )
-from app.models import Submission
+from app.models import Submission, User
 from app.schemas import CompanyProfile, ExtractedApplication
 from app.services.audit import record_event
+from app.services.auth import hash_password
 from app.services.companies_house import CompaniesHouseLookup
 from app.services.pipeline import run_pipeline
 
 # Fixed namespace: submission ids are uuid5(namespace, slug), so re-seeding is a no-op.
 SEED_NAMESPACE = uuid.UUID("5eed0000-0000-4000-8000-000000000027")
 SEED_MODEL = "claude-sonnet-5"
+OPERATOR_SLUG = "user:operator"
+OPERATOR_DISPLAY_NAME = "Demo Underwriter"
 
 
 def years_ago(years: float) -> date:
@@ -253,6 +256,25 @@ async def seed(session: AsyncSession) -> int:
     return inserted
 
 
+async def seed_operator(
+    session: AsyncSession,
+    username: str,
+    password: str,
+    display_name: str = OPERATOR_DISPLAY_NAME,
+) -> User:
+    """Upsert the operator so its password always tracks the configured secret. See D-026."""
+    operator_id = uuid.uuid5(SEED_NAMESPACE, OPERATOR_SLUG)
+    user = await session.get(User, operator_id)
+    if user is None:
+        user = User(id=operator_id)
+        session.add(user)
+    user.username = username
+    user.display_name = display_name
+    user.password_hash = hash_password(password)
+    await session.commit()
+    return user
+
+
 async def main() -> int:
     settings = get_settings()
     engine = build_engine(settings)
@@ -260,6 +282,9 @@ async def main() -> int:
     try:
         async with sessionmaker() as session:
             inserted = await seed(session)
+            await seed_operator(
+                session, settings.seed_operator_username, settings.seed_operator_password
+            )
             rows = (await session.scalars(select(Submission.status))).all()
             total = await session.scalar(select(func.count()).select_from(Submission))
     finally:
@@ -267,6 +292,7 @@ async def main() -> int:
 
     by_status = Counter(status.value for status in rows)
     print(f"seeded {inserted} new submission(s); {total} total")
+    print(f"operator: {settings.seed_operator_username}")
     for status, count in sorted(by_status.items()):
         print(f"  {status}: {count}")
     return 0

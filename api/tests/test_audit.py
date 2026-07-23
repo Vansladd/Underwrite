@@ -323,3 +323,26 @@ async def test_the_orm_error_wins_over_the_database_one(db):
     # The listener fires before the flush reaches Postgres, so the reader gets the clearer error.
     with pytest.raises(AuditTrailIsAppendOnly):
         await db.flush()
+
+
+async def test_an_event_can_name_the_operator_who_wrote_it(db):
+    # The attribution wiring UW-034 will use; here we just prove the column round-trips.
+    from app.models import User
+    from app.services.auth import hash_password
+
+    operator = User(username="jane", password_hash=hash_password("pw"), display_name="Jane")
+    db.add(operator)
+    submission = await make_submission(db)
+    await db.flush()
+
+    recorded = await record_event(
+        db,
+        submission.id,
+        AuditEventType.SUBMISSION_APPROVED,
+        AuditActor.OPS,
+        {},
+        actor_id=operator.id,
+    )
+
+    fetched = await db.scalar(select(AuditEvent).where(AuditEvent.id == recorded.id))
+    assert fetched.actor_id == operator.id

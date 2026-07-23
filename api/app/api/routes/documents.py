@@ -1,12 +1,13 @@
 from fastapi import APIRouter, HTTPException, Response, status
 
+from app.api.deps import CurrentUser
 from app.services.storage import LocalStorage, StorageDep
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 
 @router.get("/{key:path}")
-async def get_document(key: str, storage: StorageDep) -> Response:
+async def get_document(key: str, storage: StorageDep, user: CurrentUser) -> Response:
     # Dev-only: prod serves S3 presigned URLs directly and never reaches this route.
     if not isinstance(storage, LocalStorage):
         raise HTTPException(status.HTTP_404_NOT_FOUND)

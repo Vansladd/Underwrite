@@ -5,6 +5,7 @@ from app.models.extraction import Extraction
 from app.models.quote import Quote
 from app.models.rating import Rating
 from app.models.submission import Submission
+from app.models.user import User
 
 __all__ = [
     "AuditEvent",
@@ -15,4 +16,5 @@ __all__ = [
     "Quote",
     "Rating",
     "Submission",
+    "User",
 ]

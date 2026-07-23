@@ -1,3 +1,5 @@
+import { Login } from './Login'
+import { type Operator, useLogout, useMe } from './hooks/useAuth'
 import { type Submission, useSubmissions } from './hooks/useSubmissions'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -25,17 +27,30 @@ function summarise(submission: Submission): string {
   return `${submission.input_mode} submission`
 }
 
-export function App() {
+function Queue({ operator }: { operator: Operator }) {
   const { data, isPending, isError } = useSubmissions()
+  const logout = useLogout()
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-5xl px-6 py-10">
-        <header className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight">Submissions</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Tech E&amp;O / Cyber intake — {data?.length ?? 0} in the queue
-          </p>
+        <header className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Submissions</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Tech E&amp;O / Cyber intake — {data?.length ?? 0} in the queue
+            </p>
+          </div>
+          <div className="text-right text-sm">
+            <div className="text-slate-700">{operator.display_name}</div>
+            <button
+              type="button"
+              onClick={() => logout.mutate()}
+              className="mt-0.5 text-slate-400 hover:text-slate-700"
+            >
+              Sign out
+            </button>
+          </div>
         </header>
 
         {isPending && <p className="text-sm text-slate-500">Loading…</p>}
@@ -85,4 +100,18 @@ export function App() {
       </div>
     </div>
   )
+}
+
+export function App() {
+  const { data: operator, isPending } = useMe()
+
+  if (isPending) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500">
+        Loading…
+      </div>
+    )
+  }
+  if (!operator) return <Login />
+  return <Queue operator={operator} />
 }

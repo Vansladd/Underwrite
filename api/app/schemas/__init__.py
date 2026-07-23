@@ -1,3 +1,4 @@
+from app.schemas.auth import LoginRequest, UserRead
 from app.schemas.companies_house import CompanyProfile
 from app.schemas.extraction import (
     ExtractedApplication,
@@ -27,6 +28,8 @@ __all__ = [
     "AuditEventRead",
     "CompanyProfile",
     "DeclineRequest",
+    "LoginRequest",
+    "UserRead",
     "EnrichmentRead",
     "ExtractedApplication",
     "ExtractionRead",

@@ -12,7 +12,7 @@ from sqlalchemy.pool import NullPool
 from tests.conftest import alembic_config, derive_test_database_url
 
 DATABASE = "underwrite_migrations_test"
-HEAD = "0003"
+HEAD = "0004"
 
 TABLES = "select table_name from information_schema.tables where table_schema = 'public'"
 TRIGGERS = """
@@ -89,6 +89,7 @@ def test_upgrade_builds_the_whole_schema_from_empty(config, scratch):
         "ratings",
         "quotes",
         "audit_events",
+        "users",
     }
     assert names(scratch, TRIGGERS) == {"audit_events_append_only", "audit_events_no_truncate"}
     assert names(scratch, FUNCTIONS) == {"refuse_audit_mutation"}

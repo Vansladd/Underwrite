@@ -5,9 +5,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.routes import documents, submissions
-from app.config import DEFAULT_OPS_PASSWORD, get_settings
+from app.api.routes import auth, documents, submissions
+from app.config import DEFAULT_OPERATOR_PASSWORD, DEFAULT_SECRET_KEY, get_settings
 from app.db import DbSession, build_engine, build_sessionmaker
 from app.services.companies_house import CompaniesHouseClient
 from app.services.extraction import AnthropicExtractor
@@ -16,9 +17,13 @@ from app.services.extraction import AnthropicExtractor
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
-    if settings.ops_password == DEFAULT_OPS_PASSWORD:
-        logging.getLogger("uvicorn.error").warning(
-            "OPS_PASSWORD is still the shipped default; ops routes are effectively open"
+    log = logging.getLogger("uvicorn.error")
+    if settings.secret_key == DEFAULT_SECRET_KEY:
+        log.warning("SECRET_KEY is the shipped default; sessions are forgeable — set it in prod")
+    if settings.session_secure and settings.seed_operator_password == DEFAULT_OPERATOR_PASSWORD:
+        log.warning(
+            "SEED_OPERATOR_PASSWORD is still the public default on a secure (prod) deployment — "
+            "set a strong secret before exposing the URL"
         )
     engine = build_engine(settings)
     app.state.engine = engine
@@ -43,6 +48,14 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
     swagger_ui_oauth2_redirect_url="/api/docs/oauth2-redirect",
 )
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=get_settings().secret_key,
+    session_cookie="uw_session",
+    https_only=get_settings().session_secure,
+    same_site="lax",
+)
+app.include_router(auth.router)
 app.include_router(submissions.router)
 app.include_router(documents.router)
 
