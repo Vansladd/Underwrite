@@ -18,8 +18,46 @@ const SECTOR_LABELS: Record<string, string> = {
   other: 'other',
 }
 
+const INPUT_MODE_LABELS: Record<string, string> = {
+  form: 'web form',
+  paste: 'pasted broker email',
+  pdf_upload: 'uploaded PDF',
+}
+
+// Mirrors the backend _FIELD_LABELS the queue headline uses. See api/.../routes/submissions.py.
+const FIELD_LABELS: Record<string, string> = {
+  annual_revenue_gbp: 'Annual revenue',
+  years_trading: 'Years trading',
+  prior_claims_count: 'Prior claims',
+  requested_limit_gbp: 'Requested limit',
+  data_records_held: 'Data volume',
+  sector: 'Sector',
+  company_name: 'Company name',
+}
+
+const FACTOR_LABELS: Record<string, string> = {
+  LIMIT: 'Limit',
+  REVENUE_BAND: 'Revenue band',
+  SECTOR: 'Sector',
+  DATA_VOLUME: 'Data volume',
+  CLAIMS_HISTORY: 'Claims history',
+  MONTHS_TRADING: 'Months trading',
+}
+
 export function statusLabel(status: string): string {
   return STATUS_LABELS[status] ?? status
+}
+
+export function inputModeLabel(mode: string): string {
+  return INPUT_MODE_LABELS[mode] ?? mode
+}
+
+export function factorLabel(code: string): string {
+  return FACTOR_LABELS[code] ?? code
+}
+
+export function fieldLabel(field: string): string {
+  return FIELD_LABELS[field] ?? field
 }
 
 export function sectorLabel(sector: string | null): string | null {
@@ -31,6 +69,30 @@ export function sectorLabel(sector: string | null): string | null {
 export function formatPremium(pence: number | null): string {
   if (pence == null) return '—'
   return `£${Math.round(pence / 100).toLocaleString('en-GB')}`
+}
+
+// Exact whole pounds. Factor pence arrive as ExactDecimal strings; the ladder rounds to £1.
+export function poundsFromPence(pence: string | number | null): string {
+  if (pence == null) return '—'
+  const n = typeof pence === 'string' ? Number(pence) : pence
+  if (Number.isNaN(n)) return '—'
+  return formatPremium(n)
+}
+
+// Mirrors api normalise_company_number: leading alpha prefix, digits zero-padded to 8.
+export function normaliseCompanyNumber(raw: string): string {
+  const cleaned = raw.replace(/\s+/g, '').toUpperCase()
+  const prefix = cleaned.match(/^[A-Z]*/)?.[0] ?? ''
+  const digits = cleaned.slice(prefix.length)
+  return prefix + digits.padStart(8 - prefix.length, '0')
+}
+
+// months → "5 yrs trading", the extracted side of the incorporation row.
+export function yearsTradingLabel(months: number | null): string | null {
+  if (months == null) return null
+  const years = Math.floor(months / 12)
+  if (years < 1) return `${months} mo trading`
+  return `${years} yr${years === 1 ? '' : 's'} trading`
 }
 
 // Compact scale for the row meta: £4.2m, £750k.

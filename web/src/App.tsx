@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import { Login } from './Login'
+import { Drawer } from './components/Drawer'
 import { FilterTabs, type Tab } from './components/FilterTabs'
 import { StatusBadge } from './components/StatusBadge'
 import { TopBar } from './components/TopBar'
@@ -28,15 +29,26 @@ function metaLine(s: Submission): string {
     .join(' · ')
 }
 
-function QueueRow({ s }: { s: Submission }) {
+function QueueRow({ s, onSelect }: { s: Submission; onSelect: (id: string) => void }) {
   const glyph = s.status === 'referred' ? '▲' : '●'
   const meta = metaLine(s)
+  const label = [
+    s.company_name ?? 'Untitled submission',
+    statusLabel(s.status),
+    s.premium_pence != null ? `premium ${formatPremium(s.premium_pence)}` : null,
+    `received ${relativeTime(s.created_at)} ago`,
+    s.headline,
+  ]
+    .filter(Boolean)
+    .join(', ')
   return (
-    <div
-      role="row"
-      className="grid grid-cols-[1fr_130px_120px_80px] items-center gap-4 border-b border-border px-[18px] py-2.5 last:border-b-0"
+    <button
+      type="button"
+      aria-label={label}
+      onClick={() => onSelect(s.id)}
+      className="grid w-full grid-cols-[1fr_130px_120px_80px] items-center gap-4 border-b border-border px-[18px] py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-2"
     >
-      <div role="cell" className="min-w-0">
+      <div className="min-w-0">
         <div className="truncate font-medium text-ink">{s.company_name ?? 'Untitled submission'}</div>
         {meta && <div className="mt-px truncate text-[13px] text-ink-muted">{meta}</div>}
         {s.headline && (
@@ -45,16 +57,12 @@ function QueueRow({ s }: { s: Submission }) {
           </div>
         )}
       </div>
-      <div role="cell">
+      <div>
         <StatusBadge status={s.status} />
       </div>
-      <div role="cell" className="tnum text-right text-sm text-ink">
-        {formatPremium(s.premium_pence)}
-      </div>
-      <div role="cell" className="tnum text-right text-[13px] text-ink-muted">
-        {relativeTime(s.created_at)}
-      </div>
-    </div>
+      <div className="tnum text-right text-sm text-ink">{formatPremium(s.premium_pence)}</div>
+      <div className="tnum text-right text-[13px] text-ink-muted">{relativeTime(s.created_at)}</div>
+    </button>
   )
 }
 
@@ -75,6 +83,7 @@ function SkeletonRow() {
 function Queue({ operator }: { operator: Operator }) {
   const stats = useSubmissionStats()
   const [active, setActive] = useState('referred')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // Counts come from the whole table (stats), not a paginated page, so they never under-report.
   const tabs = useMemo<Tab[]>(() => {
@@ -105,23 +114,15 @@ function Queue({ operator }: { operator: Operator }) {
 
         {total > 0 && <FilterTabs tabs={tabs} active={activeKey} onChange={setActive} />}
 
-        <div
-          role="table"
-          aria-label="Submissions"
-          className="mt-5 overflow-hidden rounded-lg border border-border bg-surface"
-        >
+        <div className="mt-5 overflow-hidden rounded-lg border border-border bg-surface">
           <div
-            role="row"
+            aria-hidden="true"
             className="grid grid-cols-[1fr_130px_120px_80px] gap-4 border-b border-border bg-surface-2 px-[18px] py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-subtle"
           >
-            <div role="columnheader">Submission</div>
-            <div role="columnheader">Status</div>
-            <div role="columnheader" className="text-right">
-              Premium
-            </div>
-            <div role="columnheader" className="text-right">
-              Received
-            </div>
+            <div>Submission</div>
+            <div>Status</div>
+            <div className="text-right">Premium</div>
+            <div className="text-right">Received</div>
           </div>
 
           {isPending && Array.from({ length: 6 }, (_, i) => <SkeletonRow key={i} />)}
@@ -139,10 +140,11 @@ function Queue({ operator }: { operator: Operator }) {
           )}
 
           {rows?.map((s) => (
-            <QueueRow key={s.id} s={s} />
+            <QueueRow key={s.id} s={s} onSelect={setSelectedId} />
           ))}
         </div>
       </div>
+      {selectedId && <Drawer id={selectedId} onClose={() => setSelectedId(null)} />}
     </div>
   )
 }
