@@ -22,9 +22,24 @@ def _canned_quote_html() -> str:
         indicative_premium_pence=171_000,
         annual_premium_pence=171_000,
         factors=[
-            {"code": "LIMIT", "band_label": "£1,000,000", "multiplier": "1.9"},
-            {"code": "REVENUE_BAND", "band_label": "£100k – £500k", "multiplier": "1.0"},
-            {"code": "SECTOR", "band_label": "saas", "multiplier": "1.0"},
+            {
+                "code": "LIMIT",
+                "band_label": "£1,000,000",
+                "multiplier": "1.9",
+                "premium_after_pence": "171000",
+            },
+            {
+                "code": "REVENUE_BAND",
+                "band_label": "£100k – £500k",
+                "multiplier": "1.0",
+                "premium_after_pence": "171000",
+            },
+            {
+                "code": "SECTOR",
+                "band_label": "saas",
+                "multiplier": "1.0",
+                "premium_after_pence": "171000",
+            },
         ],
     )
     submission.quote = Quote(
@@ -59,6 +74,9 @@ def main() -> int:
         if login.status_code == 401:
             raise SystemExit("login failed — run `make seed` to create the demo operator first")
         login.raise_for_status()
+
+        # Light API smoke: the session reaches a gated, DB-backed endpoint.
+        client.get("/api/submissions/stats").raise_for_status()
 
         pdf = client.get(f"/api/documents/{key}")
         pdf.raise_for_status()

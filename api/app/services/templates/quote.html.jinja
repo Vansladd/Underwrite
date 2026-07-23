@@ -81,7 +81,8 @@
   }
   .factors td { padding: 6px 0; border-bottom: 1px solid #ebebeb; font-size: 9.5pt; }
   .factors td.band { color: #6a6a6a; }
-  .factors td.mult { text-align: right; }
+  .factors td.mult { text-align: right; color: #6a6a6a; }
+  .factors td.run { text-align: right; font-weight: 600; }
 
   .note { margin-top: 26px; color: #6a6a6a; font-size: 8.5pt; line-height: 1.6; }
 </style>
@@ -113,15 +114,24 @@
   <div class="sech">How the premium was built</div>
   <table class="factors">
     <thead>
-      <tr><th>Factor</th><th>Basis</th><th style="text-align:right">&times;</th></tr>
+      <tr>
+        <th>Factor</th>
+        <th>Basis</th>
+        <th style="text-align:right">&times;</th>
+        <th style="text-align:right">Running</th>
+      </tr>
     </thead>
     <tbody>
-      <tr><td>Base rate</td><td class="band"></td><td class="mult mono">{{ base_premium }}</td></tr>
+      <tr>
+        <td>Base rate</td><td class="band"></td>
+        <td class="mult mono"></td><td class="run mono">{{ base_premium }}</td>
+      </tr>
       {% for factor in factors %}
       <tr>
         <td>{{ factor.name }}</td>
         <td class="band">{{ factor.band_label }}</td>
         <td class="mult mono">{{ factor.multiplier }}</td>
+        <td class="run mono">{{ factor.running }}</td>
       </tr>
       {% endfor %}
     </tbody>

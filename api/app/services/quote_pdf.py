@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from base64 import b64encode
-from decimal import Decimal
 from functools import cache
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
+from app.domain.money import format_gbp, format_gbp_round
 from app.models import Submission
 
 _HERE = Path(__file__).parent
@@ -25,11 +25,6 @@ FACTOR_NAMES = {
 
 class QuoteNotReady(ValueError):
     """The submission has no quote/rating/extraction to render."""
-
-
-def format_gbp(pence: int) -> str:
-    # Whole pounds when exact, else pennies; mirrors rating._format_gbp.
-    return f"£{Decimal(pence) / 100:,.2f}".removesuffix(".00")
 
 
 @cache
@@ -52,12 +47,14 @@ def build_quote_html(submission: Submission) -> str:
     if quote is None or rating is None or extraction is None:
         raise QuoteNotReady("submission is not approved into a quote")
 
-    # rating.factors is JSONB (list of dicts); multiplier is already a Decimal string (D-004).
+    # rating.factors is JSONB (list of dicts); multiplier/premium are Decimal strings (D-004).
+    # running rounds to whole pounds (intermediate premiums carry fractional pence).
     factors = [
         {
             "name": FACTOR_NAMES.get(factor["code"], factor["code"]),
             "band_label": factor["band_label"],
             "multiplier": factor["multiplier"],
+            "running": format_gbp_round(factor["premium_after_pence"]),
         }
         for factor in rating.factors
     ]

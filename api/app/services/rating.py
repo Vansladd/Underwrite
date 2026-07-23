@@ -10,6 +10,7 @@ from app.domain.enums import (
     RequestedLimit,
     Sector,
 )
+from app.domain.money import format_gbp as _format_gbp
 from app.domain.rating import (
     Application,
     Enrichment,
@@ -127,10 +128,6 @@ _validate_lookup("data_volume", DATA_VOLUME_FACTORS, DataVolume)
 
 def _band_index(edges: tuple[int, ...], value: int) -> int:
     return bisect_right(edges, value)
-
-
-def _format_gbp(pence: int) -> str:
-    return f"£{Decimal(pence) / 100:,.2f}".removesuffix(".00")
 
 
 def _round_to_nearest(value: Decimal, step: int) -> int:
