@@ -414,8 +414,8 @@ export interface components {
             /** Audit Events */
             audit_events?: components["schemas"]["AuditEventRead"][];
         };
-        /** SubmissionRead */
-        SubmissionRead: {
+        /** SubmissionListItem */
+        SubmissionListItem: {
             /**
              * Id
              * Format: uuid
@@ -423,18 +423,24 @@ export interface components {
             id: string;
             status: components["schemas"]["SubmissionStatus"];
             input_mode: components["schemas"]["InputMode"];
-            /** Raw Input */
-            raw_input: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
+            /** Company Name */
+            company_name: string | null;
+            /** Company Number */
+            company_number: string | null;
+            sector: components["schemas"]["Sector"] | null;
+            /** Annual Revenue Pence */
+            annual_revenue_pence: number | null;
+            requested_limit: components["schemas"]["RequestedLimit"] | null;
+            /** Premium Pence */
+            premium_pence: number | null;
+            decision: string | null;
+            /** Headline */
+            headline: string | null;
         };
         /**
          * SubmissionStatus
@@ -565,7 +571,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SubmissionRead"][];
+                    "application/json": components["schemas"]["SubmissionListItem"][];
                 };
             };
             /** @description Validation Error */

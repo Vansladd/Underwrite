@@ -10,7 +10,11 @@ from app.api.deps import ChClientDep, CurrentUser, ExtractorDep
 from app.db import DbSession
 from app.domain.enums import AuditActor, AuditEventType, SubmissionStatus
 from app.models import Submission
-from app.schemas import SubmissionCreate, SubmissionDetail, SubmissionRead
+from app.schemas import (
+    SubmissionCreate,
+    SubmissionDetail,
+    SubmissionListItem,
+)
 from app.services.audit import record_event
 from app.services.pipeline import run_pipeline
 
@@ -25,6 +29,61 @@ NESTED = (
     selectinload(Submission.quote),
     selectinload(Submission.audit_events),
 )
+
+# The list needs the three the queue row reads; not quote/audit_events.
+LIST_NESTED = (
+    selectinload(Submission.extraction),
+    selectinload(Submission.rating),
+    selectinload(Submission.enrichment),
+)
+
+
+_FIELD_LABELS = {
+    "annual_revenue_gbp": "Annual revenue",
+    "years_trading": "Years trading",
+    "prior_claims_count": "Prior claims",
+    "requested_limit_gbp": "Requested limit",
+    "data_records_held": "Data volume",
+    "sector": "Sector",
+    "company_name": "Company name",
+}
+
+
+def _headline(submission: Submission) -> str | None:
+    """The one reason the operator sees before opening the row."""
+    rating = submission.rating
+    if rating is not None:
+        if rating.decline_reasons:
+            return rating.decline_reasons[0]["message"]
+        if rating.refer_reasons:
+            return rating.refer_reasons[0]["message"]
+        if submission.enrichment is not None and submission.enrichment.ch_found:
+            return "Companies House matched, active"
+        return None
+    extraction = submission.extraction
+    if extraction is not None and extraction.missing_fields:
+        field = extraction.missing_fields[0]
+        return f"{_FIELD_LABELS.get(field, field)} not stated"
+    return None
+
+
+def _to_list_item(submission: Submission) -> SubmissionListItem:
+    extraction = submission.extraction
+    rating = submission.rating
+    return SubmissionListItem(
+        id=submission.id,
+        status=submission.status,
+        input_mode=submission.input_mode,
+        created_at=submission.created_at,
+        company_name=extraction.company_name if extraction else None,
+        company_number=extraction.company_number if extraction else None,
+        sector=extraction.sector if extraction else None,
+        annual_revenue_pence=extraction.annual_revenue_pence if extraction else None,
+        requested_limit=extraction.requested_limit if extraction else None,
+        premium_pence=rating.annual_premium_pence if rating else None,
+        decision=rating.decision if rating else None,
+        headline=_headline(submission),
+    )
 
 
 async def load_detail(db: AsyncSession, submission_id: uuid.UUID) -> Submission:
@@ -88,9 +147,9 @@ async def list_submissions(
     submission_status: Annotated[SubmissionStatus | None, Query(alias="status")] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
-) -> list[SubmissionRead]:
-    query = submissions_query(submission_status, limit, offset)
-    return list((await db.scalars(query)).all())
+) -> list[SubmissionListItem]:
+    query = submissions_query(submission_status, limit, offset).options(*LIST_NESTED)
+    return [_to_list_item(each) for each in (await db.scalars(query)).all()]
 
 
 @router.get("/{submission_id}")

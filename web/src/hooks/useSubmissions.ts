@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
 import type { components } from '../api/schema'
 
-export type Submission = components['schemas']['SubmissionRead']
+export type Submission = components['schemas']['SubmissionListItem']
 
 export function useSubmissions() {
   return useQuery({

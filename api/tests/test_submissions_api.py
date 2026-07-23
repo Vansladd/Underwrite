@@ -8,7 +8,7 @@ from app.db import get_db
 from app.domain.enums import AuditEventType, DataVolume, RequestedLimit, Sector
 from app.main import app
 from app.models import AuditEvent, Extraction, Submission
-from tests.factories import make_submission
+from tests.factories import make_full_submission, make_submission
 
 BROKER_EMAIL = "Please quote Example Ltd for £1m cyber cover. Turnover £750k, trading 3 years."
 
@@ -160,6 +160,20 @@ async def test_an_invalid_submission_is_rejected_not_stored(api, db, payload, ex
 
 
 # --- reading -------------------------------------------------------------------------------
+
+
+async def test_the_queue_row_carries_the_scannable_fields(api, db):
+    submission = await make_full_submission(db)
+
+    rows = (await api.get("/api/submissions")).json()
+    row = next(each for each in rows if each["id"] == str(submission.id))
+
+    assert row["company_name"] == "Example Ltd"
+    assert row["sector"] == "saas"
+    assert row["decision"] == "REFER"
+    assert row["premium_pence"] is not None
+    # The one reason previewed in the row (a strike-off discrepancy here).
+    assert "strike" in row["headline"].lower()
 
 
 async def test_listing_returns_newest_first(api):

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Underwrite — Detail drawer mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:oklch(0.985 0.002 250); --surface:oklch(1 0 0); --surface-2:oklch(0.972 0.004 250);
+    --border:oklch(0.918 0.005 250); --border-strong:oklch(0.855 0.006 250);
+    --ink:oklch(0.235 0.012 260); --ink-muted:oklch(0.470 0.012 260); --ink-subtle:oklch(0.520 0.012 260);
+    --accent:oklch(0.530 0.130 47); --accent-hover:oklch(0.480 0.130 45); --accent-text:oklch(0.500 0.140 45); --on-accent:oklch(0.995 0 0);
+    --rf-bg:oklch(0.960 0.055 88);  --rf-fg:oklch(0.455 0.090 78);
+    --dc-fg:oklch(0.500 0.165 27); --dc-bg:oklch(0.952 0.035 26);
+    --ok-fg:oklch(0.500 0.100 155);
+    --float:0 16px 48px -12px oklch(0.2 0.02 260 / .28);
+  }
+  :root[data-theme="dark"]{
+    --bg:oklch(0.180 0.008 260); --surface:oklch(0.212 0.008 260); --surface-2:oklch(0.242 0.009 260);
+    --border:oklch(0.300 0.010 260); --border-strong:oklch(0.380 0.012 260);
+    --ink:oklch(0.950 0.004 260); --ink-muted:oklch(0.730 0.007 260); --ink-subtle:oklch(0.640 0.007 260);
+    --accent:oklch(0.580 0.135 48); --accent-hover:oklch(0.640 0.135 50); --accent-text:oklch(0.760 0.120 55); --on-accent:oklch(0.170 0.010 260);
+    --rf-bg:oklch(0.320 0.060 85 / .40);  --rf-fg:oklch(0.840 0.120 88);
+    --dc-fg:oklch(0.800 0.150 27); --dc-bg:oklch(0.330 0.070 27 / .40);
+    --ok-fg:oklch(0.760 0.110 155);
+    --float:0 16px 48px -12px oklch(0 0 0 / .55);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  .backdrop{position:fixed;inset:0;background:oklch(0.2 0.02 260 / .38)}
+  /* drawer */
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:600px;background:var(--surface);border-left:1px solid var(--border);
+    box-shadow:var(--float);display:flex;flex-direction:column;overflow:hidden}
+  .dhead{padding:20px 24px 16px;border-bottom:1px solid var(--border)}
+  .crumb{font-size:12px;color:var(--ink-subtle);letter-spacing:.04em;text-transform:uppercase}
+  .title{display:flex;align-items:center;gap:12px;margin-top:8px}
+  .title h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
+  .pill{display:inline-flex;align-items:center;gap:7px;padding:3px 10px 3px 8px;border-radius:999px;font-size:12px;font-weight:500}
+  .dot{width:6px;height:6px;border-radius:999px;background:currentColor}
+  .rf{background:var(--rf-bg);color:var(--rf-fg)}
+  .sub{color:var(--ink-muted);font-size:13px;margin-top:6px}
+  .actions{display:flex;gap:8px;margin-top:16px}
+  .btn{border-radius:6px;padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid transparent}
+  .btn-primary{background:var(--accent);color:var(--on-accent)}
+  .btn-ghost{background:var(--surface);border-color:var(--border-strong);color:var(--ink)}
+  .body{overflow-y:auto;padding:20px 24px 32px}
+  .sec{margin-top:24px}
+  .sec:first-child{margin-top:4px}
+  .sech{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-subtle);font-weight:500;margin-bottom:10px}
+  /* compare grid */
+  .cmp{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .cmp .hrow,.cmp .crow{display:grid;grid-template-columns:130px 1fr 28px 1fr;gap:10px;padding:9px 14px;align-items:center}
+  .cmp .hrow{background:var(--surface-2);border-bottom:1px solid var(--border);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-subtle)}
+  .cmp .crow{border-bottom:1px solid var(--border)} .cmp .crow:last-child{border-bottom:0}
+  .field{color:var(--ink-muted);font-size:13px}
+  .val{color:var(--ink);font-size:13px} .val.mono{font-size:12px}
+  .gut{display:grid;place-items:center;color:var(--ok-fg);font-size:13px}
+  .gut.warn{color:var(--dc-fg)}
+  .flag{color:var(--dc-fg)} .flag .val{color:var(--dc-fg);font-weight:500}
+  .disc{margin-top:10px;display:flex;gap:8px;align-items:flex-start;background:var(--dc-bg);border-radius:6px;padding:9px 12px;font-size:13px;color:var(--dc-fg)}
+  .disc .mono{font-weight:500}
+  /* factor table */
+  .ftab{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .fh,.fr,.ff{display:grid;grid-template-columns:1fr 88px 60px 92px;gap:8px;padding:8px 14px;align-items:center}
+  .fh{background:var(--surface-2);border-bottom:1px solid var(--border);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-subtle)}
+  .fr{border-bottom:1px solid var(--border);font-size:13px} .fr:last-of-type{border-bottom:0}
+  .fname{color:var(--ink)} .fband{color:var(--ink-muted);font-size:12px}
+  .fx,.fp{text-align:right} .fx{color:var(--accent-text)} .fp{color:var(--ink)}
+  .ff{background:var(--surface-2);border-top:1px solid var(--border);font-weight:600}
+  .ff .fp{font-size:15px}
+  .reasons{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+  .reason{display:flex;gap:8px;align-items:baseline;font-size:13px}
+  .rcode{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--rf-fg);background:var(--rf-bg);border-radius:4px;padding:1px 6px;white-space:nowrap}
+</style>
+</head>
+<body>
+  <div class="backdrop"></div>
+  <aside class="drawer">
+    <div class="dhead">
+      <div class="crumb">Submission · 12f45bef</div>
+      <div class="title">
+        <h2>Ledgerline Capital Ltd</h2>
+        <span class="pill rf"><span class="dot"></span>Referred</span>
+      </div>
+      <div class="sub">fintech · pasted broker email · received 18h ago · rating v1.0</div>
+      <div class="actions">
+        <button class="btn btn-primary">Approve &amp; bind</button>
+        <button class="btn btn-ghost">Decline</button>
+        <button class="btn btn-ghost">Request info</button>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="sec">
+        <div class="sech">Extracted vs Companies House</div>
+        <div class="cmp">
+          <div class="hrow"><div>Field</div><div>Extracted</div><div></div><div>Companies House</div></div>
+          <div class="crow flag">
+            <div class="field">Company name</div>
+            <div class="val">Ledgerline Capital Ltd</div>
+            <div class="gut warn">▲</div>
+            <div class="val mono">LEDGERLINE HOLDINGS LIMITED</div>
+          </div>
+          <div class="crow"><div class="field">Company number</div><div class="val mono">SC123456</div><div class="gut">✓</div><div class="val mono">SC123456</div></div>
+          <div class="crow"><div class="field">Status</div><div class="val">—</div><div class="gut">✓</div><div class="val">active</div></div>
+          <div class="crow"><div class="field">Incorporated</div><div class="val">5 yrs trading</div><div class="gut">✓</div><div class="val mono">2021-03-11</div></div>
+          <div class="crow"><div class="field">SIC</div><div class="val">—</div><div class="gut">✓</div><div class="val mono">64191 · banking</div></div>
+        </div>
+        <div class="disc">▲&nbsp;<span>Submitted name matches the Companies House record at only <span class="mono">75%</span>, below the 85% threshold. Verify the insured before binding.</span></div>
+      </div>
+
+      <div class="sec">
+        <div class="sech">Pricing — how the premium was built</div>
+        <div class="ftab">
+          <div class="fh"><div>Factor</div><div>Band</div><div class="fx">×</div><div class="fp">Running</div></div>
+          <div class="fr"><div class="fname">Base rate</div><div class="fband"></div><div class="fx mono"></div><div class="fp mono">£900</div></div>
+          <div class="fr"><div class="fname">Limit</div><div class="fband">£2,000,000</div><div class="fx mono">2.60</div><div class="fp mono">£2,340</div></div>
+          <div class="fr"><div class="fname">Revenue band</div><div class="fband">£2m – £10m</div><div class="fx mono">1.70</div><div class="fp mono">£3,978</div></div>
+          <div class="fr"><div class="fname">Sector</div><div class="fband">fintech</div><div class="fx mono">1.35</div><div class="fp mono">£5,370</div></div>
+          <div class="fr"><div class="fname">Data volume</div><div class="fband">over 1m records</div><div class="fx mono">1.50</div><div class="fp mono">£8,055</div></div>
+          <div class="fr"><div class="fname">Claims history</div><div class="fband">no prior claims</div><div class="fx mono">1.00</div><div class="fp mono">£8,055</div></div>
+          <div class="fr"><div class="fname">Months trading</div><div class="fband">2 years or more</div><div class="fx mono">1.00</div><div class="fp mono">£8,055</div></div>
+          <div class="ff"><div class="fname">Indicative premium</div><div class="fband"></div><div class="fx"></div><div class="fp mono">£8,060</div></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sech">Why it referred</div>
+        <div class="reasons">
+          <div class="reason"><span class="rcode">CH_NAME_MISMATCH</span><span>Submitted name matches the Companies House record at only 75%.</span></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    document.addEventListener('keydown',e=>{ if(e.key==='t'){const r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';}});
+  </script>
+</body>
+</html>
