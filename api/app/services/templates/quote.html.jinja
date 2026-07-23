@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face {
+    font-family: "IBM Plex Sans";
+    font-weight: 400;
+    src: url('{{ fonts.sans_400 | safe }}') format("woff");
+  }
+  @font-face {
+    font-family: "IBM Plex Sans";
+    font-weight: 600;
+    src: url('{{ fonts.sans_600 | safe }}') format("woff");
+  }
+  @font-face {
+    font-family: "IBM Plex Mono";
+    font-weight: 400;
+    src: url('{{ fonts.mono_400 | safe }}') format("woff");
+  }
+
+  @page {
+    size: A4;
+    margin: 2cm 2cm 2.4cm;
+    @bottom-left {
+      content: "Rating {{ rating_version }}";
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 7.5pt;
+      color: #9a9a9a;
+    }
+    @bottom-right {
+      content: "Submission {{ submission_id }}";
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 7.5pt;
+      color: #9a9a9a;
+    }
+  }
+
+  html { font-family: "IBM Plex Sans", sans-serif; color: #1a1a1a; font-size: 10.5pt; }
+  body { margin: 0; line-height: 1.5; }
+  .mono { font-family: "IBM Plex Mono", monospace; }
+
+  /* SPECIMEN repeats on every page: position:fixed is per-page in paged media (R6). */
+  .watermark {
+    position: fixed;
+    top: 42%;
+    left: 0;
+    right: 0;
+    text-align: center;
+    transform: rotate(-28deg);
+    font-size: 92pt;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: rgba(190, 45, 45, 0.09);
+  }
+
+  header { border-bottom: 2px solid #1a1a1a; padding-bottom: 10px; margin-bottom: 22px; }
+  .brand { font-size: 15pt; font-weight: 600; letter-spacing: -0.01em; }
+  .product { color: #6a6a6a; font-size: 9.5pt; margin-top: 2px; }
+  .ref { float: right; text-align: right; }
+  .ref-label { color: #6a6a6a; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.06em; }
+  .ref-value { font-size: 12pt; font-weight: 600; }
+
+  h1 { font-size: 13pt; font-weight: 600; margin: 0 0 4px; }
+  .sub { color: #6a6a6a; font-size: 9.5pt; margin-bottom: 20px; }
+
+  .sech {
+    font-size: 8pt; text-transform: uppercase; letter-spacing: 0.07em;
+    color: #8a8a8a; font-weight: 600; margin: 22px 0 8px;
+  }
+
+  table { border-collapse: collapse; width: 100%; }
+  .terms td { padding: 7px 0; border-bottom: 1px solid #ebebeb; }
+  .terms td.label { color: #6a6a6a; width: 45%; }
+  .terms td.value { text-align: right; font-weight: 600; }
+  .terms tr.total td { border-bottom: none; border-top: 2px solid #1a1a1a; padding-top: 10px; font-size: 12pt; }
+
+  .factors th {
+    text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.05em;
+    color: #8a8a8a; font-weight: 600; padding: 0 0 6px; border-bottom: 1px solid #dcdcdc;
+  }
+  .factors td { padding: 6px 0; border-bottom: 1px solid #ebebeb; font-size: 9.5pt; }
+  .factors td.band { color: #6a6a6a; }
+  .factors td.mult { text-align: right; }
+
+  .note { margin-top: 26px; color: #6a6a6a; font-size: 8.5pt; line-height: 1.6; }
+</style>
+</head>
+<body>
+  <div class="watermark">SPECIMEN</div>
+
+  <header>
+    <div class="ref">
+      <div class="ref-label">Quote reference</div>
+      <div class="ref-value mono">{{ quote_ref }}</div>
+    </div>
+    <div class="brand">Underwrite</div>
+    <div class="product">Tech E&amp;O / Cyber</div>
+  </header>
+
+  <h1>{{ insured }}</h1>
+  <div class="sub">Indicative quote &middot; valid until <span class="mono">{{ valid_until }}</span></div>
+
+  <div class="sech">Terms</div>
+  <table class="terms">
+    <tr><td class="label">Limit of indemnity</td><td class="value mono">{{ limit }}</td></tr>
+    <tr><td class="label">Excess</td><td class="value mono">{{ excess }}</td></tr>
+    <tr><td class="label">Inception</td><td class="value mono">{{ inception }}</td></tr>
+    <tr><td class="label">Valid until</td><td class="value mono">{{ valid_until }}</td></tr>
+    <tr class="total"><td class="label">Gross annual premium</td><td class="value mono">{{ premium }}</td></tr>
+  </table>
+
+  <div class="sech">How the premium was built</div>
+  <table class="factors">
+    <thead>
+      <tr><th>Factor</th><th>Basis</th><th style="text-align:right">&times;</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Base rate</td><td class="band"></td><td class="mult mono">{{ base_premium }}</td></tr>
+      {% for factor in factors %}
+      <tr>
+        <td>{{ factor.name }}</td>
+        <td class="band">{{ factor.band_label }}</td>
+        <td class="mult mono">{{ factor.multiplier }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="note">
+    This is an indicative quote for Technology Errors &amp; Omissions / Cyber cover, subject to
+    underwriting review and the policy wording. The premium is calculated under rating
+    {{ rating_version }}. Not a contract of insurance until countersigned.
+  </p>
+</body>
+</html>
