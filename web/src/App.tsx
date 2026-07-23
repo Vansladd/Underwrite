@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import { Login } from './Login'
+import { Drawer } from './components/Drawer'
 import { FilterTabs, type Tab } from './components/FilterTabs'
 import { StatusBadge } from './components/StatusBadge'
 import { TopBar } from './components/TopBar'
@@ -28,13 +29,15 @@ function metaLine(s: Submission): string {
     .join(' · ')
 }
 
-function QueueRow({ s }: { s: Submission }) {
+function QueueRow({ s, onSelect }: { s: Submission; onSelect: (id: string) => void }) {
   const glyph = s.status === 'referred' ? '▲' : '●'
   const meta = metaLine(s)
   return (
-    <div
+    <button
+      type="button"
       role="row"
-      className="grid grid-cols-[1fr_130px_120px_80px] items-center gap-4 border-b border-border px-[18px] py-2.5 last:border-b-0"
+      onClick={() => onSelect(s.id)}
+      className="grid w-full grid-cols-[1fr_130px_120px_80px] items-center gap-4 border-b border-border px-[18px] py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-2"
     >
       <div role="cell" className="min-w-0">
         <div className="truncate font-medium text-ink">{s.company_name ?? 'Untitled submission'}</div>
@@ -54,7 +57,7 @@ function QueueRow({ s }: { s: Submission }) {
       <div role="cell" className="tnum text-right text-[13px] text-ink-muted">
         {relativeTime(s.created_at)}
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -75,6 +78,7 @@ function SkeletonRow() {
 function Queue({ operator }: { operator: Operator }) {
   const stats = useSubmissionStats()
   const [active, setActive] = useState('referred')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // Counts come from the whole table (stats), not a paginated page, so they never under-report.
   const tabs = useMemo<Tab[]>(() => {
@@ -139,10 +143,11 @@ function Queue({ operator }: { operator: Operator }) {
           )}
 
           {rows?.map((s) => (
-            <QueueRow key={s.id} s={s} />
+            <QueueRow key={s.id} s={s} onSelect={setSelectedId} />
           ))}
         </div>
       </div>
+      {selectedId && <Drawer id={selectedId} onClose={() => setSelectedId(null)} />}
     </div>
   )
 }
