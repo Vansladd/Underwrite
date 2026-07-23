@@ -27,6 +27,8 @@ class AuditEvent(Base):
 
     event_type: Mapped[AuditEventType] = mapped_column(pg_enum(AuditEventType, "audit_event_type"))
     actor: Mapped[AuditActor] = mapped_column(pg_enum(AuditActor, "audit_actor"))
+    # Names the operator when actor is OPS; null otherwise. See D-026.
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
     payload: Mapped[json_object]
     occurred_at: Mapped[written_at]
 

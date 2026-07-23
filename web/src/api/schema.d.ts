@@ -4,6 +4,57 @@
  */
 
 export interface paths {
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login */
+        post: operations["login_api_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout */
+        post: operations["logout_api_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Me */
+        get: operations["me_api_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/submissions": {
         parameters: {
             query?: never;
@@ -16,6 +67,23 @@ export interface paths {
         put?: never;
         /** Create Submission */
         post: operations["create_submission_api_submissions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/submissions/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Submission Stats */
+        get: operations["submission_stats_api_submissions_stats_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -233,6 +301,13 @@ export interface components {
          * @enum {string}
          */
         InputMode: "form" | "paste" | "pdf_upload";
+        /** LoginRequest */
+        LoginRequest: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
         /** QuoteRead */
         QuoteRead: {
             /**
@@ -356,8 +431,8 @@ export interface components {
             /** Audit Events */
             audit_events?: components["schemas"]["AuditEventRead"][];
         };
-        /** SubmissionRead */
-        SubmissionRead: {
+        /** SubmissionListItem */
+        SubmissionListItem: {
             /**
              * Id
              * Format: uuid
@@ -365,24 +440,51 @@ export interface components {
             id: string;
             status: components["schemas"]["SubmissionStatus"];
             input_mode: components["schemas"]["InputMode"];
-            /** Raw Input */
-            raw_input: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
+            /** Company Name */
+            company_name: string | null;
+            /** Company Number */
+            company_number: string | null;
+            sector: components["schemas"]["Sector"] | null;
+            /** Annual Revenue Pence */
+            annual_revenue_pence: number | null;
+            requested_limit: components["schemas"]["RequestedLimit"] | null;
+            /** Premium Pence */
+            premium_pence: number | null;
+            decision: string | null;
+            /** Headline */
+            headline: string | null;
+        };
+        /** SubmissionStats */
+        SubmissionStats: {
+            /** Total */
+            total: number;
+            /** By Status */
+            by_status: {
+                [key: string]: number;
+            };
         };
         /**
          * SubmissionStatus
          * @enum {string}
          */
         SubmissionStatus: "received" | "failed" | "auto_approved" | "referred" | "declined" | "quoted";
+        /** UserRead */
+        UserRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Username */
+            username: string;
+            /** Display Name */
+            display_name: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -405,6 +507,77 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    login_api_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    logout_api_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    me_api_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRead"];
+                };
+            };
+        };
+    };
     list_submissions_api_submissions_get: {
         parameters: {
             query?: {
@@ -424,7 +597,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SubmissionRead"][];
+                    "application/json": components["schemas"]["SubmissionListItem"][];
                 };
             };
             /** @description Validation Error */
@@ -467,6 +640,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submission_stats_api_submissions_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionStats"];
                 };
             };
         };

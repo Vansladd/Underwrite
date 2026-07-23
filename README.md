@@ -12,6 +12,23 @@ make lint fmt  # ruff
 
 Postgres is on host port **55432**; the API on **8000**.
 
+## Operator console
+
+`make up` also starts a Vite dev server (containerised) at **http://localhost:5173** that proxies
+`/api` to the API — same-origin, so there is no CORS. Every data and money-spending route sits
+behind a login; only `/health` and `/api/auth/login` are open.
+
+```
+make up && make seed        # seeds the sample submissions + a demo operator
+make web-types              # regenerate web/src/api/schema.d.ts from the live OpenAPI
+make web-lint               # eslint + tsc
+```
+
+**Local login:** `demo` / `underwrite-demo` (set by `SEED_OPERATOR_*`, overridable in `.env`). The
+**deployed URL uses a strong, private password** from `.env.prod` — never this public default, and
+never committed. Auth is a signed-cookie session (Argon2id hashes); rotating `SECRET_KEY` logs
+everyone out. See `docs/DECISIONS.md` D-026.
+
 ## LLM extraction
 
 Pasted submissions are parsed into a validated `ExtractedApplication` by

@@ -5,6 +5,77 @@ Running log of non-obvious technical choices. Domain and pricing decisions live 
 
 ---
 
+## D-027 · Operator-console visual system — refined desk, copper accent, token-swap themes
+
+**Ticket:** console redesign · **Date:** 2026-07-23
+
+The frontend gets a committed visual system, captured in root **`PRODUCT.md`** (register: product) and
+**`DESIGN.md`** (tokens), with the shaping process in `design/`. Direction: a **refined product desk**
+(Linear/Stripe-dashboard register) — crisp cool-neutral canvas, quiet 1px structure, one warm
+**copper** accent, IBM Plex Sans + Mono, shipping **light and dark**.
+
+**Themes are a pure token swap.** Every colour is a CSS variable; Tailwind v4 `@theme inline` maps
+`--color-*` onto them so utilities (`bg-surface`, `text-ink-muted`) resolve live. `:root` holds light;
+`@media (prefers-color-scheme: dark) :root:not([data-theme=light])` follows the OS; `:root[data-theme]`
+lets the toggle override either way. An inline `<head>` script stamps `data-theme` before first paint,
+so there is no light/dark flash. No per-component `dark:` classes. Fonts self-host via `@fontsource`
+(offline-safe, matches the clone-and-run ethos).
+
+**Copper is interaction and identity only; amber is the `referred` status.** Named Rule 1 —
+different hue (47 vs 85), different treatment (copper = saturated solid/underline; amber = soft pill),
+so the brand accent never reads as a status. Numbers are mono + tabular everywhere (premium, score,
+company number, time). Status is a dot + word pill; the row stays neutral (no row-fills, no
+side-stripes). Signals never rely on colour alone (status = dot+word; discrepancy = red + ▲ + label).
+
+**The queue row defends its own decision** — the upgrade over a plain list. A read-only
+`SubmissionListItem` flattens what the operator scans before opening a row: company, sector, revenue,
+limit, number, premium, decision, and a **one-line `headline`** derived server-side from the rating's
+first refer/decline reason (or the first missing field, humanised). The list endpoint eager-loads
+extraction+rating+enrichment and maps to it; the detail endpoint is unchanged. So each row previews
+the machine's reason in the status hue, making the deterministic-pricing thesis visible at the queue
+level. The detail drawer (the extracted-vs-CH + factor-ladder centrepiece) is mocked in
+`design/operator-console/mockups/drawer.html` and lands with UW-035.
+
+---
+
+## D-026 · Operator identity — session cookie, Argon2id, and the money paths behind login
+
+**Ticket:** UW-019 · **Date:** 2026-07-23 · **Supersedes:** D-012 (applicant-anonymous)
+
+The single shared Basic credential (`ops`/`changeme`) is gone, replaced by a `users` table
+(Argon2id via `argon2-cffi`), a **signed-cookie session** (Starlette `SessionMiddleware` +
+`itsdangerous`, `HttpOnly` + `SameSite=Lax`, `Secure` in prod), and a `CurrentUser` dependency.
+Revocation is a `SECRET_KEY` rotation; a sessions table is the upgrade path if logout-everywhere is
+ever needed. Not a hosted IdP (the demo must run with no external network), not JWT (no refresh
+dance), not `fastapi-users` (registration/verification/reset/OAuth we don't have, and it constrains
+the `User` shape `actor_id` points at).
+
+**The money paths moved behind the login — this supersedes D-012.** D-012 let applicants
+`POST /api/submissions` and read a submission by UUID capability with no account. But an
+unauthenticated POST burns Anthropic credit and the Companies House key, so the cost boundary wins:
+POST, the detail GET, the queue, and `/api/documents` all now require `CurrentUser`. Only `/health`,
+`/api/auth/login`, `/api/auth/logout`, and the OpenAPI/docs routes are public. A **structural test**
+(`test_route_gating.py`) fails if any route is neither classified public nor gated — "no code path
+skips authentication" is enforced, not asserted per-route. The shared credential is deleted, not
+left as a second way in.
+
+**The deployed URL has proper auth, not a public password.** The seeded operator's password is a
+setting (`SEED_OPERATOR_PASSWORD`): the local default `underwrite-demo` keeps `make up && make seed`
+instantly usable, but `.env.prod` sets a **strong secret** shared with reviewers privately — never a
+`DEMO_MODE` bypass (one env var from an open admin panel), never a README-published password on the
+public box. `seed_operator` **upserts** (re-hashes on reseed) so the operator always tracks the
+configured secret; a lifespan guard warns loudly if a `session_secure` (prod) deployment still runs
+the public default. Login is constant-time — a username miss verifies a dummy hash so it is not
+timing-distinguishable from a wrong password.
+
+**Attribution is wired now, asserted at #34.** `audit_events.actor_id` (nullable FK → `users`,
+`ON DELETE RESTRICT` per D-007) and a `record_event(actor_id=…)` param exist and round-trip in a
+test, but this ticket writes no operator-attributed events — approve/decline is the first ops action
+(UW-034), so "the trail names the underwriter" is proven there, not here. Existing pipeline /
+`submission_received` events stay `system`/`applicant` with a null `actor_id`.
+
+---
+
 ## D-025 · Frontend scaffold — same-origin proxy, generated types, containerised dev
 
 **Ticket:** UW-030 · **Date:** 2026-07-22

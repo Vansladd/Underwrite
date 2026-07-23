@@ -6,7 +6,8 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ASYNC_DRIVER_PREFIX = "postgresql+asyncpg://"
-DEFAULT_OPS_PASSWORD = "changeme"
+DEFAULT_SECRET_KEY = "dev-insecure-change-me"
+DEFAULT_OPERATOR_PASSWORD = "underwrite-demo"
 
 
 class Settings(BaseSettings):
@@ -23,7 +24,15 @@ class Settings(BaseSettings):
 
     companies_house_base_url: str = "https://api.company-information.service.gov.uk"
 
-    ops_password: str = DEFAULT_OPS_PASSWORD
+    # Signs the session cookie (itsdangerous). Rotating it revokes every live session.
+    secret_key: str = DEFAULT_SECRET_KEY
+    # Secure cookie: off for http://localhost dev, on (=1) behind TLS in prod.
+    session_secure: bool = False
+
+    # The seeded operator. Local default is public; prod .env sets a strong secret. See D-026.
+    seed_operator_username: str = "demo"
+    seed_operator_password: str = DEFAULT_OPERATOR_PASSWORD
+
     quote_base_url: str = "http://localhost:8000"
     local_pdf: bool = True
 

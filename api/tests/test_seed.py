@@ -3,8 +3,9 @@ import uuid
 from sqlalchemy import func, select
 
 from app.domain.enums import AuditEventType, Decision, ReasonCode, SubmissionStatus
-from app.models import AuditEvent, Rating, Submission
-from app.seed import SCENARIOS, SEED_NAMESPACE, seed
+from app.models import AuditEvent, Rating, Submission, User
+from app.seed import SCENARIOS, SEED_NAMESPACE, seed, seed_operator
+from app.services.auth import verify_password
 
 
 def scenario_id(slug: str) -> uuid.UUID:
@@ -13,6 +14,20 @@ def scenario_id(slug: str) -> uuid.UUID:
 
 async def count(db, model) -> int:
     return await db.scalar(select(func.count()).select_from(model))
+
+
+async def test_the_operator_is_upserted_and_tracks_the_configured_password(db):
+    await seed_operator(db, "demo", "first-secret")
+    assert await count(db, User) == 1
+    user = await db.scalar(select(User).where(User.username == "demo"))
+    assert verify_password(user.password_hash, "first-secret")
+
+    # A changed password re-hashes in place — one operator, new secret. See D-026.
+    await seed_operator(db, "demo", "rotated-secret")
+    assert await count(db, User) == 1
+    user = await db.scalar(select(User).where(User.username == "demo"))
+    assert verify_password(user.password_hash, "rotated-secret")
+    assert not verify_password(user.password_hash, "first-secret")
 
 
 async def test_seeding_twice_is_idempotent(db):

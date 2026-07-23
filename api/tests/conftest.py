@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
@@ -6,7 +7,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from httpx import ASGITransport, AsyncClient, BasicAuth
+from httpx import ASGITransport, AsyncClient
 from hypothesis import settings
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
@@ -14,15 +15,25 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.api.deps import OPS_USERNAME, get_ch_client, get_extractor
-from app.config import DEFAULT_OPS_PASSWORD, get_settings
+from app.api.deps import get_ch_client, get_current_user, get_extractor
+from app.config import get_settings
 from app.db import get_db
 from app.domain.enums import DataVolume, RequestedLimit, Sector
 from app.main import app
+from app.models import User
 from app.schemas import ExtractedApplication
 from tests.fakes import FakeChClient, FakeExtractor
 
 ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
+
+# A stand-in operator so the gated routes are reachable without threading a login through
+# every request. The auth flow itself is exercised through `anon_api` in test_auth.py.
+TEST_USER = User(
+    id=uuid.UUID("00000000-0000-4000-8000-0000000000aa"),
+    username="tester",
+    password_hash="unused",
+    display_name="Test Operator",
+)
 
 CANNED_EXTRACTION = ExtractedApplication(
     company_name="Example Ltd",
@@ -148,23 +159,38 @@ def fake_ch_client() -> FakeChClient:
     return FakeChClient()
 
 
-@pytest.fixture
-async def api(db, fake_extractor, fake_ch_client) -> AsyncIterator[AsyncClient]:
-    """In-loop and on the test transaction. TestClient would use its own loop and the dev DB.
-
-    The ASGI transport never runs lifespan, so the pipeline clients are injected here as fakes.
-    """
+def _install_overrides(db, fake_extractor, fake_ch_client, *, authed: bool) -> None:
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_extractor] = lambda: fake_extractor
     app.dependency_overrides[get_ch_client] = lambda: fake_ch_client
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://underwrite.test") as client:
-        yield client
+    if authed:
+        app.dependency_overrides[get_current_user] = lambda: TEST_USER
+
+
+def _clear_overrides() -> None:
     # pop, not clear: clear() would drop an override another fixture installed.
-    for dependency in (get_db, get_extractor, get_ch_client):
+    for dependency in (get_db, get_extractor, get_ch_client, get_current_user):
         app.dependency_overrides.pop(dependency, None)
 
 
 @pytest.fixture
-def ops_auth() -> BasicAuth:
-    return BasicAuth(OPS_USERNAME, DEFAULT_OPS_PASSWORD)
+async def api(db, fake_extractor, fake_ch_client) -> AsyncIterator[AsyncClient]:
+    """In-loop, on the test transaction, and authed as TEST_USER via a dependency override.
+
+    The ASGI transport never runs lifespan, so the pipeline clients are injected here as fakes.
+    """
+    _install_overrides(db, fake_extractor, fake_ch_client, authed=True)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://underwrite.test") as client:
+        yield client
+    _clear_overrides()
+
+
+@pytest.fixture
+async def anon_api(db, fake_extractor, fake_ch_client) -> AsyncIterator[AsyncClient]:
+    """Like `api` but with no auth override — exercises the real session/login flow and the gate."""
+    _install_overrides(db, fake_extractor, fake_ch_client, authed=False)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://underwrite.test") as client:
+        yield client
+    _clear_overrides()

@@ -1,5 +1,6 @@
 import pytest
 
+from app.api.deps import get_current_user
 from app.config import Settings
 from app.main import app
 from app.services.pdf import (
@@ -9,6 +10,7 @@ from app.services.pdf import (
     data_only_url_fetcher,
 )
 from app.services.storage import LocalStorage, get_storage
+from tests.conftest import TEST_USER
 
 SAMPLE_HTML = '<html><body style="font-family: DejaVu Sans"><h1>Quote</h1><p>body</p></body></html>'
 
@@ -40,9 +42,11 @@ def test_local_render_round_trips_through_the_documents_route(client, tmp_path):
     storage = LocalStorage(tmp_path, "http://testserver")
     key = LocalPdfRenderer(storage).render_and_store("q-2", SAMPLE_HTML)
     app.dependency_overrides[get_storage] = lambda: storage
+    app.dependency_overrides[get_current_user] = lambda: TEST_USER
     try:
         response = client.get(f"/api/documents/{key}")
         assert response.status_code == 200
         assert response.content[:4] == b"%PDF"
     finally:
         app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_current_user, None)

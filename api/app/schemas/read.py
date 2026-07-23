@@ -122,9 +122,31 @@ class SubmissionRead(Read):
     updated_at: datetime
 
 
+# The queue row: flattens the fields the operator scans before opening a submission.
+class SubmissionListItem(Read):
+    id: uuid.UUID
+    status: SubmissionStatus
+    input_mode: InputMode
+    created_at: datetime
+    company_name: str | None
+    company_number: str | None
+    sector: Sector | None
+    annual_revenue_pence: int | None
+    requested_limit: RequestedLimit | None
+    premium_pence: int | None
+    decision: DecisionName | None
+    headline: str | None
+
+
 class SubmissionDetail(SubmissionRead):
     extraction: ExtractionRead | None = None
     enrichment: EnrichmentRead | None = None
     rating: RatingRead | None = None
     quote: QuoteRead | None = None
     audit_events: list[AuditEventRead] = Field(default_factory=list)
+
+
+# Whole-table counts for the queue tabs, so they don't under-report a paginated page.
+class SubmissionStats(BaseModel):
+    total: int
+    by_status: dict[str, int]

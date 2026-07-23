@@ -92,6 +92,7 @@ async def record_event(
     event_type: AuditEventType,
     actor: AuditActor,
     payload: Mapping[str, Any],
+    actor_id: uuid.UUID | None = None,
 ) -> AuditEvent:
     """Append one event. Flushes, so a bad submission_id fails here and not at commit."""
     if not isinstance(payload, Mapping):
@@ -101,6 +102,7 @@ async def record_event(
         submission_id=submission_id,
         event_type=event_type,
         actor=actor,
+        actor_id=actor_id,
         payload=jsonable(payload),
     )
     session.add(recorded)

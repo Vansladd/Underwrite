@@ -1,3 +1,4 @@
+from app.schemas.auth import LoginRequest, UserRead
 from app.schemas.companies_house import CompanyProfile
 from app.schemas.extraction import (
     ExtractedApplication,
@@ -19,7 +20,9 @@ from app.schemas.read import (
     RatingRead,
     ReasonRead,
     SubmissionDetail,
+    SubmissionListItem,
     SubmissionRead,
+    SubmissionStats,
 )
 from app.schemas.write import DeclineRequest, SubmissionCreate
 
@@ -32,12 +35,16 @@ __all__ = [
     "ExtractionRead",
     "FactorRead",
     "IncompleteExtraction",
+    "LoginRequest",
     "QuoteRead",
     "RatingRead",
     "ReasonRead",
     "SubmissionCreate",
     "SubmissionDetail",
+    "SubmissionListItem",
     "SubmissionRead",
+    "SubmissionStats",
+    "UserRead",
     "factor_to_json",
     "rating_to_orm_kwargs",
     "reason_to_json",

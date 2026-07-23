@@ -49,10 +49,6 @@ services:
     build: ./web
     depends_on:
       - api
-    environment:
-      # Interim dev auth for the list endpoint until #31b brings the cookie session.
-      VITE_OPS_USER: ${OPS_USERNAME:-ops}
-      VITE_OPS_PASSWORD: ${OPS_PASSWORD:-changeme}
     ports:
       - "${WEB_PORT:-5173}:5173"
     volumes:
