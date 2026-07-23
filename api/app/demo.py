@@ -1,51 +1,87 @@
 import sys
+import uuid
+from datetime import date, timedelta
 
 import httpx
 
 from app.config import get_settings
+from app.models import Extraction, Quote, Rating, Submission
 from app.services.pdf import build_renderer
+from app.services.quote_pdf import build_quote_html
 from app.services.storage import get_storage
 
-QUOTE_HTML = """<!doctype html>
-<html><head><meta charset="utf-8"><style>
-  body { font-family: "DejaVu Sans", sans-serif; margin: 2cm; color: #111; }
-  h1 { font-size: 22pt; }
-  .muted { color: #666; }
-  table { border-collapse: collapse; margin-top: 1cm; }
-  td { padding: 4px 24px 4px 0; }
-</style></head><body>
-  <h1>Underwrite &mdash; Indicative Quote</h1>
-  <p class="muted">Tech E&amp;O / Cyber &middot; specimen</p>
-  <table>
-    <tr><td>Insured</td><td>Acme Robotics Ltd</td></tr>
-    <tr><td>Limit</td><td>&pound;1,000,000</td></tr>
-    <tr><td>Excess</td><td>&pound;10,000</td></tr>
-    <tr><td>Gross premium</td><td>&pound;4,250</td></tr>
-  </table>
-</body></html>"""
+
+def _canned_quote_html() -> str:
+    # A transient (un-persisted) approved submission, so `make demo` renders the real template.
+    today = date.today()
+    submission = Submission(id=uuid.uuid4(), raw_input=None)
+    submission.extraction = Extraction(company_name="Acme Robotics Ltd")
+    submission.rating = Rating(
+        rating_version="v1.0",
+        base_premium_pence=90_000,
+        indicative_premium_pence=171_000,
+        annual_premium_pence=171_000,
+        factors=[
+            {
+                "code": "LIMIT",
+                "band_label": "£1,000,000",
+                "multiplier": "1.9",
+                "premium_after_pence": "171000",
+            },
+            {
+                "code": "REVENUE_BAND",
+                "band_label": "£100k – £500k",
+                "multiplier": "1.0",
+                "premium_after_pence": "171000",
+            },
+            {
+                "code": "SECTOR",
+                "band_label": "saas",
+                "multiplier": "1.0",
+                "premium_after_pence": "171000",
+            },
+        ],
+    )
+    submission.quote = Quote(
+        quote_ref="Q-2026-DEMO01",
+        limit_pence=100_000_000,
+        excess_pence=250_000,
+        gross_premium_pence=171_000,
+        inception_date=today,
+        valid_until=today + timedelta(days=30),
+    )
+    return build_quote_html(submission)
 
 
 def main() -> int:
     settings = get_settings()
     base = settings.quote_base_url.rstrip("/")
 
-    submission = httpx.post(
-        f"{base}/api/submissions",
-        json={"input_mode": "paste", "raw_input": "Acme Robotics Ltd - SaaS, GBP 1m limit"},
-        timeout=10,
-    )
-    submission.raise_for_status()
-    submission_id = submission.json()["id"]
-    print(f"created submission {submission_id}")
-
+    # Render the real quote template (no LLM, no AWS), then prove it serves through the gated
+    # documents route with a real session cookie (UW-019).
     renderer = build_renderer(settings, get_storage())
-    key = renderer.render_and_store(f"demo-{submission_id}", QUOTE_HTML)
+    key = renderer.render_and_store("demo-quote", _canned_quote_html())
     print(f"rendered + stored {key} (LOCAL_PDF={settings.local_pdf})")
 
-    pdf = httpx.get(f"{base}/api/documents/{key}", timeout=10)
-    pdf.raise_for_status()
-    if pdf.content[:4] != b"%PDF":
-        raise SystemExit("served document is not a PDF")
+    with httpx.Client(base_url=base, timeout=10) as client:
+        login = client.post(
+            "/api/auth/login",
+            json={
+                "username": settings.seed_operator_username,
+                "password": settings.seed_operator_password,
+            },
+        )
+        if login.status_code == 401:
+            raise SystemExit("login failed — run `make seed` to create the demo operator first")
+        login.raise_for_status()
+
+        # Light API smoke: the session reaches a gated, DB-backed endpoint.
+        client.get("/api/submissions/stats").raise_for_status()
+
+        pdf = client.get(f"/api/documents/{key}")
+        pdf.raise_for_status()
+        if pdf.content[:4] != b"%PDF":
+            raise SystemExit("served document is not a PDF")
 
     print(f"OK - {len(pdf.content)} byte PDF at {base}/api/documents/{key}")
     return 0
