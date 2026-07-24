@@ -7,6 +7,7 @@ from app.db import DbSession
 from app.models import User
 from app.services.companies_house import CompaniesHouseClient
 from app.services.extraction import AnthropicExtractor
+from app.services.pdf import PdfRenderer
 
 UNAUTHENTICATED = HTTPException(status.HTTP_401_UNAUTHORIZED, "authentication required")
 
@@ -39,5 +40,10 @@ def get_ch_client(request: Request) -> CompaniesHouseClient:
     return request.app.state.ch_client
 
 
+def get_renderer(request: Request) -> PdfRenderer:
+    return request.app.state.renderer
+
+
 ExtractorDep = Annotated[AnthropicExtractor, Depends(get_extractor)]
 ChClientDep = Annotated[CompaniesHouseClient, Depends(get_ch_client)]
+RendererDep = Annotated[PdfRenderer, Depends(get_renderer)]

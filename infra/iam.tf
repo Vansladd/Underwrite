@@ -28,6 +28,25 @@ resource "aws_iam_role_policy" "instance_s3" {
   policy = data.aws_iam_policy_document.instance_s3.json
 }
 
+# Invoke only the PDF render Lambda (UW-052). Gated on image_tag, like the Lambda itself, so a
+# box-only apply (no image) plans clean.
+data "aws_iam_policy_document" "instance_lambda" {
+  count = var.image_tag != "" ? 1 : 0
+
+  statement {
+    sid       = "InvokePdfRender"
+    actions   = ["lambda:InvokeFunction"]
+    resources = [aws_lambda_function.pdf_render[0].arn]
+  }
+}
+
+resource "aws_iam_role_policy" "instance_lambda" {
+  count  = var.image_tag != "" ? 1 : 0
+  name   = "invoke-pdf-render"
+  role   = aws_iam_role.instance.id
+  policy = data.aws_iam_policy_document.instance_lambda[0].json
+}
+
 # Pull the API image. GetAuthorizationToken has no resource scope; the pull verbs do.
 data "aws_iam_policy_document" "instance_ecr" {
   statement {

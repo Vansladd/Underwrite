@@ -12,6 +12,8 @@ from app.config import DEFAULT_OPERATOR_PASSWORD, DEFAULT_SECRET_KEY, get_settin
 from app.db import DbSession, build_engine, build_sessionmaker
 from app.services.companies_house import CompaniesHouseClient
 from app.services.extraction import AnthropicExtractor
+from app.services.pdf import build_renderer
+from app.services.storage import get_storage
 
 
 @asynccontextmanager
@@ -31,6 +33,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # One httpx/Anthropic connection pool per process, not per request.
     app.state.extractor = AnthropicExtractor(settings)
     app.state.ch_client = CompaniesHouseClient(settings)
+    # LocalPdfRenderer (dev) or LambdaPdfRenderer (prod), built once — holds a boto3 client in prod.
+    app.state.renderer = build_renderer(settings, get_storage())
     try:
         yield
     finally:

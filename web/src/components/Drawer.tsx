@@ -4,6 +4,7 @@ import {
   type SubmissionDetail,
   useApproveSubmission,
   useDeclineSubmission,
+  useRenderQuote,
   useSubmission,
 } from '../hooks/useSubmissions'
 import {
@@ -280,7 +281,8 @@ function Actions({ s }: { s: SubmissionDetail }) {
   )
 }
 
-function QuotePanel({ quote }: { quote: Quote }) {
+function QuotePanel({ quote, submissionId }: { quote: Quote; submissionId: string }) {
+  const render = useRenderQuote(submissionId)
   const rows: [string, string][] = [
     ['Limit', poundsFromPence(quote.limit_pence)],
     ['Excess', poundsFromPence(quote.excess_pence)],
@@ -300,6 +302,32 @@ function QuotePanel({ quote }: { quote: Quote }) {
           </div>
         ))}
       </dl>
+      <div className="border-t border-border px-3.5 py-2.5">
+        {quote.pdf_s3_key ? (
+          <a
+            href={`/api/submissions/${submissionId}/quote.pdf`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[13px] font-medium text-[color:var(--accent-text)] hover:underline"
+          >
+            Download quote (PDF) ↗
+          </a>
+        ) : (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={render.isPending}
+              onClick={() => render.mutate()}
+              className="rounded-md border border-border-strong bg-surface px-3 py-1.5 text-[13px] font-medium text-ink disabled:opacity-45"
+            >
+              {render.isPending ? 'Generating…' : 'Generate PDF'}
+            </button>
+            <span className="text-[13px] text-ink-subtle">
+              {render.isError ? (render.error?.message ?? 'Render failed.') : 'PDF not generated yet.'}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -351,7 +379,7 @@ function DrawerBody({ s }: { s: SubmissionDetail }) {
 
       {s.quote && (
         <Section title="Quote">
-          <QuotePanel quote={s.quote} />
+          <QuotePanel quote={s.quote} submissionId={s.id} />
         </Section>
       )}
 
