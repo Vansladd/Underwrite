@@ -1,6 +1,76 @@
 # Underwrite — AI Underwriting Workbench
 
-Submission-to-quote pipeline for Tech E&O / Cyber.
+A submission-to-quote pipeline for **Technology E&O / Cyber** insurance. A broker sends in a risk;
+Underwrite turns it into a priced, reviewable quote in seconds — an LLM reads the submission, the
+company is verified against Companies House, a deterministic engine prices it, and an operator
+approves or declines from a console that shows exactly how every number was reached.
+
+## What it does
+
+Insurance intake is unstructured — a broker pastes an email, fills a form, or attaches a PDF.
+Underwrite ingests that and runs it through a fixed pipeline:
+
+```
+submission ──▶ extract ──▶ enrich ──▶ rate ──▶ operator decision ──▶ quote PDF
+              (LLM)      (Companies    (rules      (approve /          (Lambda →
+                          House)        engine)     decline)            S3)
+```
+
+- **Extract** — `claude-sonnet-5` parses the raw submission into a validated `ExtractedApplication`
+  (structured outputs, no free-text scraping). Missing fields are recorded, not guessed.
+- **Enrich** — the company is looked up at Companies House; the submitted name/number/status are
+  reconciled and discrepancies (name mismatch, strike-off, dissolved) are flagged.
+- **Rate** — a **pure, deterministic** engine prices the risk from table-driven factors (limit,
+  revenue band, sector, data volume, claims, trading history). It emits an auditable factor trace
+  that folds back to the premium, plus a decision: **auto-approve**, **refer** to a human, or
+  **decline**.
+- **Decide** — an operator reviews referrals in the console (extracted-vs-Companies-House
+  side-by-side, the premium build-up, the reasons) and approves or declines. Every action is
+  written to an append-only audit trail that names the underwriter.
+- **Quote** — an approved submission renders a specimen quote PDF (WeasyPrint in a Lambda) stored
+  in S3 and served via a presigned URL.
+
+**The core design principle:** the LLM only ever *parses* (probabilistic, so anything uncertain is
+referred to a human); the engine *prices* (deterministic, table-driven, and asserted
+character-for-character against `docs/RATING_SPEC.md`). Nothing an LLM says sets a price.
+
+## Architecture & stack
+
+Three tiers, same-origin in dev via a Vite proxy:
+
+**Backend** (`api/`) — **FastAPI** (async, `lifespan`), **SQLAlchemy 2 async** + **asyncpg** on
+**Postgres**, migrations via **Alembic**. Money is integer **pence** end to end; rate factors are
+`Decimal`. Domain enums/value-objects (`app/domain/`) import only stdlib; the rating engine
+(`app/services/rating.py`) is import-pure and AST-tested for it. External calls — **Anthropic**
+(extraction), **Companies House** (enrichment, fuzzy-matched with **rapidfuzz**) — go through
+`httpx` and are `respx`-mocked in tests. PDF rendering is **WeasyPrint**, kept out of the API image
+and run as a **Lambda** (the API only builds the HTML). ~360 tests, property-based invariants
+(**Hypothesis**) + golden files on the engine.
+
+**Frontend** (`web/`) — **React** + **TypeScript** + **Vite**, **Tailwind v4**, **TanStack Query**,
+typed against the API's OpenAPI schema (`openapi-fetch`, `openapi-typescript`). The operator console:
+a status-filtered queue, a detail drawer (comparison, factor ladder, timeline, quote), and the
+approve/decline actions. Design tokens are authoritative (`DESIGN.md`, `PRODUCT.md`) — light/dark is
+a pure CSS-var swap.
+
+**Infra** (`infra/`, `deploy/`, `lambdas/`) — **Terraform** on AWS: a single **EC2** box running
+`docker compose` under a `systemd` unit, **Caddy** fronting the API with automatic TLS, **Postgres**
+on the container network, **S3** for documents, and the arm64 container-image **Lambda** for PDFs.
+Images are tagged by git SHA in **ECR** (immutable, never `latest`). **CD** (`cd.yml`) federates AWS
+via **GitHub OIDC** — no static keys — building on every merge to `main` with a gated deploy. Deploy
+tickets follow **apply → verify → destroy**: nothing runs between verifications, so the idle bill is
+≈ $0.
+
+## Repository layout
+
+| Path | What's there |
+|---|---|
+| `api/` | FastAPI app — `app/api/routes`, `app/services` (extraction, enrichment, rating, quote, pdf), `app/models`, `app/domain`, `app/schemas`; `tests/` |
+| `web/` | React operator console (Vite + Tailwind) |
+| `infra/` | Terraform (EC2, S3, Lambda, IAM, ECR, OIDC, budgets) |
+| `lambdas/pdf_render/` | WeasyPrint container Lambda (HTML → PDF → S3) |
+| `deploy/` | prod compose, Caddyfile, systemd unit |
+| `docs/` | `RATING_SPEC.md` (authoritative pricing) + `DECISIONS.md` (committed rationale) |
 
 ## Local development
 
