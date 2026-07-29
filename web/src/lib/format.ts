@@ -18,6 +18,13 @@ const SECTOR_LABELS: Record<string, string> = {
   other: 'other',
 }
 
+const DATA_VOLUME_LABELS: Record<string, string> = {
+  under_10k: 'Under 10,000',
+  '10k_100k': '10,000 – 100,000',
+  '100k_1m': '100,000 – 1 million',
+  over_1m: 'Over 1 million',
+}
+
 const INPUT_MODE_LABELS: Record<string, string> = {
   form: 'web form',
   paste: 'pasted broker email',
@@ -120,6 +127,15 @@ export function compactPounds(pence: number | null): string | null {
   if (pounds >= 1_000_000) return `£${(pounds / 1_000_000).toFixed(1).replace(/\.0$/, '')}m`
   if (pounds >= 1_000) return `£${Math.round(pounds / 1_000)}k`
   return `£${Math.round(pounds)}`
+}
+
+export function dataVolumeLabel(volume: string): string {
+  return DATA_VOLUME_LABELS[volume] ?? volume
+}
+
+// The limit as it is written on the policy, for the apply form's select.
+export function poundsLabel(pounds: number): string {
+  return `£${pounds.toLocaleString('en-GB')}`
 }
 
 export function limitLabel(limitPounds: number | null): string | null {

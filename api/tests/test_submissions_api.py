@@ -8,7 +8,9 @@ from app.db import get_db
 from app.domain.enums import AuditEventType, DataVolume, RequestedLimit, Sector
 from app.main import app
 from app.models import AuditEvent, Extraction, Submission
+from app.services.pdf_text import MAX_UPLOAD_BYTES
 from tests.factories import make_full_submission, make_submission
+from tests.pdf_bytes import encrypted_pdf, scanned_pdf, text_pdf
 
 BROKER_EMAIL = "Please quote Example Ltd for £1m cyber cover. Turnover £750k, trading 3 years."
 
@@ -20,7 +22,6 @@ FORM_APPLICATION = {
     "prior_claims_count": 0,
     "data_records_held": DataVolume.HUNDRED_K_TO_1M.value,
     "requested_limit_gbp": RequestedLimit.GBP_1M.value,
-    "extraction_confidence": 1.0,
 }
 
 
@@ -135,11 +136,126 @@ async def test_a_form_submission_records_extraction_in_the_trail(api, db):
     ]
 
 
-async def test_a_pdf_upload_needs_no_text_yet(api):
-    response = await api.post("/api/submissions", json={"input_mode": "pdf_upload"})
+async def test_a_form_submission_is_certain_by_construction(api, db, fake_extractor):
+    response = await api.post(
+        "/api/submissions", json={"input_mode": "form", "application": FORM_APPLICATION}
+    )
+
+    extraction = await db.scalar(
+        select(Extraction).where(Extraction.submission_id == uuid.UUID(response.json()["id"]))
+    )
+
+    assert extraction.extraction_confidence == 1.0
+    assert extraction.missing_fields == []
+    assert fake_extractor.calls == []
+
+
+async def test_a_form_submission_cannot_claim_its_own_confidence(api, db):
+    response = await api.post(
+        "/api/submissions",
+        json={
+            "input_mode": "form",
+            "application": {**FORM_APPLICATION, "extraction_confidence": 0.2},
+        },
+    )
+
+    assert response.status_code == 422
+    assert await db.scalar(select(func.count()).select_from(Submission)) == 0
+
+
+# --- pdf upload (UW-026) -------------------------------------------------------------------
+
+
+def _upload(data: bytes, filename: str = "submission.pdf"):
+    return {"file": (filename, data, "application/pdf")}
+
+
+async def test_an_uploaded_pdf_flows_through_the_same_pipeline_to_a_rating(api, fake_extractor):
+    response = await api.post("/api/submissions/pdf", files=_upload(text_pdf()))
 
     assert response.status_code == 201
-    assert response.json()["raw_input"] is None
+    body = response.json()
+    assert body["input_mode"] == "pdf_upload"
+    # The parsed text is the submission: it is what the model saw and what the trail preserves.
+    assert "Acme Robotics Ltd" in body["raw_input"]
+    assert fake_extractor.calls == [body["raw_input"]]
+    assert body["rating"] is not None
+
+
+async def test_an_uploaded_pdf_records_the_filename_it_arrived_under(api, db):
+    response = await api.post("/api/submissions/pdf", files=_upload(text_pdf(), "acme quote.pdf"))
+
+    event = await db.scalar(
+        select(AuditEvent).where(
+            AuditEvent.submission_id == uuid.UUID(response.json()["id"]),
+            AuditEvent.event_type == AuditEventType.SUBMISSION_RECEIVED,
+        )
+    )
+
+    assert event.payload["filename"] == "acme quote.pdf"
+    assert event.payload["upload_bytes"] > 0
+
+
+async def test_the_extracted_text_is_labelled_as_coming_from_a_pdf(api, db):
+    response = await api.post("/api/submissions/pdf", files=_upload(text_pdf()))
+
+    event = await db.scalar(
+        select(AuditEvent).where(
+            AuditEvent.submission_id == uuid.UUID(response.json()["id"]),
+            AuditEvent.event_type == AuditEventType.EXTRACTION_COMPLETED,
+        )
+    )
+
+    assert event.payload["source"] == "uploaded_pdf"
+
+
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        pytest.param(scanned_pdf(), "no selectable text", id="image-only scan"),
+        pytest.param(encrypted_pdf(), "password-protected", id="encrypted"),
+        pytest.param(b"just some text", "not a readable PDF", id="not a pdf"),
+    ],
+)
+async def test_an_unreadable_pdf_is_refused_with_a_reason_and_stores_nothing(
+    api, db, fake_extractor, data, expected
+):
+    response = await api.post("/api/submissions/pdf", files=_upload(data))
+
+    assert response.status_code == 422
+    assert expected in response.json()["detail"]
+    assert await db.scalar(select(func.count()).select_from(Submission)) == 0
+    # The point of the gate: an unreadable upload never reaches a paid extraction call.
+    assert fake_extractor.calls == []
+
+
+async def test_an_oversized_upload_is_refused(api, db):
+    oversized = b"%PDF-1.7" + b"\0" * (MAX_UPLOAD_BYTES + 1)
+
+    response = await api.post("/api/submissions/pdf", files=_upload(oversized))
+
+    assert response.status_code == 413
+    assert await db.scalar(select(func.count()).select_from(Submission)) == 0
+
+
+async def test_an_oversized_body_is_refused_before_it_is_read(api):
+    # httpx sends Content-Length, so this never reaches the route or the multipart parser.
+    response = await api.post(
+        "/api/submissions",
+        content=b"x" * (MAX_UPLOAD_BYTES + 1),
+        headers={"content-type": "application/json"},
+    )
+
+    assert response.status_code == 413
+    assert "larger than" in response.json()["detail"]
+
+
+async def test_an_ordinary_body_passes_the_size_gate(api):
+    response = await api.post(
+        "/api/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL}
+    )
+
+    assert response.status_code == 201
 
 
 @pytest.mark.parametrize(
@@ -147,6 +263,7 @@ async def test_a_pdf_upload_needs_no_text_yet(api):
     [
         ({"input_mode": "paste"}, "pasted submissions must carry raw_input"),
         ({"input_mode": "form"}, "form submissions must carry an application"),
+        ({"input_mode": "pdf_upload"}, "/api/submissions/pdf"),
         ({"input_mode": "telepathy", "raw_input": "hi"}, "input_mode"),
         ({"raw_input": "hi"}, "input_mode"),
     ],
@@ -219,8 +336,7 @@ async def test_rows_written_together_still_get_distinct_timestamps(api):
 
 async def test_listing_filters_by_status(api, db):
     await make_submission(db, status="referred")
-    # pdf_upload has no text yet, so the pipeline leaves it 'received' (UW-026).
-    await api.post("/api/submissions", json={"input_mode": "pdf_upload"})
+    await make_submission(db, status="received")
 
     referred = (await api.get("/api/submissions", params={"status": "referred"})).json()
     received = (await api.get("/api/submissions", params={"status": "received"})).json()

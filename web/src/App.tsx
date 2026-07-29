@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 
+import { Apply } from './Apply'
 import { Login } from './Login'
 import { Drawer } from './components/Drawer'
 import { FilterTabs, type Tab } from './components/FilterTabs'
 import { StatusBadge } from './components/StatusBadge'
 import { TopBar } from './components/TopBar'
-import { type Operator, useMe } from './hooks/useAuth'
+import { useMe } from './hooks/useAuth'
 import {
   type Submission,
   type SubmissionStatus,
@@ -80,10 +81,17 @@ function SkeletonRow() {
   )
 }
 
-function Queue({ operator }: { operator: Operator }) {
+function Queue({
+  selectedId,
+  onSelect,
+  onNew,
+}: {
+  selectedId: string | null
+  onSelect: (id: string | null) => void
+  onNew: () => void
+}) {
   const stats = useSubmissionStats()
   const [active, setActive] = useState('referred')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // Counts come from the whole table (stats), not a paginated page, so they never under-report.
   const tabs = useMemo<Tab[]>(() => {
@@ -104,13 +112,23 @@ function Queue({ operator }: { operator: Operator }) {
   const total = stats.data?.total ?? 0
 
   return (
-    <div className="min-h-screen bg-bg text-ink">
-      <TopBar operator={operator} />
+    <>
       <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-8">
-        <h1 className="text-[22px] font-semibold tracking-tight">Submissions</h1>
-        <p className="mt-0.5 text-[13px] text-ink-muted">
-          Tech E&amp;O / Cyber intake · {total} in the queue
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[22px] font-semibold tracking-tight">Submissions</h1>
+            <p className="mt-0.5 text-[13px] text-ink-muted">
+              Tech E&amp;O / Cyber intake · {total} in the queue
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onNew}
+            className="h-9 shrink-0 rounded-md bg-accent px-3.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
+          >
+            New submission
+          </button>
+        </div>
 
         {total > 0 && <FilterTabs tabs={tabs} active={activeKey} onChange={setActive} />}
 
@@ -140,17 +158,21 @@ function Queue({ operator }: { operator: Operator }) {
           )}
 
           {rows?.map((s) => (
-            <QueueRow key={s.id} s={s} onSelect={setSelectedId} />
+            <QueueRow key={s.id} s={s} onSelect={onSelect} />
           ))}
         </div>
       </div>
-      {selectedId && <Drawer id={selectedId} onClose={() => setSelectedId(null)} />}
-    </div>
+      {selectedId && <Drawer id={selectedId} onClose={() => onSelect(null)} />}
+    </>
   )
 }
 
 export function App() {
   const { data: operator, isPending, isError } = useMe()
+  // Apply, staged loading (UW-032) and the result (UW-033) are phases of one flow, not addresses:
+  // a router would buy nothing and cost a dependency.
+  const [view, setView] = useState<'queue' | 'apply'>('queue')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   if (isPending) {
     return (
@@ -167,5 +189,20 @@ export function App() {
     )
   }
   if (!operator) return <Login />
-  return <Queue operator={operator} />
+  return (
+    <div className="min-h-screen bg-bg text-ink">
+      <TopBar operator={operator} />
+      {view === 'apply' ? (
+        <Apply
+          onCancel={() => setView('queue')}
+          onCreated={(id) => {
+            setView('queue')
+            setSelectedId(id)
+          }}
+        />
+      ) : (
+        <Queue selectedId={selectedId} onSelect={setSelectedId} onNew={() => setView('apply')} />
+      )}
+    </div>
+  )
 }

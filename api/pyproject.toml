@@ -18,6 +18,8 @@ dependencies = [
     "argon2-cffi>=25.1",
     "itsdangerous>=2.2",
     "jinja2>=3.1",
+    "pypdf>=6.1",
+    "python-multipart>=0.0.20",
 ]
 
 [dependency-groups]

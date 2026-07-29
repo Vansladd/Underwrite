@@ -7,6 +7,7 @@ from app.domain.enums import (
     AuditActor,
     AuditEventType,
     Decision,
+    InputMode,
     SubmissionStatus,
 )
 from app.models import Enrichment, Extraction, Rating, Submission
@@ -18,6 +19,11 @@ from app.services.extraction import AnthropicExtractor, ExtractionRefused
 from app.services.rating import rate
 
 FORM_MODEL = "form"
+
+SOURCE_FOR_MODE = {
+    InputMode.PASTE: "broker_email",
+    InputMode.PDF_UPLOAD: "uploaded_pdf",
+}
 
 STATUS_FOR_DECISION = {
     Decision.AUTO_APPROVE: SubmissionStatus.AUTO_APPROVED,
@@ -53,8 +59,8 @@ async def _extract(
 ) -> ExtractedApplication | None:
     if application is not None:
         model, source = FORM_MODEL, "applicant_form"
-    elif submission.raw_input is not None:
-        model, source = extractor.model, "broker_email"
+    elif submission.raw_input:
+        model, source = extractor.model, SOURCE_FOR_MODE[submission.input_mode]
         try:
             application = await extractor.extract(submission.raw_input)
         except (anthropic.APIStatusError, ExtractionRefused) as error:
@@ -69,8 +75,8 @@ async def _extract(
             await session.commit()
             return None
     else:
-        # pdf_upload: the text does not exist until pypdf runs (UW-026). Leaves 'received'.
-        return None
+        # Unreachable: every creation route carries a form application or extractable text.
+        raise ValueError(f"submission {submission.id} has no extractable payload")
 
     session.add(Extraction(submission_id=submission.id, **application.to_orm_kwargs(model)))
     await record_event(
