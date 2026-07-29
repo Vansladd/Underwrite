@@ -38,10 +38,21 @@ against *two* gates and asserts the token gate never appears outside `/api/inter
 secret can never be quietly substituted for an operator session.
 
 **The token is hand-managed at both ends** — `SWEEPER_TOKEN` in the box's `.env`, the same value
-passed to Terraform as a `sensitive` var that becomes the Lambda's environment. SSM Parameter Store
-SecureString is the upgrade (also free) and would move the value out of Lambda's console-visible
-environment, at the cost of `kms:Decrypt` and putting it in Terraform state instead. Not worth it
-while both ends are already hand-placed.
+passed to Terraform as a `sensitive` var that becomes the Lambda's environment.
+
+**Know where that leaves the secret: in Terraform state, in plaintext.** `sensitive = true` only
+suppresses CLI output; both the variable and `aws_lambda_function.environment.variables` are written
+to `s3://underwrite-tfstate`. **Read on the state bucket is therefore read on this token** — treat
+it as a credential store, not just infrastructure bookkeeping. SSM Parameter Store SecureString is
+the upgrade (also free): Terraform would hold only the parameter *name*, the value would leave both
+the state file and Lambda's console-visible environment, and the cost is a `kms:Decrypt` grant plus
+placing the value out of band. Worth doing before the URL is public; not done here.
+
+**`.env.example` ships `local-sweeper-token` and `make .env` copies it verbatim**, so the default is
+a value anyone can read in the repo. `startup_warnings` refuses to let that pass silently onto a
+`SESSION_SECURE=1` deployment, exactly as it already does for `SECRET_KEY` and
+`SEED_OPERATOR_PASSWORD` — the endpoint is internet-facing (Caddy proxies `/api/*`), so a shipped
+default there is an open door, not an inconvenience.
 
 **The zip is one stdlib file.** No `requirements.txt`, no container, no build step — `archive_file`
 packages it at plan time and `python3 handler.py` runs it anywhere, which is what

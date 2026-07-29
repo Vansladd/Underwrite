@@ -127,19 +127,19 @@ async def test_a_sweep_with_nothing_to_do_writes_nothing(db):
 
 
 async def test_the_sweep_endpoint_expires_and_reports(anon_api, db, sweeper_token):
-    yesterday = date.today() - timedelta(days=1)
-    await make_quote(db, valid_until=yesterday, ref="Q-2026-111111")
+    today = date.today()
+    await make_quote(db, valid_until=today - timedelta(days=1), ref="Q-2026-111111")
 
     response = await anon_api.post(
         "/api/internal/quotes/expire", headers={"X-Sweeper-Token": sweeper_token}
     )
 
     assert response.status_code == 200
-    assert response.json() == {
-        "swept_on": date.today().isoformat(),
-        "expired": 1,
-        "quote_refs": ["Q-2026-111111"],
-    }
+    body = response.json()
+    assert body["expired"] == 1
+    assert body["quote_refs"] == ["Q-2026-111111"]
+    # Bounded, not equal: the route calls date.today() itself, which can tick over mid-test.
+    assert date.fromisoformat(body["swept_on"]) >= today
 
 
 async def test_the_sweep_endpoint_refuses_a_wrong_token(anon_api, db, sweeper_token):
