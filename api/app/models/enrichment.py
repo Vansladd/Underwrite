@@ -37,6 +37,8 @@ class Enrichment(Base):
     discrepancies: Mapped[json_list]
 
     rate_limited: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    # Classified slug when the lookup never completed; null means we got an answer. See D-029.
+    lookup_error: Mapped[str | None]
     created_at: Mapped[written_at]
 
     submission: Mapped["Submission"] = relationship(back_populates="enrichment")

@@ -17,6 +17,34 @@ def normalise_company_number(raw: str) -> str:
     return prefix + digits.zfill(8 - len(prefix))
 
 
+class CompaniesHouseUnavailable(Exception):
+    """The lookup did not complete. `reason` is a short slug for the audit trail. See D-029.
+
+    Never raised for a 404: an absent company is an answer, not a failure.
+    """
+
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+        super().__init__(f"companies house lookup failed: {reason}")
+
+
+def classify(error: Exception) -> str:
+    # By status, not by intent: a 400 is a bad key in one deployment and a malformed number in
+    # another, and guessing which would put a wrong cause in an append-only trail.
+    if isinstance(error, httpx.HTTPStatusError):
+        status = error.response.status_code
+        if status in (httpx.codes.UNAUTHORIZED, httpx.codes.FORBIDDEN):
+            return "auth"
+        if status == httpx.codes.BAD_REQUEST:
+            return "bad_request"
+        return f"http_{status}"
+    if isinstance(error, httpx.TimeoutException):
+        return "timeout"
+    if isinstance(error, httpx.TransportError):
+        return "network"
+    return "unknown"
+
+
 @dataclass(frozen=True)
 class CompaniesHouseLookup:
     profile: CompanyProfile | None
@@ -51,22 +79,40 @@ class CompaniesHouseClient:
         profile, limited = await self._get_company(number)
         return CompaniesHouseLookup(profile, rate_limited=limited)
 
+    async def _get(
+        self, url: str, *, absence_is_an_answer: bool = False, **kwargs
+    ) -> httpx.Response:
+        try:
+            response = await self._client.get(url, **kwargs)
+        except httpx.HTTPError as error:
+            raise CompaniesHouseUnavailable(classify(error)) from error
+
+        # 429 is always the caller's to interpret. 404 only where it means "no such company":
+        # /search returns 200 with empty items for no hits, so a 404 there is a broken endpoint.
+        allowed = {httpx.codes.TOO_MANY_REQUESTS}
+        if absence_is_an_answer:
+            allowed.add(httpx.codes.NOT_FOUND)
+        if response.status_code in allowed:
+            return response
+
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as error:
+            raise CompaniesHouseUnavailable(classify(error)) from error
+        return response
+
     async def _get_company(self, number: str) -> tuple[CompanyProfile | None, bool]:
-        response = await self._client.get(f"/company/{number}")
+        response = await self._get(f"/company/{number}", absence_is_an_answer=True)
         if response.status_code == httpx.codes.TOO_MANY_REQUESTS:
             return None, True
         if response.status_code == httpx.codes.NOT_FOUND:
             return None, False
-        response.raise_for_status()
         return CompanyProfile.model_validate(response.json()), False
 
     async def _search(self, name: str) -> tuple[str | None, bool]:
-        response = await self._client.get(
-            "/search/companies", params={"q": name, "items_per_page": 1}
-        )
+        response = await self._get("/search/companies", params={"q": name, "items_per_page": 1})
         if response.status_code == httpx.codes.TOO_MANY_REQUESTS:
             return None, True
-        response.raise_for_status()
         items = response.json().get("items", [])
         return (items[0]["company_number"] if items else None), False
 

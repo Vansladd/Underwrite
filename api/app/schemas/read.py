@@ -76,6 +76,7 @@ class EnrichmentRead(Read):
     sic_codes: list[str]
     discrepancies: list[str]
     rate_limited: bool
+    lookup_error: str | None
     created_at: datetime
 
 

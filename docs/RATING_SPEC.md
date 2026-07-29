@@ -320,13 +320,20 @@ reaches the operator.
 |---|---|
 | `LOW_EXTRACTION_CONFIDENCE` | `extraction_confidence < 0.7` |
 | `MISSING_FIELDS` | `missing_fields` non-empty |
-| `CH_NOT_FOUND` | `ch_found == false` |
+| `CH_NOT_FOUND` | `ch_found == false` and `lookup_failed == false` |
+| `CH_UNAVAILABLE` | `lookup_failed == true` |
 | `CH_NAME_MISMATCH` | `ch_name_match_score < 0.85` |
 | `CH_STATUS_NOT_ACTIVE` | `ch_company_status != "active"` |
 | `CH_DISCREPANCY` | `discrepancies` non-empty |
 | `REVENUE_ABOVE_AUTHORITY` | `revenue_pence >= 1_000_000_000` |
 | `SECTOR_UNCLASSIFIED` | `sector == "other"` |
 | `PRIOR_CLAIM` | `prior_claims_count == 1` |
+
+`CH_NOT_FOUND` and `CH_UNAVAILABLE` are mutually exclusive, and the distinction is underwriting,
+not plumbing. `CH_NOT_FOUND` is a **finding about the insured**: we asked the register and it has no
+such company. `CH_UNAVAILABLE` is a **finding about us**: the lookup failed — credentials, rate
+limit, outage, timeout — so nothing was learned either way. Reporting the second as the first
+asserts something about the applicant that was never checked. Both refer, so no premium moves.
 
 ### Hard decline rules (any → DECLINE)
 

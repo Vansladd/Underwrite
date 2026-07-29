@@ -28,6 +28,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             "SEED_OPERATOR_PASSWORD is still the public default on a secure (prod) deployment — "
             "set a strong secret before exposing the URL"
         )
+    if not settings.companies_house_api_key:
+        # Not fatal: `make demo` and `make seed` run the pipeline with canned providers (D-024).
+        log.warning(
+            "COMPANIES_HOUSE_API_KEY is unset — every lookup will fail and every submission will "
+            "refer with CH_UNAVAILABLE. Set it, or ignore this if you are running the canned demo"
+        )
     engine = build_engine(settings)
     app.state.engine = engine
     app.state.sessionmaker = build_sessionmaker(engine)

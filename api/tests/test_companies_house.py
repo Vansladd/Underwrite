@@ -4,7 +4,11 @@ import respx
 
 from app.config import Settings
 from app.domain.enums import CompanyStatus
-from app.services.companies_house import CompaniesHouseClient, normalise_company_number
+from app.services.companies_house import (
+    CompaniesHouseClient,
+    CompaniesHouseUnavailable,
+    normalise_company_number,
+)
 
 BASE = "https://api.company-information.service.gov.uk"
 
@@ -123,3 +127,75 @@ async def test_missing_sic_codes_key_defaults_to_empty(ch):
     result = await ch.lookup("09876543", "Acme")
 
     assert result.profile.sic_codes == []
+
+
+# --- lookups that never completed (D-029) ---------------------------------------------------
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("status", "reason"),
+    [(401, "auth"), (403, "auth"), (400, "bad_request"), (500, "http_500"), (503, "http_503")],
+)
+async def test_a_failed_status_is_classified_not_swallowed(ch, status, reason):
+    respx.get(f"{BASE}/company/09876543").mock(return_value=httpx.Response(status))
+
+    with pytest.raises(CompaniesHouseUnavailable) as caught:
+        await ch.lookup("09876543", "Acme")
+
+    assert caught.value.reason == reason
+
+
+@respx.mock
+async def test_a_timeout_is_classified(ch):
+    respx.get(f"{BASE}/company/09876543").mock(side_effect=httpx.ConnectTimeout("too slow"))
+
+    with pytest.raises(CompaniesHouseUnavailable) as caught:
+        await ch.lookup("09876543", "Acme")
+
+    assert caught.value.reason == "timeout"
+
+
+@respx.mock
+async def test_a_transport_error_is_classified(ch):
+    respx.get(f"{BASE}/company/09876543").mock(side_effect=httpx.ConnectError("no route"))
+
+    with pytest.raises(CompaniesHouseUnavailable) as caught:
+        await ch.lookup("09876543", "Acme")
+
+    assert caught.value.reason == "network"
+
+
+@respx.mock
+async def test_a_failing_search_is_classified_too(ch):
+    # The fallback path: a 404 by number is an answer, but the search behind it can still fail.
+    respx.get(f"{BASE}/company/09876543").mock(return_value=httpx.Response(404))
+    respx.get(f"{BASE}/search/companies").mock(return_value=httpx.Response(401))
+
+    with pytest.raises(CompaniesHouseUnavailable) as caught:
+        await ch.lookup("09876543", "Acme")
+
+    assert caught.value.reason == "auth"
+
+
+@respx.mock
+async def test_a_404_is_an_answer_not_a_failure(ch):
+    respx.get(f"{BASE}/company/09876543").mock(return_value=httpx.Response(404))
+    respx.get(f"{BASE}/search/companies").mock(return_value=httpx.Response(200, json={"items": []}))
+
+    result = await ch.lookup("09876543", "Acme")
+
+    assert not result.found
+    assert not result.rate_limited
+
+
+@respx.mock
+async def test_a_404_from_search_is_a_broken_endpoint_not_an_empty_register(ch):
+    # /search returns 200 with empty items when there are no hits, so a 404 is the endpoint being
+    # wrong — a misconfigured base URL must not read as "this company is not registered".
+    respx.get(f"{BASE}/search/companies").mock(return_value=httpx.Response(404))
+
+    with pytest.raises(CompaniesHouseUnavailable) as caught:
+        await ch.lookup(None, "Acme")
+
+    assert caught.value.reason == "http_404"

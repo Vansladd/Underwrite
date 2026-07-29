@@ -12,7 +12,7 @@ from sqlalchemy.pool import NullPool
 from tests.conftest import alembic_config, derive_test_database_url
 
 DATABASE = "underwrite_migrations_test"
-HEAD = "0004"
+HEAD = "0005"
 
 TABLES = "select table_name from information_schema.tables where table_schema = 'public'"
 TRIGGERS = """

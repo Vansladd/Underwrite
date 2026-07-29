@@ -312,6 +312,8 @@ export interface components {
             discrepancies: string[];
             /** Rate Limited */
             rate_limited: boolean;
+            /** Lookup Error */
+            lookup_error: string | null;
             /**
              * Created At
              * Format: date-time
@@ -472,7 +474,7 @@ export interface components {
          * ReasonCode
          * @enum {string}
          */
-        ReasonCode: "LOW_EXTRACTION_CONFIDENCE" | "MISSING_FIELDS" | "CH_NOT_FOUND" | "CH_NAME_MISMATCH" | "CH_STATUS_NOT_ACTIVE" | "CH_DISCREPANCY" | "REVENUE_ABOVE_AUTHORITY" | "SECTOR_UNCLASSIFIED" | "PRIOR_CLAIM" | "SECTOR_OUT_OF_APPETITE" | "CLAIMS_HISTORY" | "TOO_NEW" | "CH_STATUS_TERMINAL";
+        ReasonCode: "LOW_EXTRACTION_CONFIDENCE" | "MISSING_FIELDS" | "CH_NOT_FOUND" | "CH_UNAVAILABLE" | "CH_NAME_MISMATCH" | "CH_STATUS_NOT_ACTIVE" | "CH_DISCREPANCY" | "REVENUE_ABOVE_AUTHORITY" | "SECTOR_UNCLASSIFIED" | "PRIOR_CLAIM" | "SECTOR_OUT_OF_APPETITE" | "CLAIMS_HISTORY" | "TOO_NEW" | "CH_STATUS_TERMINAL";
         /** ReasonRead */
         ReasonRead: {
             code: components["schemas"]["ReasonCode"];

@@ -215,6 +215,16 @@ def _refer_reasons(application: Application, enrichment: Enrichment) -> list[Rea
             )
         )
 
+    # A failed lookup learned nothing, so it cannot claim the company is absent from the register.
+    if enrichment.lookup_failed:
+        reasons.append(
+            Reason(
+                ReasonCode.CH_UNAVAILABLE,
+                "Companies House could not be checked, so the insured is unverified.",
+            )
+        )
+        return reasons
+
     # Score and status are absent without a match; CH_NOT_FOUND covers it.
     if not enrichment.ch_found:
         reasons.append(

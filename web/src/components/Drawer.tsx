@@ -56,16 +56,48 @@ function CompareRow({
   )
 }
 
-function Callout({ children }: { children: React.ReactNode }) {
+// Discrepancy red is reserved for a conflict in the submission itself; a lookup we could not make
+// is missing information about us, not a finding about the insured. See D-029.
+function Callout({
+  children,
+  tone = 'discrepancy',
+}: {
+  children: React.ReactNode
+  tone?: 'discrepancy' | 'muted'
+}) {
+  const skin =
+    tone === 'muted'
+      ? 'bg-surface-2 text-ink-muted'
+      : 'bg-[color:var(--dc-bg)] text-[color:var(--dc-fg)]'
   return (
-    <div className="mt-2.5 flex gap-2 rounded-md bg-[color:var(--dc-bg)] px-3 py-2.5 text-[13px] text-[color:var(--dc-fg)]">
-      <span aria-hidden>▲</span>
+    <div className={`mt-2.5 flex gap-2 rounded-md px-3 py-2.5 text-[13px] ${skin}`}>
+      <span aria-hidden>{tone === 'muted' ? '—' : '▲'}</span>
       <span>{children}</span>
     </div>
   )
 }
 
 function Comparison({ extraction, enrichment }: { extraction: Extraction; enrichment: Enrichment }) {
+  // Before ch_found: a failed lookup never learned whether the company is on the register.
+  if (enrichment.lookup_error === 'not_attempted') {
+    return (
+      <Callout tone="muted">
+        No company name was extracted, so Companies House was never checked. The register is fine —
+        this submission has nothing to look up.
+      </Callout>
+    )
+  }
+
+  if (enrichment.lookup_error != null || enrichment.rate_limited) {
+    return (
+      <Callout tone="muted">
+        Companies House could not be checked, so{' '}
+        <span className="tnum">{extraction.company_name ?? 'this submission'}</span> is unverified —
+        this is not a finding against the insured. Re-check once the register is reachable.
+      </Callout>
+    )
+  }
+
   if (!enrichment.ch_found) {
     return (
       <Callout>
