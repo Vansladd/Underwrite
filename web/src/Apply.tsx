@@ -1,7 +1,9 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useRef, useState } from 'react'
 
 import type { components } from './api/schema'
+import { StagedProgress } from './components/StagedProgress'
 import { type NewSubmission, useCreateSubmission } from './hooks/useCreateSubmission'
+import { useStagedProgress } from './hooks/useStagedProgress'
 import { dataVolumeLabel, poundsLabel, sectorLabel } from './lib/format'
 
 type Mode = 'form' | 'paste' | 'pdf'
@@ -79,7 +81,15 @@ function toApplication(fields: Fields) {
   }
 }
 
-function ModeTabs({ active, onChange }: { active: Mode; onChange: (mode: Mode) => void }) {
+function ModeTabs({
+  active,
+  onChange,
+  disabled,
+}: {
+  active: Mode
+  onChange: (mode: Mode) => void
+  disabled: boolean
+}) {
   return (
     <div role="tablist" aria-label="Choose how to submit" className="mt-6 flex gap-6 border-b border-border">
       {MODES.map((mode) => {
@@ -90,8 +100,10 @@ function ModeTabs({ active, onChange }: { active: Mode; onChange: (mode: Mode) =
             type="button"
             role="tab"
             aria-selected={isActive}
+            // The mode cannot change once a submission is in flight; it decides what was sent.
+            disabled={disabled}
             onClick={() => onChange(mode.key)}
-            className={`relative pb-3 text-[13px] font-medium transition-colors ${
+            className={`relative pb-3 text-[13px] font-medium transition-colors disabled:opacity-50 ${
               isActive ? 'text-ink' : 'text-ink-muted hover:text-ink'
             }`}
           >
@@ -154,6 +166,11 @@ export function Apply({
   const [file, setFile] = useState<File | null>(null)
   const [tooLarge, setTooLarge] = useState(false)
   const create = useCreateSubmission()
+  const { visible: staged, stage, remainingHold } = useStagedProgress(create.isPending)
+  // The stages are far shorter than the form they replace, so the card would collapse and yank the
+  // page. Hold the height the form had; StagedProgress centres itself in it.
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const [heldHeight, setHeldHeight] = useState<number>()
 
   function set(key: keyof Fields, value: string) {
     setFields((current) => ({ ...current, [key]: value }))
@@ -169,13 +186,21 @@ export function Apply({
 
   function onSubmit(event: FormEvent) {
     event.preventDefault()
+    setHeldHeight(bodyRef.current?.offsetHeight)
     const submission: NewSubmission =
       mode === 'form'
         ? { mode, application: toApplication(fields) }
         : mode === 'paste'
           ? { mode, text: text.trim() }
           : { mode, file: file! }
-    create.mutate(submission, { onSuccess: (created) => onCreated(created.id) })
+    create.mutate(submission, {
+      onSuccess: (created) => {
+        const hold = remainingHold()
+        if (hold === 0) onCreated(created.id)
+        else window.setTimeout(() => onCreated(created.id), hold)
+      },
+      onError: () => setHeldHeight(undefined),
+    })
   }
 
   const ready = mode === 'paste' ? text.trim().length > 0 : mode === 'pdf' ? file !== null : true
@@ -185,7 +210,10 @@ export function Apply({
       <button
         type="button"
         onClick={onCancel}
-        className="text-[13px] text-ink-muted transition-colors hover:text-ink"
+        // Locked with the tabs and Cancel: leaving does not stop the pipeline or the spend, so an
+        // exit that looks like an escape would be the lie this screen deliberately avoids.
+        disabled={create.isPending}
+        className="text-[13px] text-ink-muted transition-colors hover:text-ink disabled:opacity-50"
       >
         ← Submissions
       </button>
@@ -195,10 +223,17 @@ export function Apply({
         Tech E&amp;O / Cyber · rated on receipt, referred to an underwriter when it needs one
       </p>
 
-      <ModeTabs active={mode} onChange={switchTo} />
+      <ModeTabs active={mode} onChange={switchTo} disabled={create.isPending} />
 
       <form onSubmit={onSubmit} className="mt-5 rounded-lg border border-border bg-surface p-6">
-        <p className="text-[13px] text-ink-muted">{MODES.find((m) => m.key === mode)!.hint}</p>
+        {staged && (
+          <div className="flex items-center" style={{ minHeight: heldHeight }}>
+            <StagedProgress stage={stage} />
+          </div>
+        )}
+
+        <div ref={bodyRef} className={staged ? 'hidden' : undefined}>
+          <p className="text-[13px] text-ink-muted">{MODES.find((m) => m.key === mode)!.hint}</p>
 
         {mode === 'form' && (
           <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4">
@@ -338,24 +373,23 @@ export function Apply({
           <p className="mt-4 text-[13px] text-[color:var(--dc-fg)]">{create.error.message}</p>
         )}
 
-        <div className="mt-6 flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={create.isPending || !ready || tooLarge}
-            className="h-10 rounded-md bg-accent px-4 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
-          >
-            {create.isPending ? 'Submitting…' : 'Submit'}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="h-10 rounded-md border border-border px-4 text-sm font-medium text-ink transition-colors hover:bg-surface-2"
-          >
-            Cancel
-          </button>
-          {create.isPending && (
-            <span className="text-[13px] text-ink-muted">Extracting, checking, rating…</span>
-          )}
+          <div className="mt-6 flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={create.isPending || !ready || tooLarge}
+              className="h-10 rounded-md bg-accent px-4 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
+            >
+              {create.isPending ? 'Submitting…' : 'Submit'}
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={create.isPending}
+              className="h-10 rounded-md border border-border px-4 text-sm font-medium text-ink transition-colors hover:bg-surface-2 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </form>
     </div>

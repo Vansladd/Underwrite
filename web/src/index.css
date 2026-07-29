@@ -17,6 +17,20 @@
 
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+
+  /* The one looping animation in the product: liveness on the active stage dot while a submission
+     runs. DESIGN.md motion is otherwise state-only. Applied via motion-safe: only. */
+  --animate-stage-pulse: stage-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes stage-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
 }
 
 :root {
