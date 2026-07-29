@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import ChClientDep, CurrentUser, ExtractorDep, RendererDep
 from app.db import DbSession
@@ -179,10 +180,11 @@ async def create_submission_from_pdf(
     extractor: ExtractorDep,
     ch_client: ChClientDep,
 ) -> SubmissionDetail:
-    # One byte past the cap is enough to reject it without buffering the rest.
+    # Starlette has already spooled the whole body; this bounds what the handler holds in memory.
     data = await file.read(MAX_UPLOAD_BYTES + 1)
     try:
-        text = extract_text(data)
+        # pypdf parsing is CPU-bound and blocks; keep it off the event loop (as quote_render does).
+        text = await run_in_threadpool(extract_text, data)
     except PdfTooLarge as error:
         raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, str(error)) from error
     except PdfTextError as error:

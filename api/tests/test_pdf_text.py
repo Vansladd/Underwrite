@@ -7,6 +7,7 @@ from app.services.pdf_text import (
     NotAPdf,
     NoTextLayer,
     PdfTooLarge,
+    collapse_pages,
     extract_text,
 )
 from tests.pdf_bytes import encrypted_pdf, scanned_pdf, text_pdf
@@ -59,3 +60,34 @@ def test_text_is_truncated_to_the_cap_that_bounds_the_anthropic_call():
     text = extract_text(text_pdf("Insured: Example Ltd. " * 1_200))
 
     assert len(text) == MAX_TEXT_CHARS
+
+
+class CountingPage:
+    """A page whose text is only produced when someone asks for it."""
+
+    def __init__(self, text: str, seen: list[int], index: int) -> None:
+        self._text, self._seen, self._index = text, seen, index
+
+    def extract_text(self) -> str:
+        self._seen.append(self._index)
+        return self._text
+
+
+def test_pages_past_the_cap_are_never_decoded():
+    # A compression bomb is small on disk and vast decoded, so the cap has to stop the reading,
+    # not just trim the result.
+    seen: list[int] = []
+    pages = [CountingPage("Insured: Example Ltd. " * 2_000, seen, i) for i in range(30)]
+
+    text = collapse_pages(pages)
+
+    assert len(text) == MAX_TEXT_CHARS
+    assert seen == [0]
+
+
+def test_blank_lines_never_count_towards_the_cap():
+    seen: list[int] = []
+    pages = [CountingPage("\n\n   \n\n", seen, i) for i in range(3)]
+
+    assert collapse_pages(pages) == ""
+    assert seen == [0, 1, 2]

@@ -313,6 +313,16 @@ def test_a_form_application_cannot_smuggle_in_an_llm_field():
         FormApplication(**BROKER_EMAIL)
 
 
+@pytest.mark.parametrize("typed", ["", "   ", "\t\n"])
+def test_a_blank_name_is_absent_not_present(typed):
+    # "" is not None, so it would pass missing_rated_fields() and reach a Companies House search.
+    application = form_application(company_name=typed, company_number=typed).to_extracted()
+
+    assert application.company_name is None
+    assert application.company_number is None
+    assert "company_name" in application.missing_rated_fields()
+
+
 def test_an_unknown_decision_name_is_a_validation_error_not_a_keyerror():
     # Decision["APPROVE"] would raise KeyError, which pydantic does not translate.
     with pytest.raises(ValidationError):

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import io
+from collections.abc import Iterable
+from typing import Any
 
 from pypdf import PdfReader
 
@@ -52,18 +54,34 @@ def extract_text(data: bytes) -> str:
         reader = PdfReader(io.BytesIO(data), strict=False)
         if reader.is_encrypted:
             raise EncryptedPdf
-        pages = "\n".join(page.extract_text() or "" for page in reader.pages[:MAX_PAGES])
+        text = collapse_pages(reader.pages[:MAX_PAGES])
     except EncryptedPdf:
         raise
     except Exception as error:
         # Untrusted input: pypdf raises a wide family on malformed files, all one answer here.
         raise NotAPdf from error
 
-    text = _collapse(pages)
     if len(text) < MIN_TEXT_CHARS:
         raise NoTextLayer
-    return text[:MAX_TEXT_CHARS]
+    return text
 
 
-def _collapse(text: str) -> str:
-    return "\n".join(line for line in (each.strip() for each in text.splitlines()) if line).strip()
+def collapse_pages(pages: Iterable[Any]) -> str:
+    """Non-blank lines up to MAX_TEXT_CHARS, stopping as soon as the cap is reached.
+
+    Joining every page first would decode the whole document into memory before truncating, and a
+    flate-compressed PDF is small on disk and vast once decoded. One hostile page is still bounded
+    only by pypdf. See D-028.
+    """
+    lines: list[str] = []
+    total = 0
+    for page in pages:
+        for raw in (page.extract_text() or "").splitlines():
+            line = raw.strip()
+            if not line:
+                continue
+            lines.append(line)
+            total += len(line) + 1
+            if total >= MAX_TEXT_CHARS:
+                return "\n".join(lines)[:MAX_TEXT_CHARS]
+    return "\n".join(lines)

@@ -161,6 +161,9 @@ export function Apply({
 
   function switchTo(next: Mode) {
     create.reset()
+    // The file input unmounts with the panel, so its selection cannot survive the switch either.
+    setFile(null)
+    setTooLarge(false)
     setMode(next)
   }
 

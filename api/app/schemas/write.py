@@ -18,6 +18,12 @@ class FormApplication(BaseModel):
     data_records_held: DataVolume | None = None
     requested_limit_gbp: RequestedLimit | None = None
 
+    @field_validator("company_name", "company_number")
+    @classmethod
+    def blank_is_absent(cls, value: str | None) -> str | None:
+        # "" satisfies every `is None` absence check downstream; a typed space is a blank field.
+        return None if value is None else (value.strip() or None)
+
     def to_extracted(self) -> ExtractedApplication:
         return ExtractedApplication(
             **self.model_dump(), extraction_confidence=1.0, missing_fields=[]
