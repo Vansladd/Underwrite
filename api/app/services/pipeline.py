@@ -99,9 +99,11 @@ async def _enrich(
     outcome = await enrich(ch_client, application)
     session.add(Enrichment(submission_id=submission.id, **outcome.orm_kwargs))
 
+    # Keyed on lookup_failed, not error: a rate limit has no error slug but is still a lookup that
+    # never happened, and the trail must not say "checked" while the decision says "could not be".
     event_type = (
         AuditEventType.ENRICHMENT_FAILED
-        if outcome.error is not None
+        if outcome.domain.lookup_failed
         else AuditEventType.ENRICHMENT_COMPLETED
     )
     payload = {

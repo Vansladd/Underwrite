@@ -3,7 +3,7 @@ import pytest
 from app.domain.enums import CompanyStatus, DataVolume, RequestedLimit, Sector
 from app.schemas import CompanyProfile, ExtractedApplication
 from app.services.companies_house import CompaniesHouseLookup, CompaniesHouseUnavailable
-from app.services.enrichment import enrich
+from app.services.enrichment import NOT_ATTEMPTED, enrich
 from tests.fakes import FakeChClient
 
 
@@ -112,7 +112,9 @@ async def test_a_missing_company_name_skips_the_lookup_entirely():
 
     assert ch.calls == []
     assert outcome.orm_kwargs["ch_found"] is False
-    assert outcome.error is None
+    # A row that was never looked up must not read like a register that answered no. See D-029.
+    assert outcome.orm_kwargs["lookup_error"] == NOT_ATTEMPTED
+    assert outcome.domain.lookup_failed is True
 
 
 async def test_the_swallow_is_load_bearing():

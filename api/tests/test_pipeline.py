@@ -4,6 +4,7 @@ from app.domain.enums import (
     AuditEventType,
     CompanyStatus,
     DataVolume,
+    ReasonCode,
     RequestedLimit,
     Sector,
     SubmissionStatus,
@@ -113,7 +114,7 @@ async def test_a_companies_house_outage_still_produces_a_rating(db):
 
     await run_pipeline(db, submission, None, extractor, ch)
 
-    # Enrichment failure is best-effort: it degrades to CH_NOT_FOUND -> REFER, never a hard stop.
+    # Enrichment failure is best-effort: it degrades to CH_UNAVAILABLE -> REFER, never a hard stop.
     assert await event_types(db, submission.id) == [
         AuditEventType.EXTRACTION_COMPLETED,
         AuditEventType.ENRICHMENT_FAILED,
@@ -122,6 +123,19 @@ async def test_a_companies_house_outage_still_produces_a_rating(db):
     enrichment = await row(db, Enrichment, submission.id)
     assert enrichment.ch_found is False
     assert submission.status is SubmissionStatus.REFERRED
+
+
+async def test_a_rate_limited_lookup_is_not_recorded_as_a_completed_check(db):
+    submission = await make_submission(db)
+    extractor = FakeExtractor(result=application())
+    ch = FakeChClient(CompaniesHouseLookup(None, rate_limited=True))
+
+    await run_pipeline(db, submission, None, extractor, ch)
+
+    # The trail must not say "Companies House checked" while the decision says it could not be.
+    assert AuditEventType.ENRICHMENT_FAILED in await event_types(db, submission.id)
+    rating = await row(db, Rating, submission.id)
+    assert [r["code"] for r in rating.refer_reasons] == [ReasonCode.CH_UNAVAILABLE.value]
 
 
 async def test_incomplete_extraction_is_referred_not_rated(db):

@@ -9,6 +9,9 @@ from app.services.companies_house import CompaniesHouseClient, CompaniesHouseUna
 from app.services.company_match import name_match_score
 from app.services.discrepancies import detect_discrepancies
 
+# Not an error: there was no company name to search with, so no lookup was ever made.
+NOT_ATTEMPTED = "not_attempted"
+
 
 @dataclass(frozen=True)
 class EnrichmentOutcome:
@@ -43,7 +46,8 @@ async def enrich(
     ch_client: CompaniesHouseClient, application: ExtractedApplication
 ) -> EnrichmentOutcome:
     if application.company_name is None:
-        return _empty()
+        # Never asked, so this row must not read like a register that answered no. See D-029.
+        return _empty(lookup_error=NOT_ATTEMPTED)
 
     try:
         lookup = await ch_client.lookup(application.company_number, application.company_name)

@@ -79,14 +79,22 @@ class CompaniesHouseClient:
         profile, limited = await self._get_company(number)
         return CompaniesHouseLookup(profile, rate_limited=limited)
 
-    async def _get(self, url: str, **kwargs) -> httpx.Response:
+    async def _get(
+        self, url: str, *, absence_is_an_answer: bool = False, **kwargs
+    ) -> httpx.Response:
         try:
             response = await self._client.get(url, **kwargs)
         except httpx.HTTPError as error:
             raise CompaniesHouseUnavailable(classify(error)) from error
-        # 404 and 429 are answers the caller interprets; everything else means we never asked.
-        if response.status_code in (httpx.codes.NOT_FOUND, httpx.codes.TOO_MANY_REQUESTS):
+
+        # 429 is always the caller's to interpret. 404 only where it means "no such company":
+        # /search returns 200 with empty items for no hits, so a 404 there is a broken endpoint.
+        allowed = {httpx.codes.TOO_MANY_REQUESTS}
+        if absence_is_an_answer:
+            allowed.add(httpx.codes.NOT_FOUND)
+        if response.status_code in allowed:
             return response
+
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError as error:
@@ -94,7 +102,7 @@ class CompaniesHouseClient:
         return response
 
     async def _get_company(self, number: str) -> tuple[CompanyProfile | None, bool]:
-        response = await self._get(f"/company/{number}")
+        response = await self._get(f"/company/{number}", absence_is_an_answer=True)
         if response.status_code == httpx.codes.TOO_MANY_REQUESTS:
             return None, True
         if response.status_code == httpx.codes.NOT_FOUND:

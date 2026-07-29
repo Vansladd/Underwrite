@@ -32,8 +32,23 @@ referral identical to a genuine miss.
 **Classified by status, never by intent.** The client raises `CompaniesHouseUnavailable(reason)`
 with `auth` (401/403), `bad_request` (400), `http_<status>`, `timeout`, or `network`. It is tempting
 to map 400 to "bad key" — that is what ours was — but a 400 is also a malformed company number, and
-a guessed cause in an append-only trail is worse than a vague one. **404 is never a failure**: an
-absent company is an answer.
+a guessed cause in an append-only trail is worse than a vague one.
+
+**404 means "no such company" on `/company/{number}` and nothing of the sort on `/search`.** Search
+returns 200 with empty items when there are no hits, so a 404 there is a broken endpoint — a wrong
+base URL, a bad path prefix, a proxy. The first cut of this change shared one 404 policy across both
+and so turned a misconfigured host back into "this company is not registered", which is the very lie
+being removed. `_get` now takes `absence_is_an_answer`, and only the company endpoint passes it.
+
+**A lookup that was never attempted is not a lookup that found nothing.** With no company name
+there is nothing to search for, so the row records `not_attempted` rather than a null that reads as
+"the register answered no". The drawer says so in its own words — the register is not the problem,
+the submission is — instead of advising a re-check that would change nothing.
+
+**The audit event follows `lookup_failed`, not the error slug.** A rate limit has no error string
+but is still a lookup that never happened; keying the event on the slug alone wrote
+`enrichment_completed` ("Companies House checked" in the timeline) onto submissions the decision
+panel was simultaneously calling unverified — two contradictory claims in one drawer.
 
 The audit payload carries that slug instead of `repr(error)`, which had been embedding the upstream
 URL into a trail that cannot be redacted (D-010).

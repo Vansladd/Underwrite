@@ -187,3 +187,15 @@ async def test_a_404_is_an_answer_not_a_failure(ch):
 
     assert not result.found
     assert not result.rate_limited
+
+
+@respx.mock
+async def test_a_404_from_search_is_a_broken_endpoint_not_an_empty_register(ch):
+    # /search returns 200 with empty items when there are no hits, so a 404 is the endpoint being
+    # wrong — a misconfigured base URL must not read as "this company is not registered".
+    respx.get(f"{BASE}/search/companies").mock(return_value=httpx.Response(404))
+
+    with pytest.raises(CompaniesHouseUnavailable) as caught:
+        await ch.lookup(None, "Acme")
+
+    assert caught.value.reason == "http_404"

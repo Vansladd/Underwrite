@@ -79,6 +79,15 @@ function Callout({
 
 function Comparison({ extraction, enrichment }: { extraction: Extraction; enrichment: Enrichment }) {
   // Before ch_found: a failed lookup never learned whether the company is on the register.
+  if (enrichment.lookup_error === 'not_attempted') {
+    return (
+      <Callout tone="muted">
+        No company name was extracted, so Companies House was never checked. The register is fine —
+        this submission has nothing to look up.
+      </Callout>
+    )
+  }
+
   if (enrichment.lookup_error != null || enrichment.rate_limited) {
     return (
       <Callout tone="muted">
