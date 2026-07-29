@@ -5,6 +5,53 @@ Running log of non-obvious technical choices. Domain and pricing decisions live 
 
 ---
 
+## D-029 · "We could not ask" is not "the register said no"
+
+**Ticket:** CH lookup failures · **Date:** 2026-07-29
+
+`enrich()` collapsed four different outcomes into `ch_found=False`: nothing to search with, the
+register genuinely having no such company, a 429, and an outright failure (bad credentials, outage,
+timeout). Only the second is a finding about the applicant. The other three produced a
+`CH_NOT_FOUND` referral that **asserted something about the insured which was never checked** — and
+because `enrich()` is deliberately best-effort (D-022/D-023), nothing anywhere reported the failure.
+A dead API key looked exactly like an empty register, forever.
+
+This was found the honest way: a live key was configured, every lookup 401'd, and the queue filled
+with confident `CH_NOT_FOUND` referrals. The key turned out to be scoped to the **Test** environment.
+Nothing in the product could have told us that.
+
+**`CH_UNAVAILABLE` is now a distinct referral code**, mutually exclusive with `CH_NOT_FOUND` in
+`RATING_SPEC.md`. Both still refer, so no premium moves — but the queue, the drawer, and the audit
+trail can finally tell "unverified because we could not check" from "not on the register".
+
+**One column, not two.** `enrichments.lookup_error` holds a classified slug; `lookup_failed` derives
+as `lookup_error is not None or rate_limited`. That also finally consumes `rate_limited`, which was
+being stored and exposed since UW-028 while **no code read it** — a rate-limited lookup produced a
+referral identical to a genuine miss.
+
+**Classified by status, never by intent.** The client raises `CompaniesHouseUnavailable(reason)`
+with `auth` (401/403), `bad_request` (400), `http_<status>`, `timeout`, or `network`. It is tempting
+to map 400 to "bad key" — that is what ours was — but a 400 is also a malformed company number, and
+a guessed cause in an append-only trail is worse than a vague one. **404 is never a failure**: an
+absent company is an answer.
+
+The audit payload carries that slug instead of `repr(error)`, which had been embedding the upstream
+URL into a trail that cannot be redacted (D-010).
+
+**A missing key warns at startup rather than refusing to boot** — `make demo` and `make seed` run
+the whole pipeline on canned providers with no key and no AWS (D-024), and failing hard would break
+the clone-and-run story to fix a problem that only exists in real runs.
+
+**In the drawer, an unreachable register is muted, not red.** Discrepancy red means a conflict in the
+submission; a lookup we could not make is missing information about *us*. Painting it red would spend
+the one discrepancy colour on something that is not one (DESIGN.md Rule 1).
+
+**Not solved here:** after an outage, the affected submissions sit indistinguishable among other
+referrals — the queue filters by status, not reason — and there is no re-enrich action. That needs
+its own ticket; this one makes the problem visible.
+
+---
+
 ## D-028 · PDF ingest — a separate multipart route, caps as a cost boundary, no OCR
 
 **Ticket:** UW-026 / UW-031 · **Date:** 2026-07-29

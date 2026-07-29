@@ -47,6 +47,8 @@ class Enrichment:
     ch_company_status: CompanyStatus | None = None
     ch_name_match_score: float | None = None
     discrepancies: tuple[str, ...] = ()
+    # The lookup never completed, so ch_found=False says nothing about the register. See D-029.
+    lookup_failed: bool = False
 
     def __post_init__(self) -> None:
         if self.ch_company_status is not None:

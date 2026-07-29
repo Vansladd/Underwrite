@@ -5,7 +5,7 @@ from typing import Any
 
 from app.domain.rating import Enrichment
 from app.schemas import ExtractedApplication
-from app.services.companies_house import CompaniesHouseClient
+from app.services.companies_house import CompaniesHouseClient, CompaniesHouseUnavailable
 from app.services.company_match import name_match_score
 from app.services.discrepancies import detect_discrepancies
 
@@ -17,7 +17,9 @@ class EnrichmentOutcome:
     error: str | None = None
 
 
-def _empty(error: str | None = None) -> EnrichmentOutcome:
+def _empty(lookup_error: str | None = None, rate_limited: bool = False) -> EnrichmentOutcome:
+    # Either way the lookup never produced an answer about the register. See D-029.
+    failed = lookup_error is not None or rate_limited
     return EnrichmentOutcome(
         orm_kwargs={
             "ch_found": False,
@@ -29,10 +31,11 @@ def _empty(error: str | None = None) -> EnrichmentOutcome:
             "ch_name_match_score": None,
             "sic_codes": [],
             "discrepancies": [],
-            "rate_limited": False,
+            "rate_limited": rate_limited,
+            "lookup_error": lookup_error,
         },
-        domain=Enrichment(ch_found=False),
-        error=error,
+        domain=Enrichment(ch_found=False, lookup_failed=failed),
+        error=lookup_error,
     )
 
 
@@ -44,16 +47,15 @@ async def enrich(
 
     try:
         lookup = await ch_client.lookup(application.company_number, application.company_name)
-    except Exception as error:
-        # Best-effort: a CH outage degrades to CH_NOT_FOUND -> REFER, never a pipeline failure.
-        return _empty(error=repr(error))
+    except CompaniesHouseUnavailable as error:
+        # Best-effort: a failed lookup degrades to CH_UNAVAILABLE -> REFER, never a stage failure.
+        return _empty(lookup_error=error.reason)
+    except Exception:
+        # Backstop for anything the client did not classify; the pipeline must not fail here.
+        return _empty(lookup_error="unknown")
 
     if lookup.profile is None:
-        outcome = _empty()
-        return EnrichmentOutcome(
-            orm_kwargs={**outcome.orm_kwargs, "rate_limited": lookup.rate_limited},
-            domain=outcome.domain,
-        )
+        return _empty(rate_limited=lookup.rate_limited)
 
     profile = lookup.profile
     score = name_match_score(application.company_name, profile.company_name)
@@ -71,6 +73,7 @@ async def enrich(
             "sic_codes": profile.sic_codes,
             "discrepancies": discrepancies,
             "rate_limited": lookup.rate_limited,
+            "lookup_error": None,
         },
         domain=Enrichment(
             ch_found=True,

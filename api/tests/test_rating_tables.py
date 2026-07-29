@@ -234,6 +234,7 @@ REFER_CODES = frozenset(
         ReasonCode.LOW_EXTRACTION_CONFIDENCE,
         ReasonCode.MISSING_FIELDS,
         ReasonCode.CH_NOT_FOUND,
+        ReasonCode.CH_UNAVAILABLE,
         ReasonCode.CH_NAME_MISMATCH,
         ReasonCode.CH_STATUS_NOT_ACTIVE,
         ReasonCode.CH_DISCREPANCY,
@@ -266,6 +267,12 @@ REFER_IN_ISOLATION = [
         id="missing_fields",
     ),
     pytest.param({}, Enrichment(ch_found=False), ReasonCode.CH_NOT_FOUND, id="ch_not_found"),
+    pytest.param(
+        {},
+        Enrichment(ch_found=False, lookup_failed=True),
+        ReasonCode.CH_UNAVAILABLE,
+        id="ch_unavailable",
+    ),
     pytest.param(
         {},
         enrichment(ch_name_match_score=0.84),

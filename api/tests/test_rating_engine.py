@@ -174,6 +174,24 @@ def test_discrepancies_still_refer_when_no_company_was_matched():
     }
 
 
+def test_a_failed_lookup_refers_without_claiming_the_company_is_absent():
+    result = rate(application(), Enrichment(ch_found=False, lookup_failed=True))
+
+    codes = {r.code for r in result.refer_reasons}
+    assert codes == {ReasonCode.CH_UNAVAILABLE}
+    # The whole point: never assert the register said no when we never heard from it (D-029).
+    assert ReasonCode.CH_NOT_FOUND not in codes
+    assert result.decision is Decision.REFER
+
+
+def test_the_register_answering_no_still_refers_as_not_found():
+    result = rate(application(), Enrichment(ch_found=False))
+
+    codes = {r.code for r in result.refer_reasons}
+    assert codes == {ReasonCode.CH_NOT_FOUND}
+    assert ReasonCode.CH_UNAVAILABLE not in codes
+
+
 def test_discrepancy_sentences_are_joined_without_doubling_their_punctuation():
     # detect_discrepancies returns whole sentences (D-022); the reason must not add its own stop.
     result = rate(

@@ -2,7 +2,7 @@ import pytest
 
 from app.domain.enums import CompanyStatus, DataVolume, RequestedLimit, Sector
 from app.schemas import CompanyProfile, ExtractedApplication
-from app.services.companies_house import CompaniesHouseLookup
+from app.services.companies_house import CompaniesHouseLookup, CompaniesHouseUnavailable
 from app.services.enrichment import enrich
 from tests.fakes import FakeChClient
 
@@ -60,26 +60,49 @@ async def test_a_strike_off_detail_becomes_a_discrepancy():
     assert outcome.domain.discrepancies == tuple(outcome.orm_kwargs["discrepancies"])
 
 
-async def test_no_match_leaves_ch_not_found_without_an_error():
-    ch = FakeChClient(CompaniesHouseLookup(None, rate_limited=True))
+async def test_the_register_answering_no_is_not_a_failed_lookup():
+    ch = FakeChClient(CompaniesHouseLookup(None))
 
     outcome = await enrich(ch, application())
 
     assert outcome.error is None
     assert outcome.orm_kwargs["ch_found"] is False
+    assert outcome.orm_kwargs["lookup_error"] is None
+    # The one case that may claim the company is absent: we asked and were told. See D-029.
+    assert outcome.domain.lookup_failed is False
+
+
+async def test_a_rate_limited_lookup_never_learned_anything():
+    ch = FakeChClient(CompaniesHouseLookup(None, rate_limited=True))
+
+    outcome = await enrich(ch, application())
+
     assert outcome.orm_kwargs["rate_limited"] is True
     assert outcome.domain.ch_found is False
+    assert outcome.domain.lookup_failed is True
 
 
-async def test_a_lookup_exception_is_swallowed_into_a_best_effort_result():
+async def test_a_classified_failure_keeps_its_reason():
+    ch = FakeChClient(error=CompaniesHouseUnavailable("auth"))
+
+    outcome = await enrich(ch, application())
+
+    assert outcome.orm_kwargs["lookup_error"] == "auth"
+    assert outcome.domain.lookup_failed is True
+    assert outcome.error == "auth"
+
+
+async def test_an_unclassified_exception_is_swallowed_into_a_best_effort_result():
     ch = FakeChClient(error=RuntimeError("companies house is down"))
 
     outcome = await enrich(ch, application())
 
-    # Best-effort: the exception is recorded, not propagated (the #30-review fix).
+    # Best-effort: the exception is recorded, not propagated (the #30-review fix). The repr does
+    # not reach the payload — this trail is append-only (D-010).
     assert outcome.orm_kwargs["ch_found"] is False
-    assert "companies house is down" in outcome.error
-    assert outcome.domain.ch_found is False
+    assert outcome.error == "unknown"
+    assert "companies house is down" not in str(outcome.orm_kwargs)
+    assert outcome.domain.lookup_failed is True
 
 
 async def test_a_missing_company_name_skips_the_lookup_entirely():

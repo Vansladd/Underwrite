@@ -110,6 +110,7 @@ async def _enrich(
         "discrepancies": len(outcome.orm_kwargs["discrepancies"]),
     }
     if outcome.error is not None:
+        # A classified slug, not a repr: this trail is append-only and cannot be redacted (D-010).
         payload["error"] = outcome.error
     await record_event(session, submission.id, event_type, AuditActor.SYSTEM, payload)
     await session.commit()
