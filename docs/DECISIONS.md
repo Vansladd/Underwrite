@@ -40,6 +40,16 @@ Generate control the drawer uses.
 **Approve and decline still reject an auto-approved submission.** It is terminal; the machine has
 already decided, and a second decision would need its own reversal semantics.
 
+**Issuance is its own transaction, and that is load-bearing.** The first cut added the Quote to the
+same transaction that persists the Rating, so an insert failure there — `quote_ref` is
+unique-constrained and built from six hex characters, so a collision is rare but real — would have
+rolled back the rating, the status and the `rating_completed` event, 500'd the request, and left a
+fully rated submission sitting at `received`. The rating commits first; issuance follows and, if it
+fails, rolls back and logs, degrading to exactly the pre-D-030 state (auto-approved, no quote). No
+new audit event was invented for that path: `rating_completed` with no `submission_approved` after
+it already says the quote never issued, and this ticket had already produced one duplicated event
+by reaching for the vocabulary too quickly.
+
 ---
 
 ## D-029 · "We could not ask" is not "the register said no"
