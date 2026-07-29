@@ -238,6 +238,26 @@ async def test_an_oversized_upload_is_refused(api, db):
     assert await db.scalar(select(func.count()).select_from(Submission)) == 0
 
 
+async def test_an_oversized_body_is_refused_before_it_is_read(api):
+    # httpx sends Content-Length, so this never reaches the route or the multipart parser.
+    response = await api.post(
+        "/api/submissions",
+        content=b"x" * (MAX_UPLOAD_BYTES + 1),
+        headers={"content-type": "application/json"},
+    )
+
+    assert response.status_code == 413
+    assert "larger than" in response.json()["detail"]
+
+
+async def test_an_ordinary_body_passes_the_size_gate(api):
+    response = await api.post(
+        "/api/submissions", json={"input_mode": "paste", "raw_input": BROKER_EMAIL}
+    )
+
+    assert response.status_code == 201
+
+
 @pytest.mark.parametrize(
     ("payload", "expected"),
     [

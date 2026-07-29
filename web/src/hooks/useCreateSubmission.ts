@@ -19,7 +19,9 @@ async function uploadPdf(file: File): Promise<SubmissionDetail> {
   body.append('file', file)
   const response = await fetch('/api/submissions/pdf', { method: 'POST', body })
   const payload = await response.json().catch(() => null)
-  if (!response.ok) throw apiError(payload)
+  // A 2xx that did not parse is a failure too — returning null here would throw past the
+  // mutation's error handling and leave the button stuck on "Submitting…".
+  if (!response.ok || payload === null) throw apiError(payload)
   return payload as SubmissionDetail
 }
 

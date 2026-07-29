@@ -28,6 +28,14 @@ parse; `MAX_TEXT_CHARS` (20k) bounds the **Anthropic call** the text is about to
 rule as `terraform apply`: nothing unbounded reaches a paid API. A rejection is therefore also a
 saving — every 4xx below is a paid extraction that never happened.
 
+**The size cap is enforced in middleware, not the route.** FastAPI parses the multipart form while
+solving the request, so a handler-level check runs *after* the upload has been spooled to disk — the
+cap would bound memory but not the transfer. `reject_oversized_bodies` refuses on `Content-Length`
+before anything reads the body. A chunked request declares no length and still falls through to the
+handler's own cap, which is the residual case. Likewise `collapse_pages` accumulates to
+`MAX_TEXT_CHARS` and stops rather than joining every page and truncating after: a flate-compressed
+PDF is small on disk and vast once decoded. One hostile *page* is still bounded only by pypdf.
+
 **Failure is four typed errors, each carrying its own applicant-facing sentence**: `PdfTooLarge`
 (413), `NotAPdf`, `EncryptedPdf`, `NoTextLayer` (422). The last is the one worth naming: an
 image-only scan yields an empty string, and passing that to the model would spend money to extract
