@@ -1,8 +1,10 @@
 import { type FormEvent, useRef, useState } from 'react'
 
 import type { components } from './api/schema'
+import { ResultScreen } from './components/ResultScreen'
 import { StagedProgress } from './components/StagedProgress'
 import { type NewSubmission, useCreateSubmission } from './hooks/useCreateSubmission'
+import { type SubmissionDetail, useRenderQuote } from './hooks/useSubmissions'
 import { useStagedProgress } from './hooks/useStagedProgress'
 import { dataVolumeLabel, poundsLabel, sectorLabel } from './lib/format'
 
@@ -171,6 +173,10 @@ export function Apply({
   // page. Hold the height the form had; StagedProgress centres itself in it.
   const bodyRef = useRef<HTMLDivElement>(null)
   const [heldHeight, setHeldHeight] = useState<number>()
+  // The third phase of the flow. The POST already returned the whole submission, so the result
+  // needs no refetch — and it is the same record the drawer will show.
+  const [result, setResult] = useState<SubmissionDetail | null>(null)
+  const renderQuote = useRenderQuote(result?.id ?? '')
 
   function set(key: keyof Fields, value: string) {
     setFields((current) => ({ ...current, [key]: value }))
@@ -196,11 +202,20 @@ export function Apply({
     create.mutate(submission, {
       onSuccess: (created) => {
         const hold = remainingHold()
-        if (hold === 0) onCreated(created.id)
-        else window.setTimeout(() => onCreated(created.id), hold)
+        if (hold === 0) setResult(created)
+        else window.setTimeout(() => setResult(created), hold)
       },
       onError: () => setHeldHeight(undefined),
     })
+  }
+
+  function submitAnother() {
+    setResult(null)
+    setHeldHeight(undefined)
+    setFields(EMPTY)
+    setText('')
+    setFile(null)
+    create.reset()
   }
 
   const ready = mode === 'paste' ? text.trim().length > 0 : mode === 'pdf' ? file !== null : true
@@ -223,7 +238,9 @@ export function Apply({
         Tech E&amp;O / Cyber · rated on receipt, referred to an underwriter when it needs one
       </p>
 
-      <ModeTabs active={mode} onChange={switchTo} disabled={create.isPending} />
+      {/* Also locked on a result: the mode describes what was sent, and "Submit another" is the
+          way back to choosing one. */}
+      <ModeTabs active={mode} onChange={switchTo} disabled={create.isPending || result !== null} />
 
       <form onSubmit={onSubmit} className="mt-5 rounded-lg border border-border bg-surface p-6">
         {staged && (
@@ -232,7 +249,27 @@ export function Apply({
           </div>
         )}
 
-        <div ref={bodyRef} className={staged ? 'hidden' : undefined}>
+        {result && !staged && (
+          // minHeight, not height: a short result cannot collapse the card after the staged panel,
+          // and a tall one (the factor ladder) simply grows past it.
+          <div style={{ minHeight: heldHeight }}>
+            <ResultScreen
+              submission={result}
+              onSubmitAnother={submitAnother}
+              onOpenInQueue={() => onCreated(result.id)}
+              onPasteInstead={() => {
+                submitAnother()
+                setMode('paste')
+              }}
+              quotePending={renderQuote.isPending}
+              onGenerateQuote={() =>
+                renderQuote.mutate(undefined, { onSuccess: (updated) => setResult(updated) })
+              }
+            />
+          </div>
+        )}
+
+        <div ref={bodyRef} className={staged || result ? 'hidden' : undefined}>
           <p className="text-[13px] text-ink-muted">{MODES.find((m) => m.key === mode)!.hint}</p>
 
         {mode === 'form' && (

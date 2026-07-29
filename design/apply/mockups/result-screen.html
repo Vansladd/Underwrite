@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Underwrite — Result screen mockup (UW-033)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:oklch(0.985 0.002 250); --surface:oklch(1 0 0); --surface-2:oklch(0.972 0.004 250);
+    --border:oklch(0.918 0.005 250); --border-strong:oklch(0.855 0.006 250);
+    --ink:oklch(0.235 0.012 260); --ink-muted:oklch(0.470 0.012 260); --ink-subtle:oklch(0.520 0.012 260);
+    --accent:oklch(0.530 0.130 47); --accent-text:oklch(0.500 0.140 45); --on-accent:oklch(0.995 0 0);
+    --aa-bg:oklch(0.950 0.040 155); --aa-fg:oklch(0.420 0.110 155);
+    --rf-bg:oklch(0.960 0.055 88);  --rf-fg:oklch(0.455 0.090 78);
+    --dc-bg:oklch(0.952 0.035 26);  --dc-fg:oklch(0.500 0.165 27);
+    --panel:0 1px 0 var(--border);
+  }
+  :root[data-theme="dark"]{
+    --bg:oklch(0.180 0.008 260); --surface:oklch(0.212 0.008 260); --surface-2:oklch(0.242 0.009 260);
+    --border:oklch(0.300 0.010 260); --border-strong:oklch(0.380 0.012 260);
+    --ink:oklch(0.950 0.004 260); --ink-muted:oklch(0.730 0.007 260); --ink-subtle:oklch(0.640 0.007 260);
+    --accent:oklch(0.580 0.135 48); --accent-text:oklch(0.760 0.120 55); --on-accent:oklch(0.170 0.010 260);
+    --aa-bg:oklch(0.300 0.050 155 / .40); --aa-fg:oklch(0.800 0.110 155);
+    --rf-bg:oklch(0.320 0.060 85 / .40);  --rf-fg:oklch(0.840 0.120 88);
+    --dc-bg:oklch(0.330 0.070 27 / .40);  --dc-fg:oklch(0.800 0.150 27);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;padding:32px 24px 64px;
+  }
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  .wrap{max-width:1320px;margin:0 auto}
+  .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+  .toolbar h1{font-size:18px;font-weight:600;letter-spacing:-0.006em}
+  .toolbar p{color:var(--ink-muted);font-size:13px;margin-left:auto}
+  button.toggle{
+    font:inherit;font-size:13px;font-weight:500;cursor:pointer;background:var(--surface);
+    color:var(--ink);border:1px solid var(--border-strong);border-radius:6px;padding:5px 10px;
+  }
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}
+  figcaption{
+    font-size:12px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;
+    color:var(--ink-subtle);margin-bottom:10px;
+  }
+  .note{margin-top:10px;font-size:12px;color:var(--ink-subtle);line-height:1.5}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--panel)}
+  .card-head{padding:0 24px}
+  .tabs{display:flex;gap:24px;border-bottom:1px solid var(--border);padding-top:4px}
+  .tab{position:relative;padding:0 0 12px;font-size:13px;font-weight:500;color:var(--ink-subtle);background:none;border:0;font-family:inherit}
+  .tab[aria-selected="true"]{color:var(--ink)}
+  .tab[aria-selected="true"]::after{content:"";position:absolute;inset-inline:0;bottom:-1px;height:2px;border-radius:999px;background:var(--accent)}
+  .card-body{padding:24px}
+
+  /* header row: the queue's own pill, at the queue's own size */
+  .head{display:flex;align-items:center;gap:10px}
+  .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:500}
+  .pill::before{content:"";width:6px;height:6px;border-radius:999px;background:currentColor}
+  .pill.aa{background:var(--aa-bg);color:var(--aa-fg)}
+  .pill.rf{background:var(--rf-bg);color:var(--rf-fg)}
+  .pill.dc{background:var(--dc-bg);color:var(--dc-fg)}
+  .who{font-size:14px;font-weight:500}
+  .ref{margin-left:auto;font-size:12px;color:var(--ink-subtle)}
+
+  .premium-label{margin-top:22px;font-size:13px;color:var(--ink-muted)}
+  .premium{font-size:28px;line-height:1.15;letter-spacing:-0.006em;margin-top:2px}
+  .terms{margin-top:6px;font-size:13px;color:var(--ink-muted)}
+
+  table{width:100%;border-collapse:collapse;margin-top:22px}
+  caption{
+    text-align:left;font-size:12px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;
+    color:var(--ink-subtle);padding-bottom:8px;
+  }
+  th{
+    text-align:left;font-size:11px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;
+    color:var(--ink-subtle);padding:0 0 8px;border-bottom:1px solid var(--border);
+  }
+  th.r,td.r{text-align:right}
+  td{padding:9px 0;font-size:13px;border-bottom:1px solid var(--border)}
+  tr:last-child td{border-bottom:0}
+  td.band{color:var(--ink-muted)}
+  td.mult{color:var(--accent-text)}
+  tr.total td{padding-top:12px;font-weight:600;font-size:14px;border-top:1px solid var(--border-strong);border-bottom:0}
+
+  .say{margin-top:20px;font-size:14px}
+  .reasons{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+  .reason{display:flex;gap:9px;font-size:13px;line-height:1.5}
+  .reason .g{flex:none}
+  .reason.rf .g{color:var(--rf-fg)}
+  .reason.dc .g{color:var(--dc-fg)}
+  .muted{margin-top:16px;font-size:13px;color:var(--ink-muted)}
+
+  .actions{display:flex;gap:12px;margin-top:24px;align-items:center}
+  .btn{height:40px;padding:0 16px;border-radius:6px;font:inherit;font-size:14px;font-weight:500;border:1px solid transparent}
+  .primary{background:var(--accent);color:var(--on-accent)}
+  .ghost{background:var(--surface);color:var(--ink);border-color:var(--border)}
+  .link{background:none;border:0;color:var(--ink-muted);font:inherit;font-size:13px;font-weight:500;padding:0 4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="toolbar">
+    <h1>UW-033 · Result screen</h1>
+    <button class="toggle" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme==='dark'?'light':'dark'">Toggle theme</button>
+    <p>The same evidence, from the other side — the ladder and reasons the drawer will show.</p>
+  </div>
+
+  <div class="grid">
+
+    <!-- auto approved -->
+    <figure>
+      <figcaption>1 — auto-approved</figcaption>
+      <div class="card">
+        <div class="card-head"><div class="tabs">
+          <button class="tab">Fill form</button><button class="tab" aria-selected="true">Paste submission</button><button class="tab">Upload PDF</button>
+        </div></div>
+        <div class="card-body">
+          <div class="head">
+            <span class="pill aa">Auto-approved</span>
+            <span class="who">Acme Robotics Ltd</span>
+            <span class="ref mono">7F2A19C4</span>
+          </div>
+
+          <p class="premium-label">Indicative annual premium</p>
+          <p class="premium mono">£3,630</p>
+          <p class="terms">£2,500 excess · valid until 28 August 2026</p>
+
+          <table>
+            <caption>How the premium was built</caption>
+            <tr><th>Factor</th><th>Band</th><th class="r">×</th><th class="r">Running</th></tr>
+            <tr><td>Base rate</td><td class="band"></td><td class="r"></td><td class="r mono">£900</td></tr>
+            <tr><td>Limit</td><td class="band">£1,000,000 limit</td><td class="r mono mult">1.9</td><td class="r mono">£1,710</td></tr>
+            <tr><td>Revenue band</td><td class="band">£2m – £10m</td><td class="r mono mult">1.7</td><td class="r mono">£2,907</td></tr>
+            <tr><td>Sector</td><td class="band">saas</td><td class="r mono mult">1.0</td><td class="r mono">£2,907</td></tr>
+            <tr><td>Data volume</td><td class="band">100k – 1m records</td><td class="r mono mult">1.25</td><td class="r mono">£3,634</td></tr>
+            <tr><td>Claims history</td><td class="band">no prior claims</td><td class="r mono mult">1.0</td><td class="r mono">£3,634</td></tr>
+            <tr><td>Months trading</td><td class="band">2 years or more</td><td class="r mono mult">1.0</td><td class="r mono">£3,634</td></tr>
+            <tr class="total"><td>Indicative premium</td><td class="band">rounded to the nearest £10</td><td></td><td class="r mono">£3,630</td></tr>
+          </table>
+
+          <div class="actions">
+            <button class="btn primary">Download quote</button>
+            <button class="btn ghost">Submit another</button>
+            <button class="link">Open in queue</button>
+          </div>
+        </div>
+      </div>
+      <p class="note">No banner, no 48px number: Rule 3 keeps status to the queue's own pill, and the scale stops at 28px. The evidence is the design — an approved result is mostly a ladder.</p>
+    </figure>
+
+    <!-- referred -->
+    <figure>
+      <figcaption>2 — referred (no premium anywhere)</figcaption>
+      <div class="card">
+        <div class="card-head"><div class="tabs">
+          <button class="tab">Fill form</button><button class="tab" aria-selected="true">Paste submission</button><button class="tab">Upload PDF</button>
+        </div></div>
+        <div class="card-body">
+          <div class="head">
+            <span class="pill rf">Referred</span>
+            <span class="who">Harbour Analytics Ltd</span>
+            <span class="ref mono">AE085F68</span>
+          </div>
+
+          <p class="say">An underwriter will review this before a price is confirmed.</p>
+
+          <div class="reasons">
+            <div class="reason rf"><span class="g">▲</span><span>No matching company was found at Companies House.</span></div>
+          </div>
+
+          <p class="muted">No indicative price is shown while a submission is with an underwriter — nothing here is an offer.</p>
+
+          <div class="actions">
+            <button class="btn primary">Submit another</button>
+            <button class="link">Open in queue</button>
+          </div>
+        </div>
+      </div>
+      <p class="note">The drawer chips each reason with its code for an underwriter working the taxonomy; here the sentence stands alone — plain language over jargon.</p>
+    </figure>
+
+    <!-- declined -->
+    <figure>
+      <figcaption>3 — declined (reasons verbatim)</figcaption>
+      <div class="card">
+        <div class="card-head"><div class="tabs">
+          <button class="tab">Fill form</button><button class="tab" aria-selected="true">Paste submission</button><button class="tab">Upload PDF</button>
+        </div></div>
+        <div class="card-body">
+          <div class="head">
+            <span class="pill dc">Declined</span>
+            <span class="who">Blockspire Ltd</span>
+            <span class="ref mono">C13B8802</span>
+          </div>
+
+          <p class="say">This submission falls outside what this product can write.</p>
+
+          <div class="reasons">
+            <div class="reason dc"><span class="g">▲</span><span>Crypto is outside appetite for this product.</span></div>
+          </div>
+
+          <p class="muted">There is no price to show — the risk was not rated.</p>
+
+          <div class="actions">
+            <button class="btn primary">Submit another</button>
+            <button class="link">Open in queue</button>
+          </div>
+        </div>
+      </div>
+      <p class="note">Reasons render exactly as the engine wrote them; the screen adds no softening and no hedge.</p>
+    </figure>
+
+    <!-- failed -->
+    <figure>
+      <figcaption>4 — failed (the state the ticket forgot)</figcaption>
+      <div class="card">
+        <div class="card-head"><div class="tabs">
+          <button class="tab">Fill form</button><button class="tab" aria-selected="true">Paste submission</button><button class="tab">Upload PDF</button>
+        </div></div>
+        <div class="card-body">
+          <div class="head">
+            <span class="pill dc">Failed</span>
+            <span class="who">Untitled submission</span>
+            <span class="ref mono">4B90DD10</span>
+          </div>
+
+          <p class="say">This submission could not be read, so nothing was rated.</p>
+
+          <p class="muted">The extraction step did not complete. Pasting the text directly is the quickest way through — it skips whatever the document was doing.</p>
+
+          <div class="actions">
+            <button class="btn primary">Try pasting it</button>
+            <button class="btn ghost">Submit another</button>
+            <button class="link">Open in queue</button>
+          </div>
+        </div>
+      </div>
+      <p class="note">Reachable whenever extraction hard-stops. PRODUCT.md: half-built states are how ops tools lose trust.</p>
+    </figure>
+
+  </div>
+</div>
+</body>
+</html>

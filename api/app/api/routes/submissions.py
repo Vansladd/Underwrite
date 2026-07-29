@@ -25,6 +25,7 @@ from app.schemas import (
 from app.services.audit import record_event
 from app.services.companies_house import CompaniesHouseClient
 from app.services.extraction import AnthropicExtractor
+from app.services.pdf import PdfRenderer
 from app.services.pdf_text import MAX_UPLOAD_BYTES, PdfTextError, PdfTooLarge, extract_text
 from app.services.pipeline import run_pipeline
 from app.services.quote import NotQuotable, build_quote
@@ -135,6 +136,7 @@ async def _receive(
     application: ExtractedApplication | None,
     extractor: AnthropicExtractor,
     ch_client: CompaniesHouseClient,
+    renderer: PdfRenderer,
     **audit: object,
 ) -> SubmissionDetail:
     submission = Submission(input_mode=input_mode, raw_input=raw_input)
@@ -155,7 +157,13 @@ async def _receive(
     # The pipeline commits after each stage; no trailing commit needed here.
     await run_pipeline(db, submission, application, extractor, ch_client)
 
-    return await load_detail(db, submission.id)
+    detail = await load_detail(db, submission.id)
+    if detail.quote is not None and detail.quote.pdf_s3_key is None:
+        # Auto-approved submissions issue their own quote (D-030). Render it here rather than in
+        # the pipeline: run_pipeline has no renderer, and seed.py calls it directly.
+        await generate_quote_pdf(db, detail, renderer)
+        return await load_detail(db, submission.id)
+    return detail
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -165,10 +173,11 @@ async def create_submission(
     user: CurrentUser,
     extractor: ExtractorDep,
     ch_client: ChClientDep,
+    renderer: RendererDep,
 ) -> SubmissionDetail:
     application = payload.application.to_extracted() if payload.application else None
     return await _receive(
-        db, payload.input_mode, payload.raw_input, application, extractor, ch_client
+        db, payload.input_mode, payload.raw_input, application, extractor, ch_client, renderer
     )
 
 
@@ -179,6 +188,7 @@ async def create_submission_from_pdf(
     user: CurrentUser,
     extractor: ExtractorDep,
     ch_client: ChClientDep,
+    renderer: RendererDep,
 ) -> SubmissionDetail:
     # Starlette has already spooled the whole body; this bounds what the handler holds in memory.
     data = await file.read(MAX_UPLOAD_BYTES + 1)
@@ -197,6 +207,7 @@ async def create_submission_from_pdf(
         None,
         extractor,
         ch_client,
+        renderer,
         # Applicant-controlled: recorded as audit data, never used as a path or a filename.
         filename=(file.filename or "")[:MAX_FILENAME_CHARS],
         upload_bytes=len(data),
