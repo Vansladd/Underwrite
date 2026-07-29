@@ -1,8 +1,8 @@
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_sweeper_token
 from app.main import app
 from tests.factories import make_submission
 
-# Everything not listed here must carry get_current_user. A new route fails until it is classified.
+# Everything not listed here must carry a gate. A new route fails until it is classified.
 PUBLIC = {
     ("GET", "/health"),
     ("POST", "/api/auth/login"),
@@ -12,6 +12,9 @@ PUBLIC = {
     ("GET", "/api/docs/oauth2-redirect"),
     ("GET", "/api/redoc"),
 }
+
+# Machine callers: no session, no human, a shared token instead. See DECISIONS D-031.
+GATES = (get_current_user, require_sweeper_token)
 
 
 def walk(routes):
@@ -33,15 +36,31 @@ def routes():
             yield method, route.path, route
 
 
+def gates_on(route):
+    # The docs routes are plain Starlette Routes and carry no dependant at all.
+    dependant = getattr(route, "dependant", None)
+    return [] if dependant is None else [d.call for d in dependant.dependencies]
+
+
 def test_every_route_is_deliberately_public_or_gated():
     ungated = {
         (method, path)
         for method, path, route in routes()
-        if (method, path) not in PUBLIC
-        and not any(d.call is get_current_user for d in route.dependant.dependencies)
+        if (method, path) not in PUBLIC and not any(call in GATES for call in gates_on(route))
     }
 
     assert not ungated, f"classify these in PUBLIC or gate them: {sorted(ungated)}"
+
+
+def test_the_machine_gate_stays_confined_to_the_internal_prefix():
+    # A token is not a session: an operator route must never be reachable with a shared secret.
+    misgated = {
+        (method, path)
+        for method, path, route in routes()
+        if not path.startswith("/api/internal") and require_sweeper_token in gates_on(route)
+    }
+
+    assert not misgated, f"these carry the sweeper token outside /api/internal: {sorted(misgated)}"
 
 
 def test_the_public_list_has_no_stale_entries():

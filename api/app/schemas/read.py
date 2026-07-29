@@ -106,6 +106,12 @@ class QuoteRead(Read):
     created_at: datetime
 
 
+class ExpirySweep(BaseModel):
+    swept_on: date
+    expired: int
+    quote_refs: list[str]
+
+
 class AuditEventRead(Read):
     id: uuid.UUID
     event_type: AuditEventType

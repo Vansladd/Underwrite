@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.routes import auth, documents, submissions
+from app.api.routes import auth, documents, internal, submissions
 from app.config import DEFAULT_OPERATOR_PASSWORD, DEFAULT_SECRET_KEY, get_settings
 from app.db import DbSession, build_engine, build_sessionmaker
 from app.middleware import LimitBodySize
@@ -72,6 +72,7 @@ app.add_middleware(LimitBodySize)
 app.include_router(auth.router)
 app.include_router(submissions.router)
 app.include_router(documents.router)
+app.include_router(internal.router)
 
 
 @app.get("/health")

@@ -1,8 +1,10 @@
+import secrets
 import uuid
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, Header, HTTPException, Request, status
 
+from app.config import SettingsDep
 from app.db import DbSession
 from app.models import User
 from app.services.companies_house import CompaniesHouseClient
@@ -30,6 +32,20 @@ async def get_current_user(request: Request, db: DbSession) -> User:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+SWEEPER_HEADER = "X-Sweeper-Token"
+
+
+def require_sweeper_token(
+    settings: SettingsDep, presented: Annotated[str, Header(alias=SWEEPER_HEADER)] = ""
+) -> None:
+    """Gates `/api/internal` for the scheduled Lambda. Not a session: there is no human. D-031."""
+    if not settings.sweeper_token:
+        # Closed, not open, when unconfigured: an empty token must not match an absent header.
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "sweeper token is not configured")
+    # Bytes, not str: compare_digest raises TypeError on non-ASCII, and a header can carry it.
+    if not secrets.compare_digest(presented.encode(), settings.sweeper_token.encode()):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid sweeper token")
 
 
 def get_extractor(request: Request) -> AnthropicExtractor:

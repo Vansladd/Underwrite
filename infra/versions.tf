@@ -6,6 +6,11 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
+    # Zips the sweeper Lambda at plan time; the zip is a build artifact, never committed (#40).
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.7"
+    }
   }
 
   # Region duplicated from var.region: backend blocks cannot use variables. See DECISIONS D-013.

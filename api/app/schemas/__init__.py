@@ -14,6 +14,7 @@ from app.schemas.rating import (
 from app.schemas.read import (
     AuditEventRead,
     EnrichmentRead,
+    ExpirySweep,
     ExtractionRead,
     FactorRead,
     QuoteRead,
@@ -31,6 +32,7 @@ __all__ = [
     "CompanyProfile",
     "DeclineRequest",
     "EnrichmentRead",
+    "ExpirySweep",
     "ExtractedApplication",
     "ExtractionRead",
     "FactorRead",

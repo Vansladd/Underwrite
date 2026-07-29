@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     seed_operator_username: str = "demo"
     seed_operator_password: str = DEFAULT_OPERATOR_PASSWORD
 
+    # Shared with the expiry-sweeper Lambda; empty disables /api/internal entirely. See D-031.
+    sweeper_token: str = ""
+
     quote_base_url: str = "http://localhost:8000"
     local_pdf: bool = True
 
