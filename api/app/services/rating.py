@@ -77,6 +77,13 @@ DATA_VOLUME_FACTORS: dict[DataVolume, Decimal] = {
     DataVolume.OVER_1M: Decimal("1.5"),
 }
 
+DATA_VOLUME_LABELS: dict[DataVolume, str] = {
+    DataVolume.UNDER_10K: "under 10k records",
+    DataVolume.TEN_K_TO_100K: "10k – 100k records",
+    DataVolume.HUNDRED_K_TO_1M: "100k – 1m records",
+    DataVolume.OVER_1M: "over 1m records",
+}
+
 PRIOR_CLAIMS_EDGES = (1, 2)
 PRIOR_CLAIMS_FACTORS = (Decimal("1.0"), Decimal("1.4"), Decimal("1.4"))
 PRIOR_CLAIMS_LABELS = (
@@ -124,6 +131,7 @@ _validate_band(
 _validate_lookup("limit", LIMIT_FACTORS, RequestedLimit)
 _validate_lookup("sector", SECTOR_FACTORS, Sector)
 _validate_lookup("data_volume", DATA_VOLUME_FACTORS, DataVolume)
+_validate_lookup("data_volume labels", DATA_VOLUME_LABELS, DataVolume)
 
 
 def _band_index(edges: tuple[int, ...], value: int) -> int:
@@ -202,9 +210,9 @@ def _refer_reasons(application: Application, enrichment: Enrichment) -> list[Rea
         reasons.append(
             Reason(
                 ReasonCode.CH_DISCREPANCY,
+                # Each discrepancy is already a full sentence (D-022), so no joiner punctuation.
                 "Submission conflicts with Companies House: "
-                + "; ".join(enrichment.discrepancies)
-                + ".",
+                + " ".join(enrichment.discrepancies),
             )
         )
 
@@ -319,12 +327,13 @@ def rate(application: Application, enrichment: Enrichment) -> RatingResult:
         factors,
     )
 
+    data_volume_label = DATA_VOLUME_LABELS[application.data_records_held]
     running = _apply(
         running,
         "DATA_VOLUME",
-        application.data_records_held.value,
+        data_volume_label,
         DATA_VOLUME_FACTORS[application.data_records_held],
-        f"Holds {application.data_records_held.value} personal data records.",
+        f"Holds {data_volume_label} of personal data.",
         factors,
     )
 
