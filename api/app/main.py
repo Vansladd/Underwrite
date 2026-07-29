@@ -2,7 +2,7 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
@@ -10,10 +10,10 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.api.routes import auth, documents, submissions
 from app.config import DEFAULT_OPERATOR_PASSWORD, DEFAULT_SECRET_KEY, get_settings
 from app.db import DbSession, build_engine, build_sessionmaker
+from app.middleware import LimitBodySize
 from app.services.companies_house import CompaniesHouseClient
 from app.services.extraction import AnthropicExtractor
 from app.services.pdf import build_renderer
-from app.services.pdf_text import MAX_UPLOAD_BYTES, PdfTooLarge
 from app.services.storage import get_storage
 
 
@@ -67,25 +67,11 @@ app.add_middleware(
     https_only=_settings.session_secure,
     same_site="lax",
 )
+# Added last so it wraps outermost: an oversized body is refused before a cookie is decrypted.
+app.add_middleware(LimitBodySize)
 app.include_router(auth.router)
 app.include_router(submissions.router)
 app.include_router(documents.router)
-
-
-@app.middleware("http")
-async def reject_oversized_bodies(request: Request, call_next):
-    """Refuse on Content-Length, before anything reads the body.
-
-    A route handler cannot do this: FastAPI parses the multipart form while solving the request,
-    so by the time `create_submission_from_pdf` runs the upload has already been spooled to disk.
-    A chunked request declares no length and still reaches the handler's own cap. See D-028.
-    """
-    declared = request.headers.get("content-length")
-    if declared is not None and declared.isdigit() and int(declared) > MAX_UPLOAD_BYTES:
-        return JSONResponse(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE, content={"detail": str(PdfTooLarge())}
-        )
-    return await call_next(request)
 
 
 @app.get("/health")

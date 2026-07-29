@@ -1,3 +1,4 @@
+import json
 import uuid
 
 import pytest
@@ -248,6 +249,32 @@ async def test_an_oversized_body_is_refused_before_it_is_read(api):
 
     assert response.status_code == 413
     assert "larger than" in response.json()["detail"]
+
+
+async def test_a_chunked_oversized_body_is_refused_too(api):
+    # No Content-Length at all: an async iterator makes httpx stream it. A header check alone would
+    # wave this through to the multipart parser, which spools the whole thing to disk first.
+    async def stream():
+        for _ in range(11):
+            yield b"x" * (1024 * 1024)
+
+    response = await api.post(
+        "/api/submissions", content=stream(), headers={"content-type": "application/json"}
+    )
+
+    assert response.status_code == 413
+    assert "larger than" in response.json()["detail"]
+
+
+async def test_a_chunked_body_under_the_cap_still_gets_through(api):
+    async def stream():
+        yield json.dumps({"input_mode": "paste", "raw_input": BROKER_EMAIL}).encode()
+
+    response = await api.post(
+        "/api/submissions", content=stream(), headers={"content-type": "application/json"}
+    )
+
+    assert response.status_code == 201
 
 
 async def test_an_ordinary_body_passes_the_size_gate(api):
