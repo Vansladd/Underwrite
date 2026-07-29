@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ASYNC_DRIVER_PREFIX = "postgresql+asyncpg://"
 DEFAULT_SECRET_KEY = "dev-insecure-change-me"
 DEFAULT_OPERATOR_PASSWORD = "underwrite-demo"
+DEFAULT_SWEEPER_TOKEN = "local-sweeper-token"
 
 
 class Settings(BaseSettings):
@@ -33,6 +34,9 @@ class Settings(BaseSettings):
     seed_operator_username: str = "demo"
     seed_operator_password: str = DEFAULT_OPERATOR_PASSWORD
 
+    # Shared with the expiry-sweeper Lambda; empty disables /api/internal entirely. See D-031.
+    sweeper_token: str = ""
+
     quote_base_url: str = "http://localhost:8000"
     local_pdf: bool = True
 
@@ -52,6 +56,32 @@ class Settings(BaseSettings):
                 f"a sync DSN fails later at query time rather than here. Got: {value!r}"
             )
         return value
+
+
+def startup_warnings(settings: Settings) -> list[str]:
+    """Every shipped default that must not survive onto a TLS deployment, plus a missing CH key."""
+    warnings = []
+    if settings.secret_key == DEFAULT_SECRET_KEY:
+        warnings.append(
+            "SECRET_KEY is the shipped default; sessions are forgeable — set it in prod"
+        )
+    if settings.session_secure and settings.seed_operator_password == DEFAULT_OPERATOR_PASSWORD:
+        warnings.append(
+            "SEED_OPERATOR_PASSWORD is still the public default on a secure (prod) deployment — "
+            "set a strong secret before exposing the URL"
+        )
+    if settings.session_secure and settings.sweeper_token == DEFAULT_SWEEPER_TOKEN:
+        warnings.append(
+            "SWEEPER_TOKEN is the shipped default from .env.example on a secure (prod) deployment "
+            "— anyone who can read the repo can expire every live quote. Set a strong secret"
+        )
+    if not settings.companies_house_api_key:
+        # Not fatal: `make demo` and `make seed` run the pipeline with canned providers (D-024).
+        warnings.append(
+            "COMPANIES_HOUSE_API_KEY is unset — every lookup will fail and every submission will "
+            "refer with CH_UNAVAILABLE. Set it, or ignore this if you are running the canned demo"
+        )
+    return warnings
 
 
 @lru_cache

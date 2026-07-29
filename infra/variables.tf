@@ -40,6 +40,14 @@ variable "image_tag" {
   default     = ""
 }
 
+# Must match SWEEPER_TOKEN in the box's .env — both ends are hand-managed. See D-031.
+variable "sweeper_token" {
+  description = "Shared secret for /api/internal; empty means the expiry Lambda is not created"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "compose_plugin_version" {
   description = "docker compose plugin version installed on the instance (no leading v)"
   type        = string

@@ -18,6 +18,11 @@ output "pdf_render_function_name" {
   value       = one(aws_lambda_function.pdf_render[*].function_name)
 }
 
+output "quote_expiry_function_name" {
+  description = "EventBridge Scheduler target (#42); null until -var sweeper_token is set"
+  value       = one(aws_lambda_function.quote_expiry[*].function_name)
+}
+
 output "api_ecr_repository_url" {
   description = "Push target for make push-api; the tag goes in API_IMAGE on the box (#16)"
   value       = aws_ecr_repository.api.repository_url

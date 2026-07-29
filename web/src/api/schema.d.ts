@@ -209,6 +209,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/internal/quotes/expire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sweep Expired Quotes */
+        post: operations["sweep_expired_quotes_api_internal_quotes_expire_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -319,6 +336,18 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** ExpirySweep */
+        ExpirySweep: {
+            /**
+             * Swept On
+             * Format: date
+             */
+            swept_on: string;
+            /** Expired */
+            expired: number;
+            /** Quote Refs */
+            quote_refs: string[];
         };
         /** ExtractionRead */
         ExtractionRead: {
@@ -969,6 +998,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sweep_expired_quotes_api_internal_quotes_expire_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Sweeper-Token"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpirySweep"];
                 };
             };
             /** @description Validation Error */

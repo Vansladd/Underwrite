@@ -1,7 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
-from app.config import Settings
+from app.config import (
+    DEFAULT_OPERATOR_PASSWORD,
+    DEFAULT_SECRET_KEY,
+    DEFAULT_SWEEPER_TOKEN,
+    Settings,
+    startup_warnings,
+)
 
 
 def test_accepts_asyncpg_dsn():
@@ -27,3 +33,49 @@ def test_external_api_keys_default_to_empty():
     # The field defaults, not Settings() — which reads a real key from .env when one is present.
     assert Settings.model_fields["anthropic_api_key"].default == ""
     assert Settings.model_fields["companies_house_api_key"].default == ""
+
+
+# --- startup warnings: a shipped default must not survive onto a TLS deployment ---
+
+
+def secure(**overrides) -> Settings:
+    hardened = {
+        "session_secure": True,
+        "secret_key": "a-real-secret",
+        "seed_operator_password": "a-real-password",
+        "sweeper_token": "a-real-token",
+        "companies_house_api_key": "a-real-key",
+    }
+    return Settings(**(hardened | overrides))
+
+
+def test_a_hardened_prod_config_warns_about_nothing():
+    assert startup_warnings(secure()) == []
+
+
+def test_the_default_sweeper_token_warns_on_a_secure_deployment():
+    (warning,) = startup_warnings(secure(sweeper_token=DEFAULT_SWEEPER_TOKEN))
+
+    assert "SWEEPER_TOKEN" in warning
+
+
+def test_the_default_sweeper_token_is_fine_locally():
+    # http://localhost is the shipped default's whole purpose; only a TLS box is a mistake.
+    assert startup_warnings(secure(session_secure=False, sweeper_token=DEFAULT_SWEEPER_TOKEN)) == []
+
+
+def test_an_unset_sweeper_token_does_not_warn():
+    # Empty is the closed state — /api/internal 503s. Nothing to warn about.
+    assert startup_warnings(secure(sweeper_token="")) == []
+
+
+def test_the_other_shipped_defaults_still_warn():
+    warnings = startup_warnings(
+        secure(
+            secret_key=DEFAULT_SECRET_KEY,
+            seed_operator_password=DEFAULT_OPERATOR_PASSWORD,
+            companies_house_api_key="",
+        )
+    )
+
+    assert len(warnings) == 3

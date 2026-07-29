@@ -5,6 +5,62 @@ Running log of non-obvious technical choices. Domain and pricing decisions live 
 
 ---
 
+## D-031 · The sweeper Lambda holds the schedule, not the sweep
+
+**Ticket:** UW-053 · **Date:** 2026-07-29
+
+UW-053 and UW-054 both assume a Lambda that reads and writes the application database. **It cannot.**
+Postgres runs inside the box's Compose network with **no published port** — and that is not an
+oversight, it is the cost decision R1 records in the same breath: *"No RDS bill, no VPC connector, no
+NAT gateway."* Reaching it from Lambda needs exactly those: a published port, a security-group rule,
+a VPC-attached function, and a NAT gateway or interface endpoints so the function can still reach
+CloudWatch Logs. That is **~$32/mo against a ~$15/mo box**, plus a database exposed to the subnet.
+R1 contradicted itself, and the roadmap has been corrected rather than the architecture.
+
+**So the work is split at the only seam that exists.** `app/services/expiry.py` holds the sweep and
+runs where the data is; `lambdas/quote_expiry/handler.py` is a scheduled caller that POSTs
+`/api/internal/quotes/expire` over TLS. The Lambda still earns its place — it is where the schedule,
+the retry, and the failure alarm live, and the box grows no cron — but it is honestly a shim, and
+calling it anything else would be the interesting part of the ticket papered over.
+
+**Idempotency is the `issued` filter, not a marker column.** The sweep selects
+`status = issued AND valid_until < today`, so a repeat run selects nothing and writes nothing.
+`FOR UPDATE` extends that to *overlapping* runs: under READ COMMITTED the loser blocks, re-reads,
+and finds the rows no longer `issued`. `valid_until` is **inclusive** — a quote is live through that
+day and stale the day after — so the predicate is `<`, not `<=`.
+
+**`/api/internal` is gated by a shared token, not a session.** There is no human, so `get_current_user`
+is the wrong shape. `require_sweeper_token` compares `X-Sweeper-Token` with `secrets.compare_digest`
+on **bytes** (the str form raises `TypeError` on non-ASCII, and a header can carry it). An unset
+`SWEEPER_TOKEN` returns **503, not 401** — otherwise an unconfigured deployment would let an absent
+header match an empty secret and stand wide open. `test_route_gating.py` now classifies routes
+against *two* gates and asserts the token gate never appears outside `/api/internal`, so a shared
+secret can never be quietly substituted for an operator session.
+
+**The token is hand-managed at both ends** — `SWEEPER_TOKEN` in the box's `.env`, the same value
+passed to Terraform as a `sensitive` var that becomes the Lambda's environment.
+
+**Know where that leaves the secret: in Terraform state, in plaintext.** `sensitive = true` only
+suppresses CLI output; both the variable and `aws_lambda_function.environment.variables` are written
+to `s3://underwrite-tfstate`. **Read on the state bucket is therefore read on this token** — treat
+it as a credential store, not just infrastructure bookkeeping. SSM Parameter Store SecureString is
+the upgrade (also free): Terraform would hold only the parameter *name*, the value would leave both
+the state file and Lambda's console-visible environment, and the cost is a `kms:Decrypt` grant plus
+placing the value out of band. Worth doing before the URL is public; not done here.
+
+**`.env.example` ships `local-sweeper-token` and `make .env` copies it verbatim**, so the default is
+a value anyone can read in the repo. `startup_warnings` refuses to let that pass silently onto a
+`SESSION_SECURE=1` deployment, exactly as it already does for `SECRET_KEY` and
+`SEED_OPERATOR_PASSWORD` — the endpoint is internet-facing (Caddy proxies `/api/*`), so a shipped
+default there is an open door, not an inconvenience.
+
+**The zip is one stdlib file.** No `requirements.txt`, no container, no build step — `archive_file`
+packages it at plan time and `python3 handler.py` runs it anywhere, which is what
+`make expiry-lambda-test` does against the local stack. It holds **no AWS permission at all** beyond
+writing its own logs, because it touches no AWS service.
+
+---
+
 ## D-030 · Auto-approve issues its own quote, and says who issued it
 
 **Ticket:** UW-033 · **Date:** 2026-07-29

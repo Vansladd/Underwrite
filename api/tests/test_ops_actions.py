@@ -7,6 +7,7 @@ from app.domain.enums import (
     AuditActor,
     AuditEventType,
     DataVolume,
+    QuoteStatus,
     RequestedLimit,
     Sector,
     SubmissionStatus,
@@ -247,6 +248,23 @@ async def test_render_retry_generates_after_an_earlier_failure(api, db, operator
     body = (await api.post(f"/api/submissions/{submission.id}/quote/render")).json()
 
     assert body["quote"]["pdf_s3_key"] is not None
+
+
+async def test_render_is_refused_once_the_quote_has_expired(api, db, operator, fake_renderer):
+    # The template prints "valid until <date>" with no lapse marking, so a re-render would be a
+    # document that reads as a live offer. The drawer hides the button; the API must refuse it.
+    fake_renderer.error = RuntimeError("lambda boom")
+    submission = await referred(db)
+    await api.post(f"/api/submissions/{submission.id}/approve")  # render fails -> pdf null
+    quote = await db.scalar(select(Quote).where(Quote.submission_id == submission.id))
+    quote.status = QuoteStatus.EXPIRED
+    await db.commit()
+
+    fake_renderer.error = None
+    response = await api.post(f"/api/submissions/{submission.id}/quote/render")
+
+    assert response.status_code == 409
+    assert await db.scalar(select(Quote.pdf_s3_key).where(Quote.id == quote.id)) is None
 
 
 async def test_render_retry_502_when_rendering_fails(api, db, operator, fake_renderer):

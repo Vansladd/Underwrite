@@ -12,7 +12,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import ChClientDep, CurrentUser, ExtractorDep, RendererDep
 from app.db import DbSession
-from app.domain.enums import AuditActor, AuditEventType, InputMode, SubmissionStatus
+from app.domain.enums import AuditActor, AuditEventType, InputMode, QuoteStatus, SubmissionStatus
 from app.models import AuditEvent, Submission
 from app.schemas import (
     DeclineRequest,
@@ -300,6 +300,10 @@ async def render_quote(
     submission = await load_detail(db, submission_id)
     if submission.quote is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "submission has no quote to render")
+    # The template prints "valid until <date>" with no lapse marking, so a re-render of an expired
+    # quote is a document that reads as a live offer. UW-053.
+    if submission.quote.status is QuoteStatus.EXPIRED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "cannot render an expired quote")
     key = await generate_quote_pdf(db, submission, renderer)
     if key is None:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "quote render failed; try again")

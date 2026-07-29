@@ -15,6 +15,7 @@ import {
   poundsFromPence,
   relativeTime,
   sectorLabel,
+  validityLabel,
   yearsTradingLabel,
 } from '../lib/format'
 import { FactorLadder, Reasons } from './Evidence'
@@ -266,7 +267,11 @@ function QuotePanel({ quote, submissionId }: { quote: Quote; submissionId: strin
     <div className="overflow-hidden rounded-lg border border-border">
       <div className="flex items-center justify-between border-b border-border bg-surface-2 px-3.5 py-2.5">
         <span className="tnum text-[13px] font-medium text-ink">{quote.quote_ref}</span>
-        <span className="tnum text-xs text-ink-subtle">valid until {quote.valid_until}</span>
+        <span
+          className={`tnum text-xs ${quote.status === 'expired' ? 'text-ink-muted' : 'text-ink-subtle'}`}
+        >
+          {validityLabel(quote)}
+        </span>
       </div>
       <dl className="flex flex-col gap-2 px-3.5 py-3 text-[13px]">
         {rows.map(([label, value]) => (
@@ -286,6 +291,9 @@ function QuotePanel({ quote, submissionId }: { quote: Quote; submissionId: strin
           >
             Download quote (PDF) ↗
           </a>
+        ) : quote.status === 'expired' ? (
+          // No render offered: a fresh PDF of a dead quote would be a document nobody can honour.
+          <span className="text-[13px] text-ink-subtle">Expired before a PDF was generated.</span>
         ) : (
           <div className="flex items-center gap-3">
             <button

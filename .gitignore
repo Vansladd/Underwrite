@@ -27,6 +27,8 @@ dist/
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+# archive_file builds the sweeper zip at plan time (#40).
+infra/.build/
 
 .DS_Store
 .idea/

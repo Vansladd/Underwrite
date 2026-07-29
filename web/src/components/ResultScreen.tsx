@@ -1,5 +1,5 @@
 import type { SubmissionDetail } from '../hooks/useSubmissions'
-import { formatPremium, poundsFromPence } from '../lib/format'
+import { formatPremium, poundsFromPence, validityLabel } from '../lib/format'
 import { FactorLadder, Reasons } from './Evidence'
 import { StatusBadge } from './StatusBadge'
 
@@ -8,28 +8,6 @@ const BTN_PRIMARY =
 const BTN_GHOST =
   'h-10 rounded-md border border-border px-4 text-sm font-medium text-ink transition-colors hover:bg-surface-2'
 const BTN_LINK = 'px-1 text-[13px] font-medium text-ink-muted transition-colors hover:text-ink'
-
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-]
-
-// Formatted from the parts, never via `new Date`: a date-only string parses as UTC midnight, so
-// toLocaleDateString renders the day before anywhere west of UTC — a quote expiring a day early.
-function validUntil(iso: string): string {
-  const [year, month, day] = iso.slice(0, 10).split('-').map(Number)
-  return `${day} ${MONTHS[month - 1]} ${year}`
-}
 
 export function ResultScreen({
   submission,
@@ -70,8 +48,7 @@ export function ResultScreen({
           </p>
           {quote && (
             <p className="mt-1.5 text-[13px] text-ink-muted">
-              {poundsFromPence(quote.excess_pence)} excess · valid until{' '}
-              {validUntil(quote.valid_until)}
+              {poundsFromPence(quote.excess_pence)} excess · {validityLabel(quote)}
             </p>
           )}
           <div className="mt-5">

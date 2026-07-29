@@ -144,6 +144,34 @@ export function limitLabel(limitPounds: number | null): string | null {
   return `£${Math.round(limitPounds / 1_000)}k limit`
 }
 
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+
+// Formatted from the parts, never via `new Date`: a date-only string parses as UTC midnight, so
+// toLocaleDateString renders the day before anywhere west of UTC — a quote expiring a day early.
+export function calendarDate(iso: string): string {
+  const [year, month, day] = iso.slice(0, 10).split('-').map(Number)
+  return `${day} ${MONTHS[month - 1]} ${year}`
+}
+
+// An expired quote is not a live offer, so it must never read as one. UW-053.
+export function validityLabel(quote: { status: string; valid_until: string }): string {
+  const when = calendarDate(quote.valid_until)
+  return quote.status === 'expired' ? `expired ${when}` : `valid until ${when}`
+}
+
 export function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime()
   const minutes = Math.max(0, Math.floor(diffMs / 60_000))

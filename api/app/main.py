@@ -7,8 +7,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.routes import auth, documents, submissions
-from app.config import DEFAULT_OPERATOR_PASSWORD, DEFAULT_SECRET_KEY, get_settings
+from app.api.routes import auth, documents, internal, submissions
+from app.config import get_settings, startup_warnings
 from app.db import DbSession, build_engine, build_sessionmaker
 from app.middleware import LimitBodySize
 from app.services.companies_house import CompaniesHouseClient
@@ -21,19 +21,8 @@ from app.services.storage import get_storage
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     log = logging.getLogger("uvicorn.error")
-    if settings.secret_key == DEFAULT_SECRET_KEY:
-        log.warning("SECRET_KEY is the shipped default; sessions are forgeable — set it in prod")
-    if settings.session_secure and settings.seed_operator_password == DEFAULT_OPERATOR_PASSWORD:
-        log.warning(
-            "SEED_OPERATOR_PASSWORD is still the public default on a secure (prod) deployment — "
-            "set a strong secret before exposing the URL"
-        )
-    if not settings.companies_house_api_key:
-        # Not fatal: `make demo` and `make seed` run the pipeline with canned providers (D-024).
-        log.warning(
-            "COMPANIES_HOUSE_API_KEY is unset — every lookup will fail and every submission will "
-            "refer with CH_UNAVAILABLE. Set it, or ignore this if you are running the canned demo"
-        )
+    for warning in startup_warnings(settings):
+        log.warning(warning)
     engine = build_engine(settings)
     app.state.engine = engine
     app.state.sessionmaker = build_sessionmaker(engine)
@@ -72,6 +61,7 @@ app.add_middleware(LimitBodySize)
 app.include_router(auth.router)
 app.include_router(submissions.router)
 app.include_router(documents.router)
+app.include_router(internal.router)
 
 
 @app.get("/health")
