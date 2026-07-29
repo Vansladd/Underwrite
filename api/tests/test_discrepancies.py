@@ -43,3 +43,25 @@ def test_active_proposal_to_strike_off_is_flagged():
         6, profile(company_status_detail="active-proposal-to-strike-off"), today=TODAY
     )
     assert any("strike it off" in sentence for sentence in found)
+
+
+def test_a_single_year_is_not_reported_as_1_years():
+    # These strings render verbatim in the queue headline and the drawer.
+    found = detect_discrepancies(
+        3.0,
+        profile(date_of_creation=date(2025, 7, 1)),
+        today=date(2026, 7, 1),
+    )
+
+    assert "1 year ago" in found[0]
+    assert "1 years" not in found[0]
+
+
+def test_a_single_stated_year_is_singular_too():
+    found = detect_discrepancies(
+        1.0,
+        profile(date_of_creation=date(2016, 7, 1)),
+        today=date(2026, 7, 1),
+    )
+
+    assert "states 1 year trading" in found[0]

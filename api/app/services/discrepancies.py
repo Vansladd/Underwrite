@@ -9,6 +9,11 @@ STRIKE_OFF_DETAIL = "active-proposal-to-strike-off"
 _DAYS_PER_YEAR = 365.25
 
 
+def _years(formatted: str) -> str:
+    # These render verbatim to an operator; "about 1 years ago" reads as a bug in the engine.
+    return f"{formatted} year" if formatted == "1" else f"{formatted} years"
+
+
 def detect_discrepancies(
     years_trading: float | None,
     profile: CompanyProfile,
@@ -22,9 +27,9 @@ def detect_discrepancies(
         age = (today - profile.date_of_creation).days / _DAYS_PER_YEAR
         if abs(age - years_trading) > 1:
             found.append(
-                f"The submission states {years_trading:g} years trading, but Companies House "
-                f"records incorporation on {profile.date_of_creation.isoformat()} "
-                f"(about {age:.0f} years ago)."
+                f"The submission states {_years(f'{years_trading:g}')} trading, but Companies "
+                f"House records incorporation on {profile.date_of_creation.isoformat()} "
+                f"(about {_years(f'{age:.0f}')} ago)."
             )
 
     if profile.company_status is not CompanyStatus.ACTIVE:

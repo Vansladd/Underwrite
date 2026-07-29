@@ -40,6 +40,16 @@ Generate control the drawer uses.
 **Approve and decline still reject an auto-approved submission.** It is terminal; the machine has
 already decided, and a second decision would need its own reversal semantics.
 
+**Issuance is its own transaction, and that is load-bearing.** The first cut added the Quote to the
+same transaction that persists the Rating, so an insert failure there — `quote_ref` is
+unique-constrained and built from six hex characters, so a collision is rare but real — would have
+rolled back the rating, the status and the `rating_completed` event, 500'd the request, and left a
+fully rated submission sitting at `received`. The rating commits first; issuance follows and, if it
+fails, rolls back and logs, degrading to exactly the pre-D-030 state (auto-approved, no quote). No
+new audit event was invented for that path: `rating_completed` with no `submission_approved` after
+it already says the quote never issued, and this ticket had already produced one duplicated event
+by reaching for the vocabulary too quickly.
+
 ---
 
 ## D-029 · "We could not ask" is not "the register said no"
@@ -129,9 +139,17 @@ saving — every 4xx below is a paid extraction that never happened.
 
 **The size cap is enforced in middleware, not the route.** FastAPI parses the multipart form while
 solving the request, so a handler-level check runs *after* the upload has been spooled to disk — the
-cap would bound memory but not the transfer. `reject_oversized_bodies` refuses on `Content-Length`
-before anything reads the body. A chunked request declares no length and still falls through to the
-handler's own cap, which is the residual case. Likewise `collapse_pages` accumulates to
+cap would bound memory but not the transfer. `LimitBodySize` refuses on `Content-Length` before
+anything reads the body, **and counts bytes off the wire** for the chunked case, which declares no
+length and would otherwise reach the parser untouched. It is pure ASGI rather than a FastAPI
+middleware for exactly that reason: only a `receive` wrapper sees the stream.
+
+The wrapper raises when the count trips, but FastAPI turns any body-read failure into a
+`400 "There was an error parsing the body"`, so the exception usually never escapes. The middleware
+therefore also watches the way out and replaces that 400 with the honest 413 — the first cut relied
+on the exception propagating and silently returned 400 to oversized chunked uploads.
+
+Likewise `collapse_pages` accumulates to
 `MAX_TEXT_CHARS` and stops rather than joining every page and truncating after: a flate-compressed
 PDF is small on disk and vast once decoded. One hostile *page* is still bounded only by pypdf.
 
