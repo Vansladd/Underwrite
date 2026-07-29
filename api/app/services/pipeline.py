@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 import anthropic
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +18,7 @@ from app.services.audit import record_event
 from app.services.companies_house import CompaniesHouseClient
 from app.services.enrichment import enrich
 from app.services.extraction import AnthropicExtractor, ExtractionRefused
+from app.services.quote import build_quote
 from app.services.rating import rate
 
 FORM_MODEL = "form"
@@ -78,7 +81,9 @@ async def _extract(
         # Unreachable: every creation route carries a form application or extractable text.
         raise ValueError(f"submission {submission.id} has no extractable payload")
 
-    session.add(Extraction(submission_id=submission.id, **application.to_orm_kwargs(model)))
+    submission.extraction = Extraction(
+        submission_id=submission.id, **application.to_orm_kwargs(model)
+    )
     await record_event(
         session,
         submission.id,
@@ -155,7 +160,8 @@ async def _rate(
         await session.commit()
         return
 
-    session.add(Rating(submission_id=submission.id, **rating_to_orm_kwargs(result)))
+    # Assigned, not just added: build_quote reads submission.rating/.extraction below.
+    submission.rating = Rating(submission_id=submission.id, **rating_to_orm_kwargs(result))
     submission.status = STATUS_FOR_DECISION[result.decision]
     await record_event(
         session,
@@ -169,4 +175,29 @@ async def _rate(
             "decline_reasons": len(result.decline_reasons),
         },
     )
+
+    if result.decision is Decision.AUTO_APPROVE:
+        await _issue_quote(session, submission)
+
     await session.commit()
+
+
+async def _issue_quote(session: AsyncSession, submission: Submission) -> None:
+    """The machine's own quote. AUTO_APPROVE means no underwriter is coming, so nothing else would
+    ever issue one and 'auto-approved' would mean priced-then-abandoned. See D-030.
+
+    The status stays `auto_approved` rather than becoming `quoted`: both now carry a Quote, and the
+    distinction records *who* decided, which is the question an auditor asks.
+    """
+    quote = build_quote(submission, today=date.today())
+    session.add(quote)
+    # SUBMISSION_APPROVED, not QUOTE_GENERATED: that one already means "the PDF was rendered", and
+    # the render happens later in the route. This is the approval itself, exactly parallel to the
+    # operator's — with no actor_id, because there is no human and borrowing one would falsify it.
+    await record_event(
+        session,
+        submission.id,
+        AuditEventType.SUBMISSION_APPROVED,
+        AuditActor.SYSTEM,
+        {"quote_ref": quote.quote_ref, "auto": True},
+    )

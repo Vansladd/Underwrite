@@ -5,6 +5,43 @@ Running log of non-obvious technical choices. Domain and pricing decisions live 
 
 ---
 
+## D-030 · Auto-approve issues its own quote, and says who issued it
+
+**Ticket:** UW-033 · **Date:** 2026-07-29
+
+UW-033 asked for a result screen offering a **download** on an auto-approved submission. There was
+nothing to download, and there never could be: a `Quote` was only ever created by the operator
+approve action, which `_require_referred` rejects for anything that is not `referred`. So an
+auto-approved submission could not be approved, never got a quote, and never got a PDF — the data
+said so plainly (**3 auto-approved rows, 0 quotes**). "Auto-approved" meant *priced, then nothing*.
+
+**The pipeline now issues the quote when the decision is AUTO_APPROVE**, through the same
+`build_quote` the operator path uses, so quote refs, `valid_until` and the £2,500 excess keep one
+implementation.
+
+**The status stays `auto_approved`; it does not become `quoted`.** Both now carry a Quote, and the
+distinction is the question an auditor actually asks: `auto_approved` was issued by the machine,
+`quoted` was issued after an underwriter approved it. Collapsing them would empty the queue's
+Auto-approved tab and erase who decided.
+
+**The event is `submission_approved`, not `quote_generated`.** The first draft reused
+`QUOTE_GENERATED` and produced it **twice** on one submission — because that event already means
+"the PDF was rendered and stored", which `generate_quote_pdf` writes later. An auto-approval is an
+*approval*, exactly parallel to the operator's, so it uses the operator's event with
+`AuditActor.SYSTEM` and **no `actor_id`**: there is no human, and borrowing one would falsify the
+trail. The sequence now reads `rating_completed → submission_approved → quote_generated`.
+
+**The PDF renders in the route, not the pipeline.** `run_pipeline` has no renderer and `seed.py`
+calls it directly, so putting it there would have forced a renderer into the seed. The creation
+routes render best-effort after the pipeline, as `approve_submission` already does. Seeded
+auto-approvals therefore carry a quote and no PDF, and the result screen falls back to the same
+Generate control the drawer uses.
+
+**Approve and decline still reject an auto-approved submission.** It is terminal; the machine has
+already decided, and a second decision would need its own reversal semantics.
+
+---
+
 ## D-029 · "We could not ask" is not "the register said no"
 
 **Ticket:** CH lookup failures · **Date:** 2026-07-29

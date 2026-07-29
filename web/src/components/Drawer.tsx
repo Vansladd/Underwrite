@@ -9,7 +9,6 @@ import {
 } from '../hooks/useSubmissions'
 import {
   eventLabel,
-  factorLabel,
   fieldLabel,
   inputModeLabel,
   normaliseCompanyNumber,
@@ -18,16 +17,15 @@ import {
   sectorLabel,
   yearsTradingLabel,
 } from '../lib/format'
+import { FactorLadder, Reasons } from './Evidence'
 import { StatusBadge } from './StatusBadge'
 
 const NAME_MATCH_THRESHOLD = 0.85
 
 type Extraction = NonNullable<SubmissionDetail['extraction']>
 type Enrichment = NonNullable<SubmissionDetail['enrichment']>
-type Rating = NonNullable<SubmissionDetail['rating']>
 type Quote = NonNullable<SubmissionDetail['quote']>
 type AuditEvent = NonNullable<SubmissionDetail['audit_events']>[number]
-type Reason = Rating['refer_reasons'][number]
 
 function CompareRow({
   field,
@@ -161,62 +159,6 @@ function Comparison({ extraction, enrichment }: { extraction: Extraction; enrich
         <Callout key={sentence}>{sentence}</Callout>
       ))}
     </>
-  )
-}
-
-function FactorLadder({ rating }: { rating: Rating }) {
-  const final = rating.annual_premium_pence ?? rating.indicative_premium_pence
-  return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      <div className="grid grid-cols-[1fr_88px_60px_92px] gap-2 border-b border-border bg-surface-2 px-3.5 py-2 text-[11px] uppercase tracking-[0.05em] text-ink-subtle">
-        <div>Factor</div>
-        <div>Band</div>
-        <div className="text-right">×</div>
-        <div className="text-right">Running</div>
-      </div>
-      <div className="grid grid-cols-[1fr_88px_60px_92px] items-center gap-2 border-b border-border px-3.5 py-2 text-[13px]">
-        <div className="text-ink">Base rate</div>
-        <div />
-        <div />
-        <div className="tnum text-right text-ink">{poundsFromPence(rating.base_premium_pence)}</div>
-      </div>
-      {rating.factors.map((f) => (
-        <div
-          key={f.code}
-          className="grid grid-cols-[1fr_88px_60px_92px] items-center gap-2 border-b border-border px-3.5 py-2 text-[13px]"
-        >
-          <div className="text-ink">{factorLabel(f.code)}</div>
-          <div className="text-xs text-ink-muted">{f.band_label}</div>
-          <div className="tnum text-right text-[color:var(--accent-text)]">{f.multiplier}</div>
-          <div className="tnum text-right text-ink">{poundsFromPence(f.premium_after_pence)}</div>
-        </div>
-      ))}
-      <div className="grid grid-cols-[1fr_88px_60px_92px] items-center gap-2 border-t border-border bg-surface-2 px-3.5 py-2.5 font-semibold">
-        <div className="text-ink">Indicative premium</div>
-        <div />
-        <div />
-        <div className="tnum text-right text-[15px] text-ink">{poundsFromPence(final)}</div>
-      </div>
-    </div>
-  )
-}
-
-function Reasons({ reasons, tone }: { reasons: Reason[]; tone: 'refer' | 'decline' }) {
-  const chip =
-    tone === 'decline'
-      ? 'bg-[color:var(--dc-bg)] text-[color:var(--dc-fg)]'
-      : 'bg-[color:var(--rf-bg)] text-[color:var(--rf-fg)]'
-  return (
-    <div className="flex flex-col gap-1.5">
-      {reasons.map((r, i) => (
-        <div key={`${r.code}-${i}`} className="flex items-baseline gap-2 text-[13px]">
-          <span className={`tnum whitespace-nowrap rounded px-1.5 py-px text-[11px] ${chip}`}>
-            {r.code}
-          </span>
-          <span className="text-ink">{r.message}</span>
-        </div>
-      ))}
-    </div>
   )
 }
 
