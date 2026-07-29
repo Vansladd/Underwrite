@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import date
 
 import anthropic
@@ -20,6 +21,8 @@ from app.services.enrichment import enrich
 from app.services.extraction import AnthropicExtractor, ExtractionRefused
 from app.services.quote import build_quote
 from app.services.rating import rate
+
+log = logging.getLogger("uvicorn.error")
 
 FORM_MODEL = "form"
 
@@ -176,10 +179,12 @@ async def _rate(
         },
     )
 
+    # Committed before the quote: issuing one is a separate transaction so that a failure there
+    # cannot roll back the rating that has already been earned.
+    await session.commit()
+
     if result.decision is Decision.AUTO_APPROVE:
         await _issue_quote(session, submission)
-
-    await session.commit()
 
 
 async def _issue_quote(session: AsyncSession, submission: Submission) -> None:
@@ -189,15 +194,24 @@ async def _issue_quote(session: AsyncSession, submission: Submission) -> None:
     The status stays `auto_approved` rather than becoming `quoted`: both now carry a Quote, and the
     distinction records *who* decided, which is the question an auditor asks.
     """
-    quote = build_quote(submission, today=date.today())
-    session.add(quote)
-    # SUBMISSION_APPROVED, not QUOTE_GENERATED: that one already means "the PDF was rendered", and
-    # the render happens later in the route. This is the approval itself, exactly parallel to the
-    # operator's — with no actor_id, because there is no human and borrowing one would falsify it.
-    await record_event(
-        session,
-        submission.id,
-        AuditEventType.SUBMISSION_APPROVED,
-        AuditActor.SYSTEM,
-        {"quote_ref": quote.quote_ref, "auto": True},
-    )
+    try:
+        quote = build_quote(submission, today=date.today())
+        session.add(quote)
+        # SUBMISSION_APPROVED, not QUOTE_GENERATED: that one already means "the PDF was rendered",
+        # and the render happens later in the route. This is the approval itself, exactly parallel
+        # to the operator's — with no actor_id, because there is no human and borrowing one would
+        # falsify the trail.
+        await record_event(
+            session,
+            submission.id,
+            AuditEventType.SUBMISSION_APPROVED,
+            AuditActor.SYSTEM,
+            {"quote_ref": quote.quote_ref, "auto": True},
+        )
+        await session.commit()
+    except Exception as error:  # noqa: BLE001 — the rating is already durable; keep it that way.
+        # A quote_ref collision or any other insert failure degrades to the pre-D-030 state:
+        # auto_approved with no quote. The committed rating_completed event, with no
+        # submission_approved after it, is what says so.
+        await session.rollback()
+        log.warning("auto-approval quote failed for %s: %s", submission.id, error)

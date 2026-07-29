@@ -108,6 +108,29 @@ async def test_auto_approval_issues_its_own_quote(db):
     assert event.payload["auto"] is True
 
 
+async def test_a_failed_quote_does_not_take_the_rating_with_it(db, monkeypatch):
+    # quote_ref is unique-constrained and built from 6 hex chars, so a collision is rare but real.
+    # It must not roll back a rating that was already earned.
+    def boom(*args, **kwargs):
+        raise RuntimeError("duplicate key value violates unique constraint")
+
+    monkeypatch.setattr(pipeline_module, "build_quote", boom)
+    submission = await make_submission(db)
+
+    await run_pipeline(
+        db, submission, None, FakeExtractor(result=application()), FakeChClient(active_profile())
+    )
+
+    assert await row(db, Quote, submission.id) is None
+    # The rating survives, and the trail says the decision was made without an approval after it.
+    rating = await row(db, Rating, submission.id)
+    assert rating.decision.name == "AUTO_APPROVE"
+    assert submission.status is SubmissionStatus.AUTO_APPROVED
+    events = await event_types(db, submission.id)
+    assert AuditEventType.RATING_COMPLETED in events
+    assert AuditEventType.SUBMISSION_APPROVED not in events
+
+
 async def test_a_referral_issues_no_quote(db):
     submission = await make_submission(db)
     ch = FakeChClient()  # no CH match -> CH_NOT_FOUND -> REFER

@@ -9,8 +9,26 @@ const BTN_GHOST =
   'h-10 rounded-md border border-border px-4 text-sm font-medium text-ink transition-colors hover:bg-surface-2'
 const BTN_LINK = 'px-1 text-[13px] font-medium text-ink-muted transition-colors hover:text-ink'
 
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+
+// Formatted from the parts, never via `new Date`: a date-only string parses as UTC midnight, so
+// toLocaleDateString renders the day before anywhere west of UTC — a quote expiring a day early.
 function validUntil(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  const [year, month, day] = iso.slice(0, 10).split('-').map(Number)
+  return `${day} ${MONTHS[month - 1]} ${year}`
 }
 
 export function ResultScreen({
@@ -110,7 +128,14 @@ export function ResultScreen({
 
       <div className="mt-6 flex items-center gap-3">
         {status === 'auto_approved' && quote?.pdf_s3_key && (
-          <a className={`${BTN_PRIMARY} grid place-items-center`} href={`/api/submissions/${submission.id}/quote.pdf`}>
+          <a
+            href={`/api/submissions/${submission.id}/quote.pdf`}
+            // New tab, as the drawer does: the PDF is served inline, so navigating in place would
+            // unload the app and take the result with it.
+            target="_blank"
+            rel="noreferrer"
+            className={`${BTN_PRIMARY} grid place-items-center`}
+          >
             Download quote
           </a>
         )}
