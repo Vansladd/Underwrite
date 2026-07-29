@@ -210,7 +210,10 @@ export function Apply({
       <button
         type="button"
         onClick={onCancel}
-        className="text-[13px] text-ink-muted transition-colors hover:text-ink"
+        // Locked with the tabs and Cancel: leaving does not stop the pipeline or the spend, so an
+        // exit that looks like an escape would be the lie this screen deliberately avoids.
+        disabled={create.isPending}
+        className="text-[13px] text-ink-muted transition-colors hover:text-ink disabled:opacity-50"
       >
         ← Submissions
       </button>
