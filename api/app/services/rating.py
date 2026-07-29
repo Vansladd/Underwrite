@@ -211,8 +211,7 @@ def _refer_reasons(application: Application, enrichment: Enrichment) -> list[Rea
             Reason(
                 ReasonCode.CH_DISCREPANCY,
                 # Each discrepancy is already a full sentence (D-022), so no joiner punctuation.
-                "Submission conflicts with Companies House: "
-                + " ".join(enrichment.discrepancies),
+                "Submission conflicts with Companies House: " + " ".join(enrichment.discrepancies),
             )
         )
 
