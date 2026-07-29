@@ -33,9 +33,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "136800.000",
           "premium_after_pence": "171000.00000"
         },
@@ -91,9 +91,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "171000.000",
           "premium_after_pence": "213750.00000"
         },
@@ -149,9 +149,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -207,9 +207,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "290700.000",
           "premium_after_pence": "363375.00000"
         },
@@ -265,9 +265,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "376200.000",
           "premium_after_pence": "470250.00000"
         },
@@ -328,9 +328,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "244530.000",
           "premium_after_pence": "305662.50000"
         },
@@ -386,9 +386,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "244530.000",
           "premium_after_pence": "305662.50000"
         },
@@ -444,9 +444,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "266760.000",
           "premium_after_pence": "333450.00000"
         },
@@ -502,9 +502,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "300105.0000",
           "premium_after_pence": "375131.250000"
         },
@@ -560,9 +560,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "300105.0000",
           "premium_after_pence": "375131.250000"
         },
@@ -618,9 +618,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "300105.0000",
           "premium_after_pence": "375131.250000"
         },
@@ -681,9 +681,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "333450.000",
           "premium_after_pence": "416812.50000"
         },
@@ -744,9 +744,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "117000.000",
           "premium_after_pence": "146250.00000"
         },
@@ -802,9 +802,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "163800.000",
           "premium_after_pence": "204750.00000"
         },
@@ -860,9 +860,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -918,9 +918,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "304200.000",
           "premium_after_pence": "380250.00000"
         },
@@ -976,9 +976,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "under_10k",
+          "band_label": "under 10k records",
           "multiplier": "0.9",
-          "reason": "Holds under_10k personal data records.",
+          "reason": "Holds under 10k records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "200070.0000"
         },
@@ -1034,9 +1034,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "10k_100k",
+          "band_label": "10k – 100k records",
           "multiplier": "1.0",
-          "reason": "Holds 10k_100k personal data records.",
+          "reason": "Holds 10k – 100k records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "222300.0000"
         },
@@ -1092,9 +1092,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -1150,9 +1150,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "over_1m",
+          "band_label": "over 1m records",
           "multiplier": "1.5",
-          "reason": "Holds over_1m personal data records.",
+          "reason": "Holds over 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "333450.0000"
         },
@@ -1208,9 +1208,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -1271,9 +1271,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -1334,9 +1334,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -1397,9 +1397,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -1455,9 +1455,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -1513,9 +1513,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -1576,9 +1576,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -1639,9 +1639,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -1702,9 +1702,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -1765,9 +1765,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -1833,9 +1833,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "100k_1m",
+          "band_label": "100k – 1m records",
           "multiplier": "1.25",
-          "reason": "Holds 100k_1m personal data records.",
+          "reason": "Holds 100k – 1m records of personal data.",
           "premium_before_pence": "222300.000",
           "premium_after_pence": "277875.00000"
         },
@@ -1859,7 +1859,7 @@
       "refer_reasons": [
         {
           "code": "CH_DISCREPANCY",
-          "message": "Submission conflicts with Companies House: Companies House shows an active proposal to strike off.."
+          "message": "Submission conflicts with Companies House: Companies House shows an active proposal to strike off."
         }
       ],
       "decline_reasons": []
@@ -1896,9 +1896,9 @@
         },
         {
           "code": "DATA_VOLUME",
-          "band_label": "over_1m",
+          "band_label": "over 1m records",
           "multiplier": "1.5",
-          "reason": "Holds over_1m personal data records.",
+          "reason": "Holds over 1m records of personal data.",
           "premium_before_pence": "772200.000",
           "premium_after_pence": "1158300.0000"
         },
@@ -1934,7 +1934,7 @@
         },
         {
           "code": "CH_DISCREPANCY",
-          "message": "Submission conflicts with Companies House: No such company.."
+          "message": "Submission conflicts with Companies House: No such company."
         },
         {
           "code": "CH_NOT_FOUND",

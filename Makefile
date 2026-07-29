@@ -102,8 +102,10 @@ test-llm:
 regen-goldens:
 	$(COMPOSE) run --rm --no-deps api uv run --frozen pytest -q --regen-goldens tests/test_rating_goldens.py
 
+# Both steps, because CI's lint job runs both — `make lint` has to be able to fail the same way.
 lint:
 	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff check .
+	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff format --check .
 
 fmt:
 	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff format .

@@ -174,6 +174,25 @@ def test_discrepancies_still_refer_when_no_company_was_matched():
     }
 
 
+def test_discrepancy_sentences_are_joined_without_doubling_their_punctuation():
+    # detect_discrepancies returns whole sentences (D-022); the reason must not add its own stop.
+    result = rate(
+        application(),
+        Enrichment(
+            ch_found=True,
+            ch_name_match_score=0.99,
+            ch_company_status=CompanyStatus.ACTIVE,
+            discrepancies=("Incorporated 2024.", "Status is dissolved."),
+        ),
+    )
+
+    (reason,) = [r for r in result.refer_reasons if r.code is ReasonCode.CH_DISCREPANCY]
+    assert reason.message == (
+        "Submission conflicts with Companies House: Incorporated 2024. Status is dissolved."
+    )
+    assert ".." not in reason.message
+
+
 def test_missing_companies_house_status_reads_sensibly():
     result = rate(application(), Enrichment(ch_found=True, ch_name_match_score=0.99))
 

@@ -288,12 +288,15 @@ quote PDF unmodified, so the strings are asserted character-for-character in UW-
 
 ### Data records held
 
-| Value | Factor |
-|---|---|
-| `under_10k` | 0.9 |
-| `10k_100k` | 1.0 |
-| `100k_1m` | 1.25 |
-| `over_1m` | 1.5 |
+The label is the `band_label` shown in the factor ladder; the enum value is storage only and never
+reaches the operator.
+
+| Value | Label | Factor |
+|---|---|---|
+| `under_10k` | under 10k records | 0.9 |
+| `10k_100k` | 10k – 100k records | 1.0 |
+| `100k_1m` | 100k – 1m records | 1.25 |
+| `over_1m` | over 1m records | 1.5 |
 
 ### Prior claims
 

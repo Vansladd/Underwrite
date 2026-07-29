@@ -61,10 +61,10 @@ SECTOR_ROWS = [
 ]
 
 DATA_VOLUME_ROWS = [
-    (DataVolume.UNDER_10K, "0.9"),
-    (DataVolume.TEN_K_TO_100K, "1.0"),
-    (DataVolume.HUNDRED_K_TO_1M, "1.25"),
-    (DataVolume.OVER_1M, "1.5"),
+    (DataVolume.UNDER_10K, "0.9", "under 10k records"),
+    (DataVolume.TEN_K_TO_100K, "1.0", "10k – 100k records"),
+    (DataVolume.HUNDRED_K_TO_1M, "1.25", "100k – 1m records"),
+    (DataVolume.OVER_1M, "1.5", "over 1m records"),
 ]
 
 CLAIMS_ROWS = [
@@ -99,10 +99,10 @@ def test_sector_factor(sector, factor):
     assert (row.multiplier, row.band_label) == (Decimal(factor), sector.value)
 
 
-@pytest.mark.parametrize(("volume", "factor"), DATA_VOLUME_ROWS)
-def test_data_volume_factor(volume, factor):
+@pytest.mark.parametrize(("volume", "factor", "label"), DATA_VOLUME_ROWS)
+def test_data_volume_factor(volume, factor, label):
     row = applied(rate_with(data_records_held=volume), "DATA_VOLUME")
-    assert (row.multiplier, row.band_label) == (Decimal(factor), volume.value)
+    assert (row.multiplier, row.band_label) == (Decimal(factor), label)
 
 
 @pytest.mark.parametrize(("count", "factor", "label"), CLAIMS_ROWS)
