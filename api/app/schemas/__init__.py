@@ -13,6 +13,7 @@ from app.schemas.rating import (
 )
 from app.schemas.read import (
     AuditEventRead,
+    BordereauRun,
     EnrichmentRead,
     ExpirySweep,
     ExtractionRead,
@@ -29,6 +30,7 @@ from app.schemas.write import DeclineRequest, FormApplication, SubmissionCreate
 
 __all__ = [
     "AuditEventRead",
+    "BordereauRun",
     "CompanyProfile",
     "DeclineRequest",
     "EnrichmentRead",

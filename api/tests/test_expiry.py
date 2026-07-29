@@ -1,16 +1,12 @@
 from datetime import date, timedelta
 
-import pytest
 from sqlalchemy import select
 
-from app.config import Settings, get_settings
 from app.domain.enums import AuditActor, AuditEventType, QuoteStatus
-from app.main import app
 from app.models import AuditEvent, Quote
 from app.services.expiry import expire_quotes
 from tests.factories import make_submission
 
-TOKEN = "sweeper-token-for-tests"
 TODAY = date(2026, 8, 1)
 
 
@@ -37,23 +33,6 @@ async def expiry_events(db) -> list[AuditEvent]:
             select(AuditEvent).where(AuditEvent.event_type == AuditEventType.QUOTE_EXPIRED)
         )
     )
-
-
-@pytest.fixture
-def sweeper_token():
-    """Overrides Settings wholesale: get_settings is lru_cached, so patching the env is too late."""
-    configured = Settings(sweeper_token=TOKEN)
-    app.dependency_overrides[get_settings] = lambda: configured
-    yield TOKEN
-    app.dependency_overrides.pop(get_settings, None)
-
-
-@pytest.fixture
-def no_sweeper_token():
-    # Explicit empty, never ambient: a SWEEPER_TOKEN in a developer's .env would hide the 503.
-    app.dependency_overrides[get_settings] = lambda: Settings(sweeper_token="")
-    yield
-    app.dependency_overrides.pop(get_settings, None)
 
 
 # --- the sweep itself ---

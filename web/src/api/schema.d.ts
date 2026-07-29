@@ -226,6 +226,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/internal/bordereaux/{period}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Export Period */
+        post: operations["export_period_api_internal_bordereaux__period__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -282,6 +299,17 @@ export interface components {
         Body_create_submission_from_pdf_api_submissions_pdf_post: {
             /** File */
             file: string;
+        };
+        /** BordereauRun */
+        BordereauRun: {
+            /** Period */
+            period: string;
+            /** S3 Key */
+            s3_key: string;
+            /** Quotes */
+            quotes: number;
+            /** Size Bytes */
+            size_bytes: number;
         };
         /**
          * CompanyStatus
@@ -1029,6 +1057,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExpirySweep"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_period_api_internal_bordereaux__period__post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Sweeper-Token"?: string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BordereauRun"];
                 };
             };
             /** @description Validation Error */

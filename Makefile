@@ -12,7 +12,7 @@ ECR_PDF := $(AWS_ACCOUNT).dkr.ecr.$(REGION).amazonaws.com/underwrite/pdf-render
 PROD_COMPOSE := $(COMPOSE) -f docker-compose.prod.yml
 TF := AWS_PROFILE=$(AWS_PROFILE) terraform -chdir=infra
 
-.PHONY: help up down restart logs ps health test test-llm lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply push-api prod-up prod-down deploy smoke pdf-lambda-test expiry-lambda-test push-pdf-lambda demo web-types web-lint web-build
+.PHONY: help up down restart logs ps health test test-llm lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply push-api prod-up prod-down deploy smoke pdf-lambda-test expiry-lambda-test bordereau-lambda-test push-pdf-lambda demo web-types web-lint web-build
 
 help:
 	@echo "Underwrite — available targets"
@@ -53,6 +53,7 @@ help:
 	@echo "  make smoke DOMAIN=...  curl https://DOMAIN/health (cold-box check)"
 	@echo "  make pdf-lambda-test   build the render Lambda + prove it via the RIE (no AWS)"
 	@echo "  make expiry-lambda-test  run the zip sweeper Lambda against the local stack (no AWS)"
+	@echo "  make bordereau-lambda-test [PERIOD=YYYY-MM]  run the zip export Lambda locally"
 	@echo "  make push-pdf-lambda   buildx arm64 + push the render image to ECR (tag = git sha)"
 	@echo "  make demo      up + render a quote PDF locally end-to-end (no AWS)"
 	@echo ""
@@ -188,6 +189,13 @@ expiry-lambda-test: up
 	test -n "$$token" || (echo 'set SWEEPER_TOKEN in .env, then `make up` (restart will not re-read it)'; exit 1); \
 	UNDERWRITE_API_URL=http://localhost:$(API_PORT) SWEEPER_TOKEN=$$token \
 	  python3 lambdas/quote_expiry/handler.py
+
+# PERIOD=YYYY-MM backfills a specific month; empty exports the one that just closed.
+bordereau-lambda-test: up
+	@token=$$(grep -E '^SWEEPER_TOKEN=.' .env | cut -d= -f2-); \
+	test -n "$$token" || (echo 'set SWEEPER_TOKEN in .env, then `make up` (restart will not re-read it)'; exit 1); \
+	UNDERWRITE_API_URL=http://localhost:$(API_PORT) SWEEPER_TOKEN=$$token PERIOD=$(PERIOD) \
+	  python3 lambdas/bordereau/handler.py
 
 push-pdf-lambda: tf-account
 	@sha=$$(git rev-parse --short HEAD); \

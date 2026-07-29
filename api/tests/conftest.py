@@ -16,13 +16,14 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.api.deps import get_ch_client, get_current_user, get_extractor, get_renderer
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.db import get_db
 from app.domain.enums import DataVolume, RequestedLimit, Sector
 from app.main import app
 from app.models import User
 from app.schemas import ExtractedApplication
-from tests.fakes import FakeChClient, FakeExtractor, FakeRenderer
+from app.services.storage import get_storage
+from tests.fakes import FakeChClient, FakeExtractor, FakeRenderer, FakeStorage
 
 ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
@@ -200,3 +201,32 @@ async def anon_api(db, fake_extractor, fake_ch_client, fake_renderer) -> AsyncIt
     async with AsyncClient(transport=transport, base_url="http://underwrite.test") as client:
         yield client
     _clear_overrides()
+
+
+SWEEPER_TOKEN = "sweeper-token-for-tests"
+
+
+@pytest.fixture
+def sweeper_token():
+    """Overrides Settings wholesale: get_settings is lru_cached, so patching the env is too late."""
+    configured = Settings(sweeper_token=SWEEPER_TOKEN)
+    app.dependency_overrides[get_settings] = lambda: configured
+    yield SWEEPER_TOKEN
+    app.dependency_overrides.pop(get_settings, None)
+
+
+@pytest.fixture
+def no_sweeper_token():
+    # Explicit empty, never ambient: a SWEEPER_TOKEN in a developer's .env would hide the 503.
+    app.dependency_overrides[get_settings] = lambda: Settings(sweeper_token="")
+    yield
+    app.dependency_overrides.pop(get_settings, None)
+
+
+@pytest.fixture
+def storage() -> Iterator[FakeStorage]:
+    """In-memory documents storage, so an export test needs neither S3 nor a scratch directory."""
+    fake = FakeStorage()
+    app.dependency_overrides[get_storage] = lambda: fake
+    yield fake
+    app.dependency_overrides.pop(get_storage, None)
