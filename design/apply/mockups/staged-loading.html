@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Underwrite — Staged loading mockup (UW-032)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:oklch(0.985 0.002 250); --surface:oklch(1 0 0); --surface-2:oklch(0.972 0.004 250);
+    --border:oklch(0.918 0.005 250); --border-strong:oklch(0.855 0.006 250);
+    --ink:oklch(0.235 0.012 260); --ink-muted:oklch(0.470 0.012 260); --ink-subtle:oklch(0.520 0.012 260);
+    --accent:oklch(0.530 0.130 47); --accent-text:oklch(0.500 0.140 45); --on-accent:oklch(0.995 0 0);
+    --panel:0 1px 0 var(--border);
+  }
+  :root[data-theme="dark"]{
+    --bg:oklch(0.180 0.008 260); --surface:oklch(0.212 0.008 260); --surface-2:oklch(0.242 0.009 260);
+    --border:oklch(0.300 0.010 260); --border-strong:oklch(0.380 0.012 260);
+    --ink:oklch(0.950 0.004 260); --ink-muted:oklch(0.730 0.007 260); --ink-subtle:oklch(0.640 0.007 260);
+    --accent:oklch(0.580 0.135 48); --accent-text:oklch(0.760 0.120 55); --on-accent:oklch(0.170 0.010 260);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;padding:32px 24px 64px;
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+  .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+  .toolbar h1{font-size:18px;font-weight:600;letter-spacing:-0.006em}
+  .toolbar p{color:var(--ink-muted);font-size:13px;margin-left:auto}
+  button.toggle{
+    font:inherit;font-size:13px;font-weight:500;cursor:pointer;
+    background:var(--surface);color:var(--ink);border:1px solid var(--border-strong);
+    border-radius:6px;padding:5px 10px;
+  }
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+  .col > figcaption{
+    font-size:12px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;
+    color:var(--ink-subtle);margin-bottom:10px;
+  }
+  .col > .t{font-size:12px;color:var(--ink-muted);margin-bottom:10px}
+
+  /* --- the card, as it exists on the apply screen --- */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--panel)}
+  .card-head{padding:0 24px}
+  .tabs{display:flex;gap:24px;border-bottom:1px solid var(--border);padding-top:4px}
+  .tab{
+    position:relative;padding:0 0 12px;font-size:13px;font-weight:500;color:var(--ink-subtle);
+    background:none;border:0;font-family:inherit;
+  }
+  .tab[aria-selected="true"]{color:var(--ink)}
+  .tab[aria-selected="true"]::after{
+    content:"";position:absolute;inset-inline:0;bottom:-1px;height:2px;border-radius:999px;background:var(--accent);
+  }
+  .card-body{padding:24px}
+
+  /* --- the staged panel: bare rows on the card surface, no nested card ---
+     The body keeps the height the form had, so submitting swaps content without moving the page;
+     the rows centre in the reserved space rather than clinging to the top. */
+  .card-body.holding{min-height:262px;display:flex;align-items:center}
+  .stages{display:flex;flex-direction:column;padding:4px 0;width:100%}
+  .stage{display:flex;align-items:center;gap:12px;height:32px;font-size:13px}
+  .glyph{
+    width:16px;flex:none;display:grid;place-items:center;font-size:13px;line-height:1;
+  }
+  .stage[data-state="pending"]{color:var(--ink-subtle);font-weight:400}
+  .stage[data-state="active"]{color:var(--ink);font-weight:500}
+  .stage[data-state="done"]{color:var(--ink-muted);font-weight:400}
+  .stage[data-state="done"] .glyph{color:var(--ink-muted);font-weight:500}
+  .dot{width:6px;height:6px;border-radius:999px;background:currentColor;display:block}
+  .stage[data-state="active"] .dot{animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  @media (prefers-reduced-motion:reduce){.stage[data-state="active"] .dot{animation:none}}
+  .rm .stage[data-state="active"] .dot{animation:none}
+
+  /* --- form body, for the "before" panel --- */
+  .hint{color:var(--ink-muted);font-size:13px;margin-bottom:20px}
+  .field{margin-bottom:16px}
+  .label{display:block;font-size:13px;font-weight:500;margin-bottom:6px}
+  .input{
+    height:36px;width:100%;border:1px solid var(--border-strong);border-radius:6px;
+    background:var(--surface);padding:0 12px;font:inherit;font-size:14px;color:var(--ink-subtle);
+    display:flex;align-items:center;
+  }
+  .row-btns{display:flex;gap:12px;margin-top:24px}
+  .btn-primary{
+    height:40px;padding:0 16px;border-radius:6px;background:var(--accent);color:var(--on-accent);
+    font:inherit;font-size:14px;font-weight:500;border:0;
+  }
+  .btn-ghost{
+    height:40px;padding:0 16px;border-radius:6px;background:var(--surface);color:var(--ink);
+    border:1px solid var(--border);font:inherit;font-size:14px;font-weight:500;
+  }
+  .note{margin-top:12px;font-size:12px;color:var(--ink-subtle);line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="toolbar">
+    <h1>UW-032 · Staged loading</h1>
+    <button class="toggle" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme==='dark'?'light':'dark'">Toggle theme</button>
+    <button class="toggle" onclick="document.body.classList.toggle('rm')">Toggle reduced-motion</button>
+    <p>The audit trail, being written live — completed stages flip to the drawer timeline's own labels.</p>
+  </div>
+
+  <div class="grid">
+
+    <!-- 1 · before -->
+    <figure class="col">
+      <figcaption>0 — before submit</figcaption>
+      <div class="t">The form body, for reference.</div>
+      <div class="card">
+        <div class="card-head">
+          <div class="tabs">
+            <button class="tab">Fill form</button>
+            <button class="tab" aria-selected="true">Paste submission</button>
+            <button class="tab">Upload PDF</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="hint">Paste the broker's email; the model extracts the fields.</p>
+          <div class="field">
+            <span class="label">Broker submission</span>
+            <div class="input">Subject: Cyber quote — Ledgerline…</div>
+          </div>
+          <div class="row-btns">
+            <button class="btn-primary">Submit</button>
+            <button class="btn-ghost">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <p class="note">Under 400ms nothing below ever appears — form mode (349ms) submits with no panel at all.</p>
+    </figure>
+
+    <!-- 2 · extracting -->
+    <figure class="col">
+      <figcaption>1 — extracting (the long hold)</figcaption>
+      <div class="t">t ≈ 0.4s → 3.4s · ~80% of the visible time.</div>
+      <div class="card">
+        <div class="card-head">
+          <div class="tabs">
+            <button class="tab" disabled>Fill form</button>
+            <button class="tab" aria-selected="true" disabled>Paste submission</button>
+            <button class="tab" disabled>Upload PDF</button>
+          </div>
+        </div>
+        <div class="card-body holding">
+          <div class="stages">
+            <div class="stage" data-state="active">
+              <span class="glyph"><span class="dot"></span></span>
+              <span>Extracting…</span>
+            </div>
+            <div class="stage" data-state="pending">
+              <span class="glyph">·</span>
+              <span>Verifying with Companies House…</span>
+            </div>
+            <div class="stage" data-state="pending">
+              <span class="glyph">·</span>
+              <span>Rating…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="note">No colour anywhere: copper is interaction and identity only (Rule 1), and amber/green are submission verdicts, not progress.</p>
+    </figure>
+
+    <!-- 3 · held on rating -->
+    <figure class="col">
+      <figcaption>2 — held on rating</figcaption>
+      <div class="t">t ≈ 4.1s → response. Never shows three ticks.</div>
+      <div class="card">
+        <div class="card-head">
+          <div class="tabs">
+            <button class="tab" disabled>Fill form</button>
+            <button class="tab" aria-selected="true" disabled>Paste submission</button>
+            <button class="tab" disabled>Upload PDF</button>
+          </div>
+        </div>
+        <div class="card-body holding">
+          <div class="stages">
+            <div class="stage" data-state="done">
+              <span class="glyph">✓</span>
+              <span>Extracted</span>
+            </div>
+            <div class="stage" data-state="done">
+              <span class="glyph">✓</span>
+              <span>Companies House checked</span>
+            </div>
+            <div class="stage" data-state="active">
+              <span class="glyph"><span class="dot"></span></span>
+              <span>Rating…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="note">Holding, not completing — a panel showing all three ticks before the server answers would be the one actively misleading state.</p>
+    </figure>
+
+  </div>
+</div>
+</body>
+</html>
