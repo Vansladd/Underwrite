@@ -62,6 +62,12 @@ async def test_creating_a_submission_requires_auth(anon_api):
     assert response.status_code == 401
 
 
+async def test_uploading_a_pdf_requires_auth(anon_api):
+    files = {"file": ("submission.pdf", b"%PDF-1.7", "application/pdf")}
+
+    assert (await anon_api.post("/api/submissions/pdf", files=files)).status_code == 401
+
+
 async def test_the_queue_requires_auth(anon_api):
     assert (await anon_api.get("/api/submissions")).status_code == 401
 

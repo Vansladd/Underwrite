@@ -5,6 +5,44 @@ Running log of non-obvious technical choices. Domain and pricing decisions live 
 
 ---
 
+## D-028 · PDF ingest — a separate multipart route, caps as a cost boundary, no OCR
+
+**Ticket:** UW-026 / UW-031 · **Date:** 2026-07-29
+
+The apply screen's three input modes converge on one pipeline, but not on one route. `POST
+/api/submissions` keeps its JSON contract for **form** and **paste**; **`POST /api/submissions/pdf`**
+takes the upload. FastAPI cannot cleanly mix a Pydantic body with `UploadFile`, and splitting keeps
+the generated TypeScript client honest about which mode carries what. JSON `pdf_upload` is now
+*rejected* by `SubmissionCreate` — the mode has a real route, so the old "carries neither" hole is
+closed rather than left open.
+
+**`services/pdf_text.py` is the whole of UW-026.** `extract_text(bytes) -> str` via pypdf, then the
+text takes the existing paste path: same `run_pipeline`, same LLM extraction, same enrichment and
+rating. The audit trail distinguishes them only by `source` (`uploaded_pdf` vs `broker_email`).
+The original bytes are **not** persisted: `raw_input` holds exactly what was parsed and exactly what
+the model saw, which is the record that matters; storing the binary would add a column, a migration,
+and a PII lifecycle for no audit gain.
+
+**Three caps, and the reason is money.** `MAX_UPLOAD_BYTES` (10MB) and `MAX_PAGES` (30) bound the
+parse; `MAX_TEXT_CHARS` (20k) bounds the **Anthropic call** the text is about to become. The same
+rule as `terraform apply`: nothing unbounded reaches a paid API. A rejection is therefore also a
+saving — every 4xx below is a paid extraction that never happened.
+
+**Failure is four typed errors, each carrying its own applicant-facing sentence**: `PdfTooLarge`
+(413), `NotAPdf`, `EncryptedPdf`, `NoTextLayer` (422). The last is the one worth naming: an
+image-only scan yields an empty string, and passing that to the model would spend money to extract
+nothing and return a confident-looking empty application. **No OCR** — the honest answer is "this
+looks scanned, paste the text instead". Fixtures are rendered by WeasyPrint at test time rather than
+committed as binaries, so the suite meets a real writer's compressed streams and subset fonts.
+
+**Form mode cannot report its own confidence.** A new `FormApplication` write schema carries the
+eight applicant fields and nothing else; `to_extracted()` supplies `extraction_confidence=1.0` and
+`missing_fields=[]`. Previously a client could POST `extraction_confidence: 0.2` and drive its own
+submission to `LOW_EXTRACTION_CONFIDENCE`. Certainty is now a property of the type: typed input was
+not inferred, so there is nothing to be uncertain about.
+
+---
+
 ## D-027 · Operator-console visual system — refined desk, copper accent, token-swap themes
 
 **Ticket:** console redesign · **Date:** 2026-07-23

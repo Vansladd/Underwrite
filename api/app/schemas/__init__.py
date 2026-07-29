@@ -24,7 +24,7 @@ from app.schemas.read import (
     SubmissionRead,
     SubmissionStats,
 )
-from app.schemas.write import DeclineRequest, SubmissionCreate
+from app.schemas.write import DeclineRequest, FormApplication, SubmissionCreate
 
 __all__ = [
     "AuditEventRead",
@@ -34,6 +34,7 @@ __all__ = [
     "ExtractedApplication",
     "ExtractionRead",
     "FactorRead",
+    "FormApplication",
     "IncompleteExtraction",
     "LoginRequest",
     "QuoteRead",

@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -11,16 +11,20 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import ChClientDep, CurrentUser, ExtractorDep, RendererDep
 from app.db import DbSession
-from app.domain.enums import AuditActor, AuditEventType, SubmissionStatus
+from app.domain.enums import AuditActor, AuditEventType, InputMode, SubmissionStatus
 from app.models import AuditEvent, Submission
 from app.schemas import (
     DeclineRequest,
+    ExtractedApplication,
     SubmissionCreate,
     SubmissionDetail,
     SubmissionListItem,
     SubmissionStats,
 )
 from app.services.audit import record_event
+from app.services.companies_house import CompaniesHouseClient
+from app.services.extraction import AnthropicExtractor
+from app.services.pdf_text import MAX_UPLOAD_BYTES, PdfTextError, PdfTooLarge, extract_text
 from app.services.pipeline import run_pipeline
 from app.services.quote import NotQuotable, build_quote
 from app.services.quote_render import generate_quote_pdf
@@ -29,6 +33,7 @@ from app.services.storage import StorageDep
 router = APIRouter(prefix="/api/submissions", tags=["submissions"])
 
 MAX_PAGE = 200
+MAX_FILENAME_CHARS = 200
 
 NESTED = (
     selectinload(Submission.extraction),
@@ -122,15 +127,16 @@ def submissions_query(submission_status: SubmissionStatus | None, limit: int, of
     return query.where(Submission.status == submission_status)
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
-async def create_submission(
-    payload: SubmissionCreate,
-    db: DbSession,
-    user: CurrentUser,
-    extractor: ExtractorDep,
-    ch_client: ChClientDep,
+async def _receive(
+    db: AsyncSession,
+    input_mode: InputMode,
+    raw_input: str | None,
+    application: ExtractedApplication | None,
+    extractor: AnthropicExtractor,
+    ch_client: CompaniesHouseClient,
+    **audit: object,
 ) -> SubmissionDetail:
-    submission = Submission(input_mode=payload.input_mode, raw_input=payload.raw_input)
+    submission = Submission(input_mode=input_mode, raw_input=raw_input)
     db.add(submission)
     await db.flush()
 
@@ -140,18 +146,59 @@ async def create_submission(
         submission.id,
         AuditEventType.SUBMISSION_RECEIVED,
         AuditActor.APPLICANT,
-        {
-            "input_mode": payload.input_mode.value,
-            "raw_input_chars": len(payload.raw_input or ""),
-        },
+        {"input_mode": input_mode.value, "raw_input_chars": len(raw_input or ""), **audit},
     )
     # Committed before the pipeline so a stage failure leaves it recoverable (UW-025).
     await db.commit()
 
     # The pipeline commits after each stage; no trailing commit needed here.
-    await run_pipeline(db, submission, payload.application, extractor, ch_client)
+    await run_pipeline(db, submission, application, extractor, ch_client)
 
     return await load_detail(db, submission.id)
+
+
+@router.post("", status_code=status.HTTP_201_CREATED)
+async def create_submission(
+    payload: SubmissionCreate,
+    db: DbSession,
+    user: CurrentUser,
+    extractor: ExtractorDep,
+    ch_client: ChClientDep,
+) -> SubmissionDetail:
+    application = payload.application.to_extracted() if payload.application else None
+    return await _receive(
+        db, payload.input_mode, payload.raw_input, application, extractor, ch_client
+    )
+
+
+@router.post("/pdf", status_code=status.HTTP_201_CREATED)
+async def create_submission_from_pdf(
+    file: Annotated[UploadFile, File()],
+    db: DbSession,
+    user: CurrentUser,
+    extractor: ExtractorDep,
+    ch_client: ChClientDep,
+) -> SubmissionDetail:
+    # One byte past the cap is enough to reject it without buffering the rest.
+    data = await file.read(MAX_UPLOAD_BYTES + 1)
+    try:
+        text = extract_text(data)
+    except PdfTooLarge as error:
+        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, str(error)) from error
+    except PdfTextError as error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(error)) from error
+
+    return await _receive(
+        db,
+        InputMode.PDF_UPLOAD,
+        text,
+        None,
+        extractor,
+        ch_client,
+        # Applicant-controlled: recorded as audit data, never used as a path or a filename.
+        filename=(file.filename or "")[:MAX_FILENAME_CHARS],
+        upload_bytes=len(data),
+    )
 
 
 @router.get("")

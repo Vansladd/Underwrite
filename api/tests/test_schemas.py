@@ -13,6 +13,7 @@ from app.schemas import (
     EnrichmentRead,
     ExtractedApplication,
     ExtractionRead,
+    FormApplication,
     IncompleteExtraction,
     QuoteRead,
     RatingRead,
@@ -39,6 +40,11 @@ BROKER_EMAIL = {
 
 def extracted(**overrides) -> ExtractedApplication:
     return ExtractedApplication(**{**BROKER_EMAIL, **overrides})
+
+
+def form_application(**overrides) -> FormApplication:
+    typed = {key: value for key, value in BROKER_EMAIL.items() if key != "extraction_confidence"}
+    return FormApplication(**{**typed, **overrides})
 
 
 async def load_full(db, submission_id) -> Submission:
@@ -278,10 +284,9 @@ def test_a_pasted_submission_needs_raw_input():
         SubmissionCreate(input_mode=InputMode.PASTE)
 
 
-def test_a_pdf_upload_carries_no_text_until_it_is_extracted():
-    created = SubmissionCreate(input_mode=InputMode.PDF_UPLOAD)
-
-    assert (created.raw_input, created.application) == (None, None)
+def test_a_pdf_upload_belongs_to_the_route_that_can_read_one():
+    with pytest.raises(ValueError, match="/api/submissions/pdf"):
+        SubmissionCreate(input_mode=InputMode.PDF_UPLOAD)
 
 
 def test_a_form_submission_needs_an_application():
@@ -290,10 +295,22 @@ def test_a_form_submission_needs_an_application():
 
 
 def test_a_form_submission_carries_its_application_instead_of_text():
-    created = SubmissionCreate(input_mode=InputMode.FORM, application=extracted())
+    created = SubmissionCreate(input_mode=InputMode.FORM, application=form_application())
 
     assert created.raw_input is None
-    assert created.application.to_domain().months_trading == 36
+    assert created.application.to_extracted().to_domain().months_trading == 36
+
+
+def test_a_typed_application_is_certain_and_missing_nothing():
+    application = form_application(company_number=None).to_extracted()
+
+    assert application.extraction_confidence == 1.0
+    assert application.missing_fields == []
+
+
+def test_a_form_application_cannot_smuggle_in_an_llm_field():
+    with pytest.raises(ValidationError, match="extraction_confidence"):
+        FormApplication(**BROKER_EMAIL)
 
 
 def test_an_unknown_decision_name_is_a_validation_error_not_a_keyerror():
