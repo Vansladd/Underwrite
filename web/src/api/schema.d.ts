@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/submissions/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Submission From Pdf */
+        post: operations["create_submission_from_pdf_api_submissions_pdf_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/submissions/stats": {
         parameters: {
             query?: never;
@@ -244,6 +261,11 @@ export interface components {
          * @enum {string}
          */
         AuditEventType: "submission_received" | "extraction_completed" | "extraction_failed" | "enrichment_completed" | "enrichment_failed" | "rating_completed" | "rating_failed" | "submission_approved" | "submission_declined" | "quote_generated" | "quote_render_failed" | "quote_expired" | "bordereau_exported";
+        /** Body_create_submission_from_pdf_api_submissions_pdf_post */
+        Body_create_submission_from_pdf_api_submissions_pdf_post: {
+            /** File */
+            file: string;
+        };
         /**
          * CompanyStatus
          * @enum {string}
@@ -296,29 +318,6 @@ export interface components {
              */
             created_at: string;
         };
-        /**
-         * ExtractedApplication
-         * @description The `messages.parse()` output format — broker units, not storage units.
-         */
-        ExtractedApplication: {
-            /** Company Name */
-            company_name?: string | null;
-            /** Company Number */
-            company_number?: string | null;
-            sector?: components["schemas"]["Sector"] | null;
-            /** Annual Revenue Gbp */
-            annual_revenue_gbp?: number | null;
-            /** Years Trading */
-            years_trading?: number | null;
-            /** Prior Claims Count */
-            prior_claims_count?: number | null;
-            data_records_held?: components["schemas"]["DataVolume"] | null;
-            requested_limit_gbp?: components["schemas"]["RequestedLimit"] | null;
-            /** Extraction Confidence */
-            extraction_confidence: number;
-            /** Missing Fields */
-            missing_fields?: string[];
-        };
         /** ExtractionRead */
         ExtractionRead: {
             /**
@@ -365,6 +364,25 @@ export interface components {
             premium_before_pence: string;
             /** Premium After Pence */
             premium_after_pence: string;
+        };
+        /**
+         * FormApplication
+         * @description What the applicant types. No confidence field: the form is not a guess. See D-028.
+         */
+        FormApplication: {
+            /** Company Name */
+            company_name?: string | null;
+            /** Company Number */
+            company_number?: string | null;
+            sector?: components["schemas"]["Sector"] | null;
+            /** Annual Revenue Gbp */
+            annual_revenue_gbp?: number | null;
+            /** Years Trading */
+            years_trading?: number | null;
+            /** Prior Claims Count */
+            prior_claims_count?: number | null;
+            data_records_held?: components["schemas"]["DataVolume"] | null;
+            requested_limit_gbp?: components["schemas"]["RequestedLimit"] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -476,7 +494,7 @@ export interface components {
             input_mode: components["schemas"]["InputMode"];
             /** Raw Input */
             raw_input?: string | null;
-            application?: components["schemas"]["ExtractedApplication"] | null;
+            application?: components["schemas"]["FormApplication"] | null;
         };
         /** SubmissionDetail */
         SubmissionDetail: {
@@ -696,6 +714,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SubmissionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_submission_from_pdf_api_submissions_pdf_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_create_submission_from_pdf_api_submissions_pdf_post"];
             };
         };
         responses: {

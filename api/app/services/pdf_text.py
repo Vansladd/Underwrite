@@ -13,28 +13,31 @@ MIN_TEXT_CHARS = 40
 
 
 class PdfTextError(Exception):
-    """Base for the ways an uploaded PDF fails to yield text. `str()` is shown to the applicant."""
+    """Base for the ways an uploaded PDF fails to yield text.
+
+    `str()` is a finished sentence: the route passes it straight to the applicant as the 4xx detail.
+    """
 
 
 class PdfTooLarge(PdfTextError):
     def __init__(self) -> None:
-        super().__init__(f"that PDF is larger than {MAX_UPLOAD_BYTES // (1024 * 1024)}MB")
+        super().__init__(f"That PDF is larger than {MAX_UPLOAD_BYTES // (1024 * 1024)}MB.")
 
 
 class NotAPdf(PdfTextError):
     def __init__(self) -> None:
-        super().__init__("that file is not a readable PDF")
+        super().__init__("That file is not a readable PDF.")
 
 
 class EncryptedPdf(PdfTextError):
     def __init__(self) -> None:
-        super().__init__("that PDF is password-protected; remove the password and try again")
+        super().__init__("That PDF is password-protected. Remove the password and try again.")
 
 
 class NoTextLayer(PdfTextError):
     def __init__(self) -> None:
         super().__init__(
-            "that PDF has no selectable text — it looks scanned. Paste the text instead"
+            "That PDF has no selectable text — it looks scanned. Paste the text instead."
         )
 
 
