@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Annotated
+from urllib.parse import urlsplit
 
 from fastapi import Depends
 from pydantic import field_validator
@@ -60,21 +61,34 @@ class Settings(BaseSettings):
     @field_validator("database_url")
     @classmethod
     def reject_an_unescaped_password(cls, value: str) -> str:
-        # A second @ in the authority means the password carries an unescaped one. The URL still
-        # parses, so the failure surfaces as a DNS error five frames into asyncpg, in a container.
-        authority = value.split("://", 1)[-1].split("/", 1)[0]
-        if authority.count("@") > 1:
+        # An unescaped @ or / in the password moves the host without making the URL invalid, so
+        # the failure surfaces as a DNS error five frames into asyncpg, inside a container.
+        # `urlsplit` reports a plausible host for both, so neither is visible from the parse alone.
+        parsed = urlsplit(value)
+        problem = None
+        if parsed.netloc.count("@") > 1:
+            problem = "more than one '@' before the host"
+        elif not parsed.hostname:
+            problem = "no host at all"
+        else:
+            try:
+                # Reading it is the check: the property raises when the password ate the separator.
+                _ = parsed.port
+            except ValueError:
+                problem = "a non-numeric port"
+        if problem:
             raise ValueError(
-                "DATABASE_URL has more than one '@' before the host, so the password contains an "
-                "unescaped one and the host is not what you think. Percent-encode it (@ = %40)."
+                f"DATABASE_URL has {problem}, so the password contains an unescaped character and "
+                f"the host is not what you think. Percent-encode it (@ = %40, / = %2F)."
             )
         return value
 
 
-def alembic_url(settings: Settings) -> str:
-    """Alembic keeps this in a configparser, where a lone `%` is interpolation syntax — so a
-    password carrying a percent-escape (%40 for @) fails the migration, not the connection."""
-    return settings.database_url.replace("%", "%%")
+def escape_for_configparser(dsn: str) -> str:
+    """Alembic keeps the DSN in a configparser, where a lone `%` is interpolation syntax — so a
+    password carrying a percent-escape (%40 for @) fails the migration, not the connection.
+    Every path that reaches `Config.set_main_option` needs this, tests included."""
+    return dsn.replace("%", "%%")
 
 
 def startup_warnings(settings: Settings) -> list[str]:

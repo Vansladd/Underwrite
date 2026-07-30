@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.config import alembic_url, get_settings
+from app.config import escape_for_configparser, get_settings
 from app.models import Base
 
 config = context.config
@@ -17,7 +17,7 @@ if config.config_file_name is not None:
 
 # Fallback only — a caller that set a URL must win. See DECISIONS D-008.
 if not config.get_main_option("sqlalchemy.url", None):
-    config.set_main_option("sqlalchemy.url", alembic_url(get_settings()))
+    config.set_main_option("sqlalchemy.url", escape_for_configparser(get_settings().database_url))
 
 target_metadata = Base.metadata
 

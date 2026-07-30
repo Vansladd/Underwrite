@@ -50,6 +50,17 @@ anyway: one-off `at()` schedules against the real role drove both Lambdas, and t
 125-byte CSV in S3 with the agreed header — which also proves the instance role's new
 `bordereaux/*` permission, since nothing else could have written it.
 
+**Review found the fix half-applied and the timezone half-wired.** Escaping the DSN for
+configparser landed in `migrations/env.py` and not in `tests/conftest.py`, which feeds the
+session-scoped `engine` fixture — so anyone following the percent-encoding advice added in the same
+commit could not run a single database test. The escape now lives in `config.escape_for_configparser`
+and both call sites use it; *when a fix lands, grep for siblings* was the standing rule and it was
+not followed. Separately, this ticket scheduled the sweep in `Europe/London` while the endpoint took
+its date from UTC — correct at 02:00 and silently a day behind for any slot before 01:00 in BST,
+which is the exact coupling `/bordereaux/latest` removed from the export. `sweep_expired_quotes` now
+reads `period.today()`, through the module rather than `from … import today`, because the latter
+binds at import and makes a patched clock untestable.
+
 **This ticket cannot be verified without a live box, a DNS record and a certificate.** The Lambdas
 reach the API over HTTPS by hostname, so unlike UW-053 and UW-054 — both verifiable entirely
 locally — the cost of proving this one is a deploy. Worth knowing before scheduling the next.

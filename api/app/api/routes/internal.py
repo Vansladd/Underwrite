@@ -1,9 +1,8 @@
-from datetime import date
-
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import require_sweeper_token
 from app.db import DbSession
+from app.domain import period
 from app.domain.period import InvalidPeriod, YearMonth
 from app.schemas import BordereauRun, ExpirySweep
 from app.services.bordereau import export_bordereau
@@ -20,10 +19,13 @@ router = APIRouter(
 
 @router.post("/quotes/expire")
 async def sweep_expired_quotes(db: DbSession) -> ExpirySweep:
-    # The server picks the date; a caller-supplied one would let the schedule expire the future.
-    today = date.today()
-    refs = await expire_quotes(db, today=today)
-    return ExpirySweep(swept_on=today, expired=len(refs), quote_refs=refs)
+    # The reporting zone, not UTC: the schedule fires at 02:00 Europe/London, and any slot
+    # before 01:00 would otherwise sweep against the previous day all summer. See D-033.
+    # Through the module, not `from ... import today`: the latter binds at import and
+    # silently ignores a patched clock, so the zone would be untestable.
+    swept_on = period.today()
+    refs = await expire_quotes(db, today=swept_on)
+    return ExpirySweep(swept_on=swept_on, expired=len(refs), quote_refs=refs)
 
 
 # Declared before /{period}, which would otherwise swallow "latest" and 422 it as a bad format.

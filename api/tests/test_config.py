@@ -7,7 +7,7 @@ from app.config import (
     DEFAULT_SECRET_KEY,
     DEFAULT_SWEEPER_TOKEN,
     Settings,
-    alembic_url,
+    escape_for_configparser,
     startup_warnings,
 )
 
@@ -89,19 +89,37 @@ def test_a_percent_escaped_password_survives_alembic_config():
     settings = Settings(database_url="postgresql+asyncpg://underwrite:p%40ss@db:5432/underwrite")
     config = Config()
 
-    config.set_main_option("sqlalchemy.url", alembic_url(settings))
+    config.set_main_option("sqlalchemy.url", escape_for_configparser(settings.database_url))
 
     assert config.get_main_option("sqlalchemy.url") == settings.database_url
-
-
-def test_rejects_a_dsn_whose_password_carries_an_unescaped_at():
-    # The exact URL that broke the UW-063 deploy: it parses, connects to the wrong host, and
-    # surfaces as a DNS error inside a container rather than a config error at startup.
-    with pytest.raises(ValidationError, match="unescaped"):
-        Settings(database_url="postgresql+asyncpg://underwrite:LILAC@12EAFC@db:5432/underwrite")
 
 
 def test_accepts_a_dsn_whose_password_is_properly_escaped():
     dsn = "postgresql+asyncpg://underwrite:LILAC%4012EAFC@db:5432/underwrite"
 
     assert Settings(database_url=dsn).database_url == dsn
+
+
+@pytest.mark.parametrize(
+    "dsn",
+    [
+        "postgresql+asyncpg://underwrite:LILAC@12EAFC@db:5432/underwrite",
+        "postgresql+asyncpg://underwrite:pa/ss@db:5432/underwrite",
+    ],
+    ids=["at", "slash"],
+)
+def test_rejects_a_dsn_whose_password_hides_the_host(dsn):
+    # Both parse, and urlsplit reports a plausible host for the first — the failure only appears
+    # as a DNS error inside a container. .env.prod.example names both characters.
+    with pytest.raises(ValidationError, match="unescaped"):
+        Settings(database_url=dsn)
+
+
+def test_the_test_harness_itself_survives_a_percent_escaped_dsn():
+    # conftest.alembic_config feeds the session-scoped `engine` fixture, so an unescaped % here
+    # fails collection for every database test rather than one.
+    from tests.conftest import alembic_config
+
+    dsn = "postgresql+asyncpg://underwrite:p%40ss@db:5432/underwrite_test"
+
+    assert alembic_config(dsn).get_main_option("sqlalchemy.url") == dsn

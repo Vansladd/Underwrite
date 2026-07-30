@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.api.deps import get_ch_client, get_current_user, get_extractor, get_renderer
-from app.config import Settings, get_settings
+from app.config import Settings, escape_for_configparser, get_settings
 from app.db import get_db
 from app.domain.enums import DataVolume, RequestedLimit, Sector
 from app.main import app
@@ -51,7 +51,10 @@ CANNED_EXTRACTION = ExtractedApplication(
 
 def alembic_config(url: str) -> Config:
     config = Config(ALEMBIC_INI)
-    config.set_main_option("sqlalchemy.url", url)
+    # Escaped exactly as migrations/env.py does: a percent-encoded password is interpolation
+    # syntax to the configparser underneath, and this fixture is session-scoped, so it would
+    # take the whole suite down rather than one test.
+    config.set_main_option("sqlalchemy.url", escape_for_configparser(url))
     return config
 
 
