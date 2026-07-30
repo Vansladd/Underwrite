@@ -7,30 +7,37 @@ locals {
   schedules_on = var.enable_schedules && var.sweeper_token != "" ? 1 : 0
 }
 
+# Our own group, not `default`. Scheduler only ever presents the GROUP as aws:SourceArn, so the
+# group is the finest grain the trust policy can name — in `default`, any schedule in the account
+# could assume this role. Verified by attack: a foreign-named schedule in `default` was accepted
+# before this existed. See D-033.
+resource "aws_scheduler_schedule_group" "underwrite" {
+  count = local.schedules_on
+  name  = var.project
+}
+
 data "aws_iam_policy_document" "scheduler_assume" {
+  count = local.schedules_on
+
   statement {
     actions = ["sts:AssumeRole"]
     principals {
       type        = "Service"
       identifiers = ["scheduler.amazonaws.com"]
     }
-    # Confused deputy: without these, any account's schedule could assume this role. The ARNs are
-    # built from known values rather than aws_scheduler_schedule.*.arn — the schedules reference
-    # this role, so reading their ARNs back here is a dependency cycle. See D-033.
+    # Confused deputy: without this, any account's schedule could assume this role.
     condition {
       test     = "StringEquals"
       variable = "aws:SourceAccount"
       values   = [data.aws_caller_identity.current.account_id]
     }
-    # The schedule GROUP arn, not the schedule's. Scheduler presents the group as aws:SourceArn
-    # both when validating the role at CreateSchedule and when invoking — a `schedule/default/*`
-    # pattern matches the resource but nothing that is ever checked, so it 400s. See D-033.
+    # The GROUP arn, not the schedule's. Scheduler presents the group as aws:SourceArn both when
+    # validating the role at CreateSchedule and when invoking, so a `schedule/<group>/<name>`
+    # pattern matches the resource but nothing ever checked, and 400s. See D-033.
     condition {
-      test     = "ArnLike"
+      test     = "ArnEquals"
       variable = "aws:SourceArn"
-      values = [
-        "arn:aws:scheduler:${var.region}:${data.aws_caller_identity.current.account_id}:schedule-group/default"
-      ]
+      values   = [one(aws_scheduler_schedule_group.underwrite[*].arn)]
     }
   }
 }
@@ -38,7 +45,7 @@ data "aws_iam_policy_document" "scheduler_assume" {
 resource "aws_iam_role" "scheduler" {
   count              = local.schedules_on
   name               = "${var.project}-scheduler"
-  assume_role_policy = data.aws_iam_policy_document.scheduler_assume.json
+  assume_role_policy = data.aws_iam_policy_document.scheduler_assume[0].json
 }
 
 # count, not a bare data source: with the Lambdas ungated `one()` is null, and a resources list
@@ -69,6 +76,7 @@ resource "aws_scheduler_schedule" "quote_expiry" {
   count = local.schedules_on
 
   name                         = "${var.project}-quote-expiry"
+  group_name                   = aws_scheduler_schedule_group.underwrite[0].name
   description                  = "Daily: expire quotes past valid_until (UW-053)"
   schedule_expression          = "cron(0 2 * * ? *)"
   schedule_expression_timezone = "Europe/London"
@@ -97,6 +105,7 @@ resource "aws_scheduler_schedule" "bordereau" {
   count = local.schedules_on
 
   name                         = "${var.project}-bordereau"
+  group_name                   = aws_scheduler_schedule_group.underwrite[0].name
   description                  = "1st of the month: export the closed month's bordereau (UW-054)"
   schedule_expression          = "cron(0 3 1 * ? *)"
   schedule_expression_timezone = "Europe/London"
