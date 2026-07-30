@@ -5,6 +5,70 @@ Running log of non-obvious technical choices. Domain and pricing decisions live 
 
 ---
 
+## D-035 · The migrations scratch database — one per run, and never `with (force)`
+
+**Ticket:** UW-072 · **Date:** 2026-07-30
+
+`test_migrations` built its schema in a fixed scratch database and began with
+`drop database if exists`. **`DROP DATABASE` fails if anything else is connected**, so any leftover
+session — a Ctrl-C'd run whose container had not died, an overlapping `make test`, a stray `psql` —
+produced `ObjectInUseError` and took all four tests with it. CI never saw it: a fresh database
+container per run has nothing else attached.
+
+**The handoff blamed `ANTHROPIC_API_KEY` in `.env`, and that was a coincidence.** The suite leaks
+nothing — measured zero connections to the scratch database after both a targeted and a full run.
+The key had no causal role; it was simply what was different about the machine that saw the failure.
+A correlation recorded once as a reproduction step outlived the several sessions in which nobody
+re-derived it.
+
+**The obvious fix is actively dangerous.** `drop database ... with (force)` (PG 13+) terminates the
+squatting sessions and drops. It worked, and then:
+
+    FATAL:  terminating connection due to administrator command
+    LOG:  server process (PID 15862) exited with exit code 2
+    LOG:  terminating any other active server processes
+    LOG:  all server processes terminated; reinitializing
+    LOG:  database system was not properly shut down; automatic recovery in progress
+
+`FORCE` SIGTERMs the other backends, and **a backend that exits uncleanly takes the whole postmaster
+into crash recovery**, dropping every connection in the cluster — including the developer's own API.
+It converts "four tests error" into "the database server restarts". Data survived (WAL recovery did
+its job) but the trade is plainly bad, and the failure is the *drop statement's own connection*
+dying mid-operation, which reads like a network fault rather than something you caused.
+
+**So the contention is removed instead of won.** Each run takes
+`underwrite_migrations_test_<uuid4>`, which nothing else can be connected to because nothing else
+has seen the name, and drops it at teardown. Every drop is plain, so none can restart the server.
+
+`scratch_only()` gates every drop on the name, because the cost of a mistake here is dropping the
+developer's database rather than failing a test.
+
+**There is deliberately no cleanup of older scratch databases**, and the first attempt at one was
+the same bug wearing the opposite hat. It reaped any scratch database with no rows in
+`pg_stat_activity`, reasoning that an occupied one belonged to a live run. But **nothing in this
+module holds a connection between tests** — `names()`, `admin()` and Alembic's `env.py` all use
+`NullPool` and dispose immediately — so a *live* run's database has zero sessions almost all the
+time, and a concurrent run would drop it mid-test. Measured, not argued: a freshly created scratch
+database is returned by that query while its run is still going. Three concurrent copies of the
+module now pass; before the sweep was removed, they did not.
+
+That is strictly worse than the flake it replaced: the original failure was a clean `ObjectInUse` at
+setup, this one destroys another process's database part-way through. Leftovers only occur when a
+run dies before teardown, they are harmless, and `make clean` (`down -v`) collects them with the
+volume.
+
+**Testing notes.** Two of them, both instances of the same mistake:
+
+- The first regression test passed against the reverted fix — it squatted on a *different* database
+  than the one under test, so it never exercised the change.
+- The replacement squatted on a **fixed** name, `_occupied_probe`, which is precisely the shared
+  name this decision exists to remove; two concurrent runs would collide on it.
+
+Both now route through `scratch_name()`, so a mutation making it constant fails them. *A regression
+test that cannot fail on the un-fixed code is documentation.*
+
+---
+
 ## D-034 · The sweeper token — Terraform gets the parameter's name, never its value
 
 **Ticket:** UW-071 · **Date:** 2026-07-30
