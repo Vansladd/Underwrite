@@ -255,6 +255,32 @@ async def test_the_reason_filter_composes_with_the_status_filter(api, fake_ch_cl
     assert declined == []
 
 
+async def test_a_decline_only_code_finds_the_submissions_it_declined(api, fake_ch_client):
+    """Four ReasonCode members appear only in decline_reasons, never in refer_reasons.
+
+    Searching one array answered "none exist" to a quarter of the codes it accepts — with a 200,
+    so nothing said the question had gone unanswered rather than the answer being empty.
+    """
+    fake_ch_client.error = None
+    fake_ch_client.lookup_result = active_profile()
+    declined = (
+        await api.post(
+            "/api/submissions",
+            json={
+                "input_mode": "form",
+                "application": {**APPLICATION, "sector": Sector.CRYPTO.value},
+            },
+        )
+    ).json()
+    assert declined["status"] == "declined"
+    codes = [r["code"] for r in declined["rating"]["decline_reasons"]]
+    assert "SECTOR_OUT_OF_APPETITE" in codes
+
+    listed = (await api.get("/api/submissions?reason=SECTOR_OUT_OF_APPETITE")).json()
+
+    assert declined["id"] in [row["id"] for row in listed]
+
+
 async def test_an_unknown_reason_is_rejected_rather_than_ignored(api):
     # Silently returning everything would read as "no submissions match", which is a lie.
     response = await api.get("/api/submissions?reason=NOT_A_REASON")

@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -140,9 +140,14 @@ def submissions_query(
     if submission_status is not None:
         query = query.where(Submission.status == submission_status)
     if reason is not None:
-        # JSONB containment, so it stays one indexable predicate rather than a load-and-filter.
+        # Both arrays: four of the ReasonCode members are decline-only, so searching refer_reasons
+        # alone answers "none exist" to a quarter of the codes it accepts. JSONB containment keeps
+        # it one indexable predicate rather than a load-and-filter.
         query = query.join(Submission.rating).where(
-            Rating.refer_reasons.contains([{"code": reason.value}])
+            or_(
+                Rating.refer_reasons.contains([{"code": reason.value}]),
+                Rating.decline_reasons.contains([{"code": reason.value}]),
+            )
         )
     return query
 
