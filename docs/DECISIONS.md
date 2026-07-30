@@ -5,6 +5,74 @@ Running log of non-obvious technical choices. Domain and pricing decisions live 
 
 ---
 
+## D-032 · The bordereau reports the month a quote was written, in London time
+
+**Ticket:** UW-054 · **Date:** 2026-07-29
+
+A bordereau is how an MGA reports bound business to its carrier. Two consequences fall straight out
+of that definition and shape the whole ticket.
+
+**It reports issuance, not current state.** The query keys on `Quote.created_at` and ignores
+`status` entirely: a quote written on 3 July and expired on 2 August is still July's business, and a
+report the carrier reconciles must not retract a row it has already accounted for. The expiry
+sweeper (D-031) and this export deliberately read the same table through opposite lenses — one cares
+only about *now*, the other only about *when*.
+
+**A calendar month is local, not UTC.** `created_at` is `timestamptz`, and British Summer Time puts
+the first hour of every summer month — 23:00–00:00 UTC on the last day of the previous month —
+*inside* the month that is starting. Naive UTC bounds misfile every quote issued in that hour into
+the wrong report, which is the kind of error nobody notices until a carrier reconciliation is out by
+one risk. `app/domain/period.py` holds a `YearMonth` value object that converts Europe/London month
+edges to aware instants; `zoneinfo` is stdlib, so this costs an import and nothing else. Two tests
+pin the BST boundary in both directions, and switching the zone to UTC fails three.
+
+**The API builds and stores the CSV, and picks the month.** Same reasoning as D-031 — the data is
+unreachable from Lambda — with one addition: the API already owns `DocumentStorage`, so the export
+runs against `LocalStorage` with no AWS at all (`make bordereau-lambda-test`), and the Lambda holds
+no S3 permission. The instance role gains `s3:PutObject` on `bordereaux/*` only; the app never reads
+a bordereau back.
+
+**`POST /bordereaux/latest` exists so the Lambda does no date arithmetic.** The first draft had it
+compute the previous month from `date.today()`, which is UTC — correct only because the schedule
+fires at 03:00, and silently wrong for an hour if anyone ever moved it earlier: it would re-export
+the month before last, overwrite that file, and log success. The reporting zone lives here, so the
+month is chosen here; `/latest` reports the last closed one and an explicit `YYYY-MM` backfills.
+That deletes a scheduling constraint UW-063 would otherwise have had to honour forever.
+
+**Every "today" in this feature reads the reporting zone**, via `period.today()` rather than
+`date.today()`. The closure guard originally used UTC and would have refused a just-closed month
+between 00:00 and 01:00 on the 1st of each BST month. Only reachable by patching the clock, which
+is what the test does — a route calling `date.today()` directly ignores the patch and 422s.
+
+**Stored before it is audited.** A committed `bordereau_exported` event pointing at an object that
+was never written is the worse failure, because nobody goes looking for a file the trail says
+exists. The S3 put happens first, and a re-run overwrites the same key.
+
+**One event per submission, not one per export.** `AuditEvent.submission_id` is `NOT NULL`, and
+rather than migrate it nullable, each included submission gets its own `bordereau_exported` event
+carrying the period and key. That answers the question actually asked of an audit trail — *was this
+risk reported, and when?* — and a re-export appends rather than overwrites, which is correct: an
+append-only trail records that the month was filed twice, because it was.
+
+**A closed month only.** The endpoint refuses the current month with a 422. A partial month would be
+reconciled as complete, and re-running it later would silently change a figure the carrier has
+already received.
+
+**Money leaves as pounds, entered as pence.** The CSV carries bare `2500.00`, no symbol and no
+separators, because a carrier's pipeline parses it. `pounds_csv` derives it with `divmod`, so the
+integer-pence rule survives all the way to the file and no float ever touches it.
+
+**The number column belongs to the name column.** The first draft took the name from the extraction
+and the number from Companies House, which pairs two *different companies* whenever the register hit
+came from a name search — `lookup` falls back to one when no number was submitted, and a 0.75 match
+refers as `CH_NAME_MISMATCH` and can then be approved. A carrier reconciling that row by number
+books one entity and by name books another, with nothing in the CSV saying so. Now: a submitted
+number is reported in canonical form, and the register's number is used only when nothing was
+submitted *and* the name cleared `MIN_NAME_MATCH_SCORE`. Below that the column is empty, because no
+number is better than another company's.
+
+---
+
 ## D-031 · The sweeper Lambda holds the schedule, not the sweep
 
 **Ticket:** UW-053 · **Date:** 2026-07-29

@@ -63,3 +63,22 @@ class FakeChClient:
 
     async def aclose(self) -> None:
         pass
+
+
+class FakeStorage:
+    """In-memory DocumentStorage. `error` exercises the path where the object never lands."""
+
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+        self.objects: dict[str, tuple[bytes, str]] = {}
+
+    def put(self, key: str, data: bytes, content_type: str = "application/pdf") -> None:
+        if self.error is not None:
+            raise self.error
+        self.objects[key] = (data, content_type)
+
+    def read(self, key: str) -> bytes:
+        return self.objects[key][0]
+
+    def url_for(self, key: str) -> str:
+        return f"memory://{key}"

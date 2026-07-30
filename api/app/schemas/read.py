@@ -112,6 +112,13 @@ class ExpirySweep(BaseModel):
     quote_refs: list[str]
 
 
+class BordereauRun(BaseModel):
+    period: str
+    s3_key: str
+    quotes: int
+    size_bytes: int
+
+
 class AuditEventRead(Read):
     id: uuid.UUID
     event_type: AuditEventType

@@ -15,6 +15,13 @@ data "aws_iam_policy_document" "instance_s3" {
     actions   = ["s3:GetObject", "s3:PutObject"]
     resources = ["${aws_s3_bucket.documents.arn}/generated/*"]
   }
+
+  # Write-only: the API files bordereaux, and nothing in the app reads one back (#41).
+  statement {
+    sid       = "Bordereaux"
+    actions   = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.documents.arn}/bordereaux/*"]
+  }
 }
 
 resource "aws_iam_role" "instance" {
