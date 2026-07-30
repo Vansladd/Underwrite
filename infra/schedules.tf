@@ -14,7 +14,7 @@ data "aws_iam_policy_document" "scheduler_assume" {
       type        = "Service"
       identifiers = ["scheduler.amazonaws.com"]
     }
-    # Confused deputy: without these, any account's schedule could assume this role. The ARN is
+    # Confused deputy: without these, any account's schedule could assume this role. The ARNs are
     # built from known values rather than aws_scheduler_schedule.*.arn — the schedules reference
     # this role, so reading their ARNs back here is a dependency cycle. See D-033.
     condition {
@@ -22,11 +22,14 @@ data "aws_iam_policy_document" "scheduler_assume" {
       variable = "aws:SourceAccount"
       values   = [data.aws_caller_identity.current.account_id]
     }
+    # The schedule GROUP arn, not the schedule's. Scheduler presents the group as aws:SourceArn
+    # both when validating the role at CreateSchedule and when invoking — a `schedule/default/*`
+    # pattern matches the resource but nothing that is ever checked, so it 400s. See D-033.
     condition {
       test     = "ArnLike"
       variable = "aws:SourceArn"
       values = [
-        "arn:aws:scheduler:${var.region}:${data.aws_caller_identity.current.account_id}:schedule/default/${var.project}-*"
+        "arn:aws:scheduler:${var.region}:${data.aws_caller_identity.current.account_id}:schedule-group/default"
       ]
     }
   }
