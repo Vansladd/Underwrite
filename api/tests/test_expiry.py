@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 from sqlalchemy import select
 
+from app.domain import period
 from app.domain.enums import AuditActor, AuditEventType, QuoteStatus
 from app.models import AuditEvent, Quote
 from app.services.expiry import expire_quotes
@@ -146,3 +147,21 @@ async def test_the_sweep_endpoint_is_closed_when_no_token_is_configured(anon_api
 async def test_an_operator_session_does_not_open_the_internal_route(api, sweeper_token):
     # `api` is authenticated as TEST_USER; the machine gate is a separate credential.
     assert (await api.post("/api/internal/quotes/expire")).status_code == 401
+
+
+async def test_the_sweep_reads_the_reporting_zone_not_utc(anon_api, db, sweeper_token, monkeypatch):
+    # The schedule fires at 02:00 Europe/London (D-033). Patching the zone's clock is the only way
+    # to tell the two apart; a route calling date.today() ignores the patch and sweeps nothing.
+    monkeypatch.setattr(period, "today", lambda: date(2027, 1, 1))
+    await make_quote(db, valid_until=date(2026, 12, 31), ref="Q-2026-ZZZZZZ")
+
+    response = await anon_api.post(
+        "/api/internal/quotes/expire", headers={"X-Sweeper-Token": sweeper_token}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "swept_on": "2027-01-01",
+        "expired": 1,
+        "quote_refs": ["Q-2026-ZZZZZZ"],
+    }

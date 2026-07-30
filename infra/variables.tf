@@ -40,6 +40,14 @@ variable "image_tag" {
   default     = ""
 }
 
+# Off by default: a schedule outlives the targeted destroy, and one pointing at a released EIP
+# fails every night for nothing. Turn it on for a verify window, off with the box. See D-033.
+variable "enable_schedules" {
+  description = "Create the EventBridge schedules; needs a live box for their targets to reach"
+  type        = bool
+  default     = false
+}
+
 # Must match SWEEPER_TOKEN in the box's .env — both ends are hand-managed. See D-031.
 variable "sweeper_token" {
   description = "Shared secret for /api/internal; empty means the expiry Lambda is not created"

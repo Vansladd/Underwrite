@@ -1,4 +1,5 @@
 import pytest
+from alembic.config import Config
 from pydantic import ValidationError
 
 from app.config import (
@@ -6,6 +7,7 @@ from app.config import (
     DEFAULT_SECRET_KEY,
     DEFAULT_SWEEPER_TOKEN,
     Settings,
+    escape_for_configparser,
     startup_warnings,
 )
 
@@ -79,3 +81,45 @@ def test_the_other_shipped_defaults_still_warn():
     )
 
     assert len(warnings) == 3
+
+
+def test_a_percent_escaped_password_survives_alembic_config():
+    """A strong password with `@` must be URL-escaped, and %40 then collides with configparser
+    interpolation — so the migration fails where the connection would have worked."""
+    settings = Settings(database_url="postgresql+asyncpg://underwrite:p%40ss@db:5432/underwrite")
+    config = Config()
+
+    config.set_main_option("sqlalchemy.url", escape_for_configparser(settings.database_url))
+
+    assert config.get_main_option("sqlalchemy.url") == settings.database_url
+
+
+def test_accepts_a_dsn_whose_password_is_properly_escaped():
+    dsn = "postgresql+asyncpg://underwrite:LILAC%4012EAFC@db:5432/underwrite"
+
+    assert Settings(database_url=dsn).database_url == dsn
+
+
+@pytest.mark.parametrize(
+    "dsn",
+    [
+        "postgresql+asyncpg://underwrite:LILAC@12EAFC@db:5432/underwrite",
+        "postgresql+asyncpg://underwrite:pa/ss@db:5432/underwrite",
+    ],
+    ids=["at", "slash"],
+)
+def test_rejects_a_dsn_whose_password_hides_the_host(dsn):
+    # Both parse, and urlsplit reports a plausible host for the first — the failure only appears
+    # as a DNS error inside a container. .env.prod.example names both characters.
+    with pytest.raises(ValidationError, match="unescaped"):
+        Settings(database_url=dsn)
+
+
+def test_the_test_harness_itself_survives_a_percent_escaped_dsn():
+    # conftest.alembic_config feeds the session-scoped `engine` fixture, so an unescaped % here
+    # fails collection for every database test rather than one.
+    from tests.conftest import alembic_config
+
+    dsn = "postgresql+asyncpg://underwrite:p%40ss@db:5432/underwrite_test"
+
+    assert alembic_config(dsn).get_main_option("sqlalchemy.url") == dsn
