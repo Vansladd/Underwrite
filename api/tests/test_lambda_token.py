@@ -4,11 +4,22 @@ from pathlib import Path
 
 import pytest
 
-# Mounted read-only by docker-compose; the zips live outside the api package by design (D-031).
-HANDLERS = Path("/lambdas")
 PARAM = "/underwrite/sweeper-token"
 
-pytestmark = pytest.mark.skipif(not HANDLERS.is_dir(), reason="lambdas/ is not mounted")
+
+def _handlers_dir():
+    """`/lambdas` under compose (only api/ is mounted), the repo root when CI runs pytest bare.
+
+    Raising rather than skipping is the point: as a skipif this whole file ran nowhere at all in
+    CI while reporting green, because the mount CI does not use was the only path it looked at.
+    """
+    for candidate in (Path("/lambdas"), Path(__file__).resolve().parents[2] / "lambdas"):
+        if (candidate / "quote_expiry" / "handler.py").is_file():
+            return candidate
+    raise RuntimeError("cannot find lambdas/ from either the compose mount or the repo root")
+
+
+HANDLERS = _handlers_dir()
 
 
 def load(name):

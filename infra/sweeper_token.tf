@@ -5,11 +5,6 @@ locals {
   token_from_ssm = var.sweeper_token_param != "" ? 1 : 0
 }
 
-data "aws_kms_alias" "ssm" {
-  count = local.token_from_ssm
-  name  = "alias/aws/ssm"
-}
-
 data "aws_iam_policy_document" "sweeper_token_read" {
   count = local.token_from_ssm
 
@@ -20,11 +15,14 @@ data "aws_iam_policy_document" "sweeper_token_read" {
     ]
   }
 
+  # `*` with a ViaService condition, not the key ARN: `alias/aws/ssm` is created lazily on the
+  # first SecureString in a region, so looking it up fails the plan on a fresh account with an
+  # error that names KMS rather than the missing parameter. The condition is the real scope —
+  # decryption only through Parameter Store, and the statement above admits one parameter.
   statement {
     actions   = ["kms:Decrypt"]
-    resources = [one(data.aws_kms_alias.ssm[*].target_key_arn)]
+    resources = ["*"]
 
-    # Through Parameter Store only: the AWS-managed SSM key encrypts other things in the account.
     condition {
       test     = "StringEquals"
       variable = "kms:ViaService"

@@ -24,7 +24,6 @@ def _token():
     return _TOKEN
 
 
-
 def handler(event, context):
     # The sweep runs API-side because Postgres lives inside the box's Compose network and is not
     # reachable from Lambda; this holds the schedule, not the logic. See DECISIONS D-031.

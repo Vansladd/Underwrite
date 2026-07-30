@@ -24,7 +24,6 @@ def _token():
     return _TOKEN
 
 
-
 def handler(event, context):
     # The API builds and stores the CSV because Postgres is unreachable from Lambda; this holds
     # the schedule. See DECISIONS D-031/D-032.

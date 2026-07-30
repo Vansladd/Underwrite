@@ -62,6 +62,27 @@ those state versions until they are expired or deleted, and no amount of restruc
 touches them. Generalised: *a secret that has ever been in versioned state is burned, and the
 config change is only what stops the next one being burned.*
 
+### Two green signals that were measuring nothing
+
+Review found both, and they share a shape worth naming — the check ran, reported success, and never
+looked at the code under review:
+
+- **The new tests skipped in CI and the run stayed green.** They were guarded by
+  `skipif(not Path("/lambdas").is_dir())`, and CI runs `pytest` directly on the runner, where the
+  compose mount does not exist. `485 passed, 10 skipped`. Now resolved from the compose mount *or*
+  the repo root, with **no skip at all** — absence raises, because a fixture directory that has
+  gone missing is a failure and skipping it is how this file came to run nowhere.
+- **`lambdas/` was outside ruff's scope entirely.** `make lint` runs in the api container at
+  `/app`, so `.` never included the handlers — production code deployed to AWS, unlinted since it
+  was written. The proof was in the diff under review: three blank lines before `def handler`, while
+  lint reported "95 files already formatted". Both targets now pass `/lambdas` explicitly, with
+  `--config pyproject.toml` so it gets this project's line length rather than ruff's default.
+
+That is the third and fourth instance in this repo of a green signal that wasn't measuring anything
+(after the sweeper-token test that only passed on an empty `.env`, and `ruff format --check` missing
+from the Makefile while CI ran it). The pattern is always the same: **the scope of the check and the
+scope of the change were never compared.**
+
 ---
 
 ## D-033 · EventBridge Scheduler — the group is the only grain the trust policy has

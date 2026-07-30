@@ -105,13 +105,15 @@ regen-goldens:
 	$(COMPOSE) run --rm --no-deps api uv run --frozen pytest -q --regen-goldens tests/test_rating_goldens.py
 
 # Both steps, because CI's lint job runs both — `make lint` has to be able to fail the same way.
+# /lambdas explicitly: ruff runs from /app, so the zip handlers are outside `.` and went
+# unchecked entirely. --config, or they get ruff's default line length instead of ours.
 lint:
-	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff check .
-	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff format --check .
+	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff check . /lambdas --config pyproject.toml
+	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff format --check . /lambdas --config pyproject.toml
 
 fmt:
-	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff format .
-	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff check --fix .
+	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff format . /lambdas --config pyproject.toml
+	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff check --fix . /lambdas --config pyproject.toml
 
 migrate:
 	$(COMPOSE) run --rm -w /app api uv run --frozen alembic upgrade head
