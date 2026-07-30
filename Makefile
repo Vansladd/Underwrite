@@ -12,7 +12,7 @@ ECR_PDF := $(AWS_ACCOUNT).dkr.ecr.$(REGION).amazonaws.com/underwrite/pdf-render
 PROD_COMPOSE := $(COMPOSE) -f docker-compose.prod.yml
 TF := AWS_PROFILE=$(AWS_PROFILE) terraform -chdir=infra
 
-.PHONY: help up down restart logs ps health test test-llm lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply push-api prod-up prod-down deploy smoke pdf-lambda-test expiry-lambda-test bordereau-lambda-test push-pdf-lambda demo web-types web-lint web-build
+.PHONY: help up down restart logs ps health test test-llm lint fmt regen-goldens migrate migration downgrade seed psql shell clean tf-bootstrap tf-account tf-init tf-fmt tf-check tf-plan tf-apply tf-destroy-box push-api prod-up prod-down deploy smoke pdf-lambda-test expiry-lambda-test bordereau-lambda-test push-pdf-lambda demo web-types web-lint web-build
 
 help:
 	@echo "Underwrite — available targets"
@@ -45,6 +45,7 @@ help:
 	@echo "  make tf-fmt    terraform fmt"
 	@echo "  make tf-plan   terraform plan"
 	@echo "  make tf-apply  terraform apply"
+	@echo "  make tf-destroy-box   destroy the instance + EIP (ends a deploy ticket)"
 	@echo ""
 	@echo "  make push-api  buildx arm64 + push the API image to ECR (tag = git sha)"
 	@echo "  make prod-up   run docker-compose.prod.yml locally (build + health check)"
@@ -152,6 +153,12 @@ tf-plan: tf-account
 
 tf-apply: tf-account
 	$(TF) apply
+
+# How a deploy ticket ends. The instance and the EIP are the entire bill floor; everything else
+# in this stack is free at rest, and a bare `terraform destroy` also takes the GitHub OIDC
+# provider and the CD role, which breaks federation on the next merge. See D-036.
+tf-destroy-box: tf-account
+	$(TF) destroy -target=aws_instance.app -target=aws_eip.app
 
 push-api: tf-account
 	@sha=$$(git rev-parse --short HEAD); \
