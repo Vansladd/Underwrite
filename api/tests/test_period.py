@@ -86,3 +86,13 @@ def test_the_domain_package_imports_only_stdlib():
                 offenders.setdefault(path.name, set()).update(impure)
 
     assert not offenders, f"app/domain must import only stdlib, found: {offenders}"
+
+
+def test_the_last_closed_month_is_the_one_before_the_current_one():
+    # The invariant that makes /bordereaux/latest correct without freezing the clock.
+    assert YearMonth.last_closed().next() == YearMonth.current()
+
+
+def test_the_current_month_is_read_in_the_reporting_zone():
+    # date.today() is UTC; between 00:00 and 01:00 BST on the 1st the two name different months.
+    assert YearMonth.current() == YearMonth.containing(datetime.now(period.REPORTING_ZONE).date())

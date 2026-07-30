@@ -10,6 +10,12 @@ class InvalidPeriod(ValueError):
     pass
 
 
+def today() -> date:
+    """The reporting zone's date. `date.today()` is UTC, which lags London for an hour each BST day
+    and so names the wrong month between midnight and 01:00 on the 1st."""
+    return datetime.now(REPORTING_ZONE).date()
+
+
 # order=True compares fields in order, so chronology depends on year being declared first.
 @dataclass(frozen=True, order=True)
 class YearMonth:
@@ -37,6 +43,15 @@ class YearMonth:
     def before(cls, day: date) -> "YearMonth":
         """The month preceding `day`'s — what a run on the 1st should report."""
         return cls.containing(day.replace(day=1) - timedelta(days=1))
+
+    @classmethod
+    def current(cls) -> "YearMonth":
+        return cls.containing(today())
+
+    @classmethod
+    def last_closed(cls) -> "YearMonth":
+        """The most recent month that has finished — the one a scheduled export should file."""
+        return cls.before(today())
 
     def __str__(self) -> str:
         return f"{self.year:04d}-{self.month:02d}"

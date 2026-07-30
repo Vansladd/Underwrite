@@ -1,23 +1,18 @@
 import json
 import os
 import urllib.request
-from datetime import date, timedelta
 
 TIMEOUT_SECONDS = 60
-
-
-def previous_month(today: date) -> str:
-    return f"{today.replace(day=1) - timedelta(days=1):%Y-%m}"
 
 
 def handler(event, context):
     # The API builds and stores the CSV because Postgres is unreachable from Lambda; this holds
     # the schedule. See DECISIONS D-031/D-032.
     #
-    # date.today() is UTC here, while the period is a Europe/London month — safe only because the
-    # schedule fires at 03:00, when both are on the same calendar day. Moving it before 01:00 would
-    # report the wrong month every summer. An explicit `period` in the event backfills.
-    period = event.get("period") or previous_month(date.today())
+    # "latest" rather than a month computed here: this clock is UTC and the period is a
+    # Europe/London month, so any date arithmetic at this end is wrong for an hour each BST 1st —
+    # silently, since the wrong month exports fine. An explicit YYYY-MM in the event backfills.
+    period = event.get("period") or "latest"
     url = os.environ["UNDERWRITE_API_URL"].rstrip("/") + f"/api/internal/bordereaux/{period}"
     request = urllib.request.Request(
         url,

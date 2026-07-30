@@ -12,6 +12,8 @@ from app.domain.money import pounds_csv
 from app.domain.period import YearMonth
 from app.models import Quote, Submission
 from app.services.audit import record_event
+from app.services.companies_house import normalise_company_number
+from app.services.rating import MIN_NAME_MATCH_SCORE
 from app.services.storage import DocumentStorage
 
 COLUMNS = (
@@ -116,6 +118,22 @@ def _row(quote: Quote) -> list[str]:
 
 
 def _company_number(extraction, enrichment) -> str:
-    # The register's number wins: it is the verified identifier the carrier reconciles against.
+    """The number for the company in the name column beside it, never a different one.
+
+    `lookup` falls back to a name search when no number was submitted, so the register's number can
+    belong to a company nobody underwrote. Pairing that with the applicant's name gives a carrier a
+    row whose two identifiers disagree, and nothing in the CSV says so. See DECISIONS D-032.
+    """
+    submitted = extraction.company_number if extraction else None
+    if submitted:
+        # Canonical form of what was underwritten. Where the register agrees this is its number
+        # too; where it does not, the name column is still the applicant's.
+        return normalise_company_number(submitted)
+
+    # Nothing submitted, so the register hit came from a name search: trustworthy only if the name
+    # actually matched. Below the threshold it names another company, and no number beats that.
+    score = enrichment.ch_name_match_score if enrichment else None
     verified = enrichment.ch_company_number if enrichment else None
-    return verified or (extraction.company_number if extraction else None) or ""
+    if verified and score is not None and score >= MIN_NAME_MATCH_SCORE:
+        return verified
+    return ""

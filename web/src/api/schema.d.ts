@@ -226,6 +226,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/internal/bordereaux/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Export Last Closed
+         * @description The month that just closed. The server picks it, in the reporting zone — a caller deriving
+         *     it from its own UTC clock files the wrong month for an hour each BST 1st, and logs success.
+         */
+        post: operations["export_last_closed_api_internal_bordereaux_latest_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/internal/bordereaux/{period}": {
         parameters: {
             query?: never;
@@ -1057,6 +1078,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExpirySweep"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_last_closed_api_internal_bordereaux_latest_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Sweeper-Token"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BordereauRun"];
                 };
             };
             /** @description Validation Error */

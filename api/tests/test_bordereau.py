@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
+from app.domain import period
 from app.domain.enums import (
     AuditActor,
     AuditEventType,
@@ -57,7 +58,7 @@ async def make_quoted(db, *, created_at: datetime, ref: str, **overrides):
                 ch_company_name="LEDGERLINE HOLDINGS LIMITED",
                 ch_company_status=CompanyStatus.ACTIVE,
                 ch_date_of_creation=date(2021, 7, 23),
-                ch_name_match_score=0.75,
+                ch_name_match_score=overrides.get("ch_name_match_score", 0.97),
                 sic_codes=overrides.get("sic_codes", ["64191", "64999"]),
                 discrepancies=[],
             ),
@@ -171,19 +172,50 @@ async def test_money_columns_are_bare_pounds_to_two_places(db):
     assert row["gross_premium"] == "8060.00"
 
 
-async def test_the_verified_register_number_is_reported_over_the_extracted_one(db):
-    await make_quoted(
-        db,
-        created_at=utc("2026-07-15T12:00:00"),
-        ref="Q-2026-333333",
-        company_number="SC123456",
-        ch_company_number="SC654321",
-    )
-
+async def number_reported(db, ref, **overrides) -> str:
+    await make_quoted(db, created_at=utc("2026-07-15T12:00:00"), ref=ref, **overrides)
     storage = FakeStorage()
     await export_bordereau(db, storage, period=JULY)
+    return rows_of(storage.read(storage_key(JULY)))[0]["company_number"]
 
-    assert rows_of(storage.read(storage_key(JULY)))[0]["company_number"] == "SC654321"
+
+async def test_a_submitted_number_is_reported_even_when_the_register_disagrees(db):
+    # The register's hit may be another company entirely; the name column is the applicant's, so
+    # the number beside it must be too, or the carrier reconciles two different entities.
+    number = await number_reported(
+        db, "Q-2026-333333", company_number="SC123456", ch_company_number="SC654321"
+    )
+
+    assert number == "SC123456"
+
+
+async def test_a_submitted_number_is_reported_in_its_canonical_form(db):
+    assert await number_reported(db, "Q-2026-334444", company_number="6") == "00000006"
+
+
+async def test_a_name_matched_register_number_is_reported_when_none_was_submitted(db):
+    number = await number_reported(
+        db,
+        "Q-2026-335555",
+        company_number=None,
+        ch_company_number="SC654321",
+        ch_name_match_score=0.97,
+    )
+
+    assert number == "SC654321"
+
+
+async def test_a_poorly_matched_register_number_is_left_out_entirely(db):
+    # 0.75 is the CH_NAME_MISMATCH case: a name search hit that refers, and can then be approved.
+    number = await number_reported(
+        db,
+        "Q-2026-336666",
+        company_number=None,
+        ch_company_number="SC654321",
+        ch_name_match_score=0.75,
+    )
+
+    assert number == ""
 
 
 async def test_an_empty_period_still_writes_a_header_only_csv(db):
@@ -272,6 +304,44 @@ async def test_the_export_endpoint_reports_the_key_and_count(anon_api, db, sweep
     assert body["s3_key"] == f"bordereaux/{closed}.csv"
     assert body["quotes"] == 1
     assert body["size_bytes"] == len(storage.read(f"bordereaux/{closed}.csv"))
+
+
+async def test_the_latest_endpoint_exports_the_month_that_just_closed(
+    anon_api, db, sweeper_token, storage
+):
+    # The server names the month; the Lambda sends no date, so its UTC clock cannot misfile one.
+    closed = YearMonth.last_closed()
+    start, _ = closed.bounds()
+    await make_quoted(db, created_at=start + timedelta(days=1), ref="Q-2026-999999")
+
+    response = await anon_api.post(
+        "/api/internal/bordereaux/latest", headers={"X-Sweeper-Token": sweeper_token}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["period"] == str(closed)
+    assert body["quotes"] == 1
+
+
+async def test_the_latest_endpoint_needs_the_machine_token(anon_api, storage, sweeper_token):
+    assert (await anon_api.post("/api/internal/bordereaux/latest")).status_code == 401
+
+
+async def test_the_closure_guard_reads_the_reporting_zone_not_utc(
+    anon_api, sweeper_token, storage, monkeypatch
+):
+    """Between 00:00 and 01:00 BST on the 1st, London is a month ahead of UTC and the month that
+    just closed would be refused as still open. Patching the zone's clock is the only way to reach
+    that hour; a route calling `date.today()` directly ignores the patch and 422s."""
+    monkeypatch.setattr(period, "today", lambda: date(2026, 8, 1))
+
+    response = await anon_api.post(
+        "/api/internal/bordereaux/2026-07", headers={"X-Sweeper-Token": sweeper_token}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["period"] == "2026-07"
 
 
 async def test_the_export_endpoint_refuses_a_month_that_has_not_closed(
