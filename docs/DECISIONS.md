@@ -86,6 +86,31 @@ That is the third and fourth instance in this repo of a green signal that wasn't
 from the Makefile while CI ran it). The pattern is always the same: **the scope of the check and the
 scope of the change were never compared.**
 
+### Verified live, 2026-07-30 — and the warm cache nearly hid the whole point
+
+apply → invoke → destroy on real AWS. Both Lambdas returned **200** with `SWEEPER_TOKEN` absent from
+their environments, so the token came from Parameter Store through the new policy; the bordereau
+wrote `bordereaux/2026-06.csv`, the last closed *London* month. Caddy took a real Let's Encrypt cert,
+which is UW-070's `ACME_EMAIL` doing its job.
+
+**The negative test is the only part that proved anything, and the obvious version of it lies.**
+With the `read-sweeper-token` policy deleted, the invoke still returned 200 — the token was cached
+in the warm container from the previous call and SSM was never consulted. Stopping there would have
+"shown" the permission was unnecessary. Forcing a cold start first:
+
+    AccessDeniedException … underwrite-quote-expiry is not authorized to perform GetParameter
+
+Restore, cold start, 200 again. So the grant is load-bearing **and** the per-container cache above
+is real and observable. Generalised: *a permissions test against a warm cache measures the cache.*
+Anything that reads a credential once per container has to be cold-started before you can claim its
+IAM matters.
+
+**Destroy note.** `allow_destroy` defaults to `false`, so a full destroy removes everything except
+the non-empty ECR repos and documents bucket. That is the good outcome: the bill floor (instance +
+EIP) goes to zero, while the images stay, so the next deploy needs no rebuild. Unlike after UW-063,
+the Lambdas do not survive — Terraform recreates them, which is why `image_tag` still resolves.
+
+
 ---
 
 ## D-033 · EventBridge Scheduler — the group is the only grain the trust policy has
