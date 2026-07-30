@@ -20,7 +20,7 @@ resource "aws_iam_role" "expiry_lambda" {
   assume_role_policy = data.aws_iam_policy_document.expiry_lambda_assume.json
 }
 
-# Logs only: it holds no AWS permission at all, because it touches no AWS service.
+# Logs. Its only other permission is reading one SSM parameter, in sweeper_token.tf.
 resource "aws_iam_role_policy_attachment" "expiry_lambda_basic" {
   role       = aws_iam_role.expiry_lambda.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
@@ -32,10 +32,10 @@ resource "aws_cloudwatch_log_group" "expiry_lambda" {
   retention_in_days = 14
 }
 
-# Gated on sweeper_token like the PDF Lambda is on image_tag: without the shared secret the
-# function could only ever get a 503, so a box-only apply does not create it.
+# Gated like the PDF Lambda is on image_tag: with no parameter to read the function could only
+# ever get a 503, so a box-only apply does not create it.
 resource "aws_lambda_function" "quote_expiry" {
-  count = var.sweeper_token != "" ? 1 : 0
+  count = local.token_from_ssm
 
   function_name    = "${var.project}-quote-expiry"
   role             = aws_iam_role.expiry_lambda.arn
@@ -49,13 +49,14 @@ resource "aws_lambda_function" "quote_expiry" {
 
   environment {
     variables = {
-      UNDERWRITE_API_URL = "https://${var.domain}"
-      SWEEPER_TOKEN      = var.sweeper_token
+      UNDERWRITE_API_URL  = "https://${var.domain}"
+      SWEEPER_TOKEN_PARAM = var.sweeper_token_param
     }
   }
 
   depends_on = [
     aws_iam_role_policy_attachment.expiry_lambda_basic,
+    aws_iam_role_policy.expiry_lambda_token,
     aws_cloudwatch_log_group.expiry_lambda,
   ]
 }

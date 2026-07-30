@@ -4,7 +4,7 @@
 
 # Both conditions, or the schedules point at a hostname the destroy took away and fail nightly.
 locals {
-  schedules_on = var.enable_schedules && var.sweeper_token != "" ? 1 : 0
+  schedules_on = var.enable_schedules && var.sweeper_token_param != "" ? 1 : 0
 }
 
 # Our own group, not `default`. Scheduler only ever presents the GROUP as aws:SourceArn, so the

@@ -35,6 +35,8 @@ services:
       - "${API_PORT:-8000}:8000"
     volumes:
       - ./api:/app
+      # Read-only, and only so the suite can reach the zip handlers; nothing imports them at runtime.
+      - ./lambdas:/lambdas:ro
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
       test:

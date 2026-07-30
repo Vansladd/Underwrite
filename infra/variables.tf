@@ -49,11 +49,17 @@ variable "enable_schedules" {
 }
 
 # Must match SWEEPER_TOKEN in the box's .env — both ends are hand-managed. See D-031.
-variable "sweeper_token" {
-  description = "Shared secret for /api/internal; empty means the expiry Lambda is not created"
+variable "sweeper_token_param" {
+  description = "SSM parameter NAME holding the /api/internal secret; empty skips both zip Lambdas"
   type        = string
-  sensitive   = true
   default     = ""
+
+  # A name, never the secret. Terraform holding the value — as a var, an aws_ssm_parameter or a
+  # data source — writes it to the state bucket in plaintext whatever `sensitive` says. See D-034.
+  validation {
+    condition     = var.sweeper_token_param == "" || startswith(var.sweeper_token_param, "/")
+    error_message = "sweeper_token_param is a parameter name like /underwrite/sweeper-token."
+  }
 }
 
 variable "compose_plugin_version" {

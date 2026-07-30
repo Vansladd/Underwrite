@@ -11,7 +11,7 @@ resource "aws_iam_role" "bordereau_lambda" {
   assume_role_policy = data.aws_iam_policy_document.expiry_lambda_assume.json
 }
 
-# Logs only: it holds no AWS permission at all, because it touches no AWS service.
+# Logs. Its only other permission is reading one SSM parameter, in sweeper_token.tf.
 resource "aws_iam_role_policy_attachment" "bordereau_lambda_basic" {
   role       = aws_iam_role.bordereau_lambda.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
@@ -23,9 +23,9 @@ resource "aws_cloudwatch_log_group" "bordereau_lambda" {
   retention_in_days = 14
 }
 
-# Gated on sweeper_token: without the shared secret the function could only ever get a 503.
+# Gated like the expiry Lambda: with no parameter to read it could only ever get a 503.
 resource "aws_lambda_function" "bordereau" {
-  count = var.sweeper_token != "" ? 1 : 0
+  count = local.token_from_ssm
 
   function_name    = "${var.project}-bordereau"
   role             = aws_iam_role.bordereau_lambda.arn
@@ -40,13 +40,14 @@ resource "aws_lambda_function" "bordereau" {
 
   environment {
     variables = {
-      UNDERWRITE_API_URL = "https://${var.domain}"
-      SWEEPER_TOKEN      = var.sweeper_token
+      UNDERWRITE_API_URL  = "https://${var.domain}"
+      SWEEPER_TOKEN_PARAM = var.sweeper_token_param
     }
   }
 
   depends_on = [
     aws_iam_role_policy_attachment.bordereau_lambda_basic,
+    aws_iam_role_policy.bordereau_lambda_token,
     aws_cloudwatch_log_group.bordereau_lambda,
   ]
 }

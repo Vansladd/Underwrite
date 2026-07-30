@@ -1,5 +1,11 @@
 # Automatic TLS (Let's Encrypt) + HTTP->HTTPS redirect from the site address. See D-017.
 # DOMAIN=localhost locally gives an internal cert; a real hostname gets a public one.
+{
+	# The ACME account's contact address: without it Let's Encrypt has nowhere to send an
+	# expiry or revocation notice, and the first anyone knows is the browser warning. UW-070.
+	email {$ACME_EMAIL}
+}
+
 {$DOMAIN} {
 	encode zstd gzip
 

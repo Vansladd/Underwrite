@@ -161,7 +161,7 @@ push-api: tf-account
 
 prod-up: .env
 	docker build -t underwrite/api:local ./api
-	API_IMAGE=underwrite/api:local DOMAIN=localhost $(PROD_COMPOSE) up -d
+	API_IMAGE=underwrite/api:local DOMAIN=localhost ACME_EMAIL=dev@localhost $(PROD_COMPOSE) up -d
 	@printf "waiting for api via caddy (https, internal cert)"; \
 	for i in $$(seq 1 40); do \
 		if curl -fsSk https://localhost/health >/dev/null 2>&1; then \
@@ -171,10 +171,10 @@ prod-up: .env
 		fi; \
 		printf "."; sleep 1; \
 	done; \
-	echo " timed out"; API_IMAGE=underwrite/api:local DOMAIN=localhost $(PROD_COMPOSE) logs --tail=40; exit 1
+	echo " timed out"; API_IMAGE=underwrite/api:local DOMAIN=localhost ACME_EMAIL=dev@localhost $(PROD_COMPOSE) logs --tail=40; exit 1
 
 prod-down:
-	API_IMAGE=underwrite/api:local DOMAIN=localhost $(PROD_COMPOSE) down
+	API_IMAGE=underwrite/api:local DOMAIN=localhost ACME_EMAIL=dev@localhost $(PROD_COMPOSE) down
 
 smoke:
 	@test -n "$(DOMAIN)" || (echo 'usage: make smoke DOMAIN=<host>'; exit 1)
