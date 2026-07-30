@@ -92,3 +92,16 @@ def test_a_percent_escaped_password_survives_alembic_config():
     config.set_main_option("sqlalchemy.url", alembic_url(settings))
 
     assert config.get_main_option("sqlalchemy.url") == settings.database_url
+
+
+def test_rejects_a_dsn_whose_password_carries_an_unescaped_at():
+    # The exact URL that broke the UW-063 deploy: it parses, connects to the wrong host, and
+    # surfaces as a DNS error inside a container rather than a config error at startup.
+    with pytest.raises(ValidationError, match="unescaped"):
+        Settings(database_url="postgresql+asyncpg://underwrite:LILAC@12EAFC@db:5432/underwrite")
+
+
+def test_accepts_a_dsn_whose_password_is_properly_escaped():
+    dsn = "postgresql+asyncpg://underwrite:LILAC%4012EAFC@db:5432/underwrite"
+
+    assert Settings(database_url=dsn).database_url == dsn

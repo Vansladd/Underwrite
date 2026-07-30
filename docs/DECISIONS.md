@@ -5,6 +5,57 @@ Running log of non-obvious technical choices. Domain and pricing decisions live 
 
 ---
 
+## D-033 · EventBridge Scheduler — the group is the only grain the trust policy has
+
+**Ticket:** UW-063 · **Date:** 2026-07-30
+
+Scheduler, not Rules (R4), and the permission model inverts with it: Scheduler **assumes an
+execution role**, so there is deliberately no `aws_lambda_permission` anywhere in this ticket.
+Adding one is the Rules habit and grants nothing.
+
+**`aws:SourceArn` is the schedule *group*, never the schedule.** R4 said to add `aws:SourceArn` +
+`aws:SourceAccount` without saying which ARN, and the obvious reading — scope to the schedules
+themselves — fails every `CreateSchedule` with *"The execution role you provide must allow AWS
+EventBridge Scheduler to assume the role"*. The pattern matched the resource perfectly; it matched
+nothing that is ever checked. Established by elimination against a throwaway role, because the
+deployed policy read correctly and IAM propagation was the obvious suspect:
+
+| Trust condition | `CreateSchedule` |
+|---|---|
+| `SourceAccount` + `schedule/default/underwrite-*` | **400** |
+| `SourceAccount` alone | passes |
+| `SourceAccount` + `arn:aws:scheduler:*:<acct>:*` | passes |
+| `SourceAccount` + `schedule-group/default` | passes |
+
+The wildcard passing is what ruled out propagation and pointed at the ARN shape.
+
+**So the schedules get their own group.** Scoping to `default` satisfies the condition for *every
+schedule in the account* — proven by attack: a schedule named `intruder-probe`, unrelated to this
+project, assumed `underwrite-scheduler` and was accepted. Since per-schedule-name scoping is not
+available at any price, the group is the finest grain there is, and a group of our own is the whole
+protection. After the change the same attack is refused in `default` and the identical schedule is
+accepted in `underwrite` — the pair is what makes the condition evidence rather than decoration.
+
+**Retries are set explicitly and asymmetrically.** The default is 185 attempts over 24 hours, which
+is also the maximum AWS allows, and against a destroyed box that is 185 failures a night. The sweep
+is idempotent and runs again tomorrow, so two attempts within the hour; the bordereau is monthly, so
+five within six, with the manual backfill as the real repair rather than more retries.
+
+**Schedules are gated off by default** (`enable_schedules`, default `false`). They outlive the
+targeted destroy, and one pointing at a released EIP fails nightly for nothing.
+
+**The DoD asked for next-run times, which the CLI does not expose.** `aws scheduler get-schedule`
+returns configuration and metadata, no computed next invocation. Firing them is better evidence
+anyway: one-off `at()` schedules against the real role drove both Lambdas, and the bordereau left a
+125-byte CSV in S3 with the agreed header — which also proves the instance role's new
+`bordereaux/*` permission, since nothing else could have written it.
+
+**This ticket cannot be verified without a live box, a DNS record and a certificate.** The Lambdas
+reach the API over HTTPS by hostname, so unlike UW-053 and UW-054 — both verifiable entirely
+locally — the cost of proving this one is a deploy. Worth knowing before scheduling the next.
+
+---
+
 ## D-032 · The bordereau reports the month a quote was written, in London time
 
 **Ticket:** UW-054 · **Date:** 2026-07-29

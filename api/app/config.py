@@ -57,6 +57,19 @@ class Settings(BaseSettings):
             )
         return value
 
+    @field_validator("database_url")
+    @classmethod
+    def reject_an_unescaped_password(cls, value: str) -> str:
+        # A second @ in the authority means the password carries an unescaped one. The URL still
+        # parses, so the failure surfaces as a DNS error five frames into asyncpg, in a container.
+        authority = value.split("://", 1)[-1].split("/", 1)[0]
+        if authority.count("@") > 1:
+            raise ValueError(
+                "DATABASE_URL has more than one '@' before the host, so the password contains an "
+                "unescaped one and the host is not what you think. Percent-encode it (@ = %40)."
+            )
+        return value
+
 
 def alembic_url(settings: Settings) -> str:
     """Alembic keeps this in a configparser, where a lone `%` is interpolation syntax — so a
