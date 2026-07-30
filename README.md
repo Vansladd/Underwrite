@@ -80,8 +80,10 @@ on the container network, **S3** for documents, and **three Lambdas** — one ar
 for PDF rendering, and two dependency-free zips driven by **EventBridge Scheduler**. Images are
 tagged by git SHA in **ECR** (immutable, never `latest`). **CD** (`cd.yml`) federates AWS via
 **GitHub OIDC** — no static keys — building on every merge to `main` with a gated deploy. Deploy
-tickets follow **apply → verify → destroy**: nothing runs between verifications, so the idle bill is
-≈ $0.
+tickets follow **apply → verify → `make tf-destroy-box`**: nothing runs between verifications, so
+the idle bill is ≈ $0. The destroy is *targeted* — the instance and the EIP are the whole bill
+floor, and taking the rest down would remove the OIDC provider that CD authenticates with. See
+D-036.
 
 ```mermaid
 flowchart LR

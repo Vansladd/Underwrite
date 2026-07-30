@@ -5,6 +5,45 @@ Running log of non-obvious technical choices. Domain and pricing decisions live 
 
 ---
 
+## D-036 · The end of a deploy ticket is a *targeted* destroy
+
+**Ticket:** UW-073 · **Date:** 2026-07-30
+
+A deploy ticket ends apply → verify → destroy, and "destroy" had meant whatever you typed. A bare
+`terraform destroy` cleared the account and **broke CD**: the next merge to `main` failed with
+
+    InvalidIdentityToken: The web identity token provided could not be validated
+
+because the destroy had removed `aws_iam_openid_connect_provider.github` and
+`aws_iam_role.github_actions` along with the box. GitHub was presenting a perfectly good token to an
+account that no longer had a provider to validate it against.
+
+**`allow_destroy = false` is not the guard people assume it is.** It saved the ECR repos and the
+documents bucket, but only because they were non-empty — that variable gates `force_destroy` on
+buckets and repositories. **IAM has nothing to be non-empty about**, so nothing protected the OIDC
+provider or the CD role, and nothing ever will.
+
+**Only two resources cost money.** `aws_instance.app` (~2¢/hr) and `aws_eip.app` (a public IPv4 is
+charged even unattached) are the entire ~$15–16/mo bill floor. Lambdas are free at rest, ECR and S3
+are pennies, IAM and OIDC are free. So destroying anything else buys nothing and can only remove
+capability. `make tf-destroy-box` is now the target, and the long `-target` invocation stops being
+something you have to remember while the dangerous command is the short obvious one.
+
+**The failure mode worth remembering is the delay.** Nothing looked wrong: the destroy succeeded,
+the account genuinely was clean, and every check passed. CD broke on the *next merge*, hours later,
+with an error about identity tokens that names nothing to do with `terraform destroy`. *Tearing down
+shared, free, standing capability is invisible until something tries to use it* — which is exactly
+the property that made it worth an entry here rather than a commit message.
+
+Recovery, if it happens again, is free and takes a minute:
+
+    terraform -chdir=infra apply -target=aws_iam_openid_connect_provider.github \
+      -target=aws_iam_role.github_actions -target=aws_iam_role_policy.github_actions
+
+The role comes back at the same name, so `AWS_ROLE_ARN` in the repo variables needs no edit.
+
+---
+
 ## D-035 · The migrations scratch database — one per run, and never `with (force)`
 
 **Ticket:** UW-072 · **Date:** 2026-07-30
