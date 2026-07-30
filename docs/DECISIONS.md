@@ -77,6 +77,9 @@ looked at the code under review:
   was written. The proof was in the diff under review: three blank lines before `def handler`, while
   lint reported "95 files already formatted". Both targets now pass `/lambdas` explicitly, with
   `--config pyproject.toml` so it gets this project's line length rather than ruff's default.
+  **And the same hole existed one layer up** — `ci.yml`'s lint job sets `working-directory: api`
+  and runs `ruff check .`, so fixing only the Makefile would have left CI blind to exactly the code
+  the Makefile had just started checking. Fixed in both.
 
 That is the third and fourth instance in this repo of a green signal that wasn't measuring anything
 (after the sweeper-token test that only passed on an empty `.env`, and `ruff format --check` missing
