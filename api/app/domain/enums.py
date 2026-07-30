@@ -123,6 +123,7 @@ class AuditEventType(StrEnum):
     RATING_FAILED = "rating_failed"
     SUBMISSION_APPROVED = "submission_approved"
     SUBMISSION_DECLINED = "submission_declined"
+    SUBMISSION_RECHECKED = "submission_rechecked"
     QUOTE_GENERATED = "quote_generated"
     QUOTE_RENDER_FAILED = "quote_render_failed"
     QUOTE_EXPIRED = "quote_expired"

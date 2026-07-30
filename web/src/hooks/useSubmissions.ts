@@ -7,6 +7,7 @@ import { apiError } from '../lib/apiError'
 export type Submission = components['schemas']['SubmissionListItem']
 export type SubmissionStatus = NonNullable<Submission['status']>
 export type SubmissionDetail = components['schemas']['SubmissionDetail']
+export type ReasonCode = components['schemas']['ReasonCode']
 
 // Approve/decline change the row's status and premium, so the queue, tabs, and this submission
 // all go stale — invalidate the three query families the drawer and queue read from.
@@ -59,12 +60,27 @@ export function useRenderQuote(id: string) {
   })
 }
 
-export function useSubmissions(status?: SubmissionStatus) {
+export function useRecheckSubmission(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await api.POST('/api/submissions/{submission_id}/recheck', {
+        params: { path: { submission_id: id } },
+      })
+      if (error) throw apiError(error)
+      return data
+    },
+    onSuccess: () => invalidateSubmission(queryClient, id),
+  })
+}
+
+export function useSubmissions(status?: SubmissionStatus, reason?: ReasonCode) {
   return useQuery({
-    queryKey: ['submissions', status ?? 'all'],
+    // reason is part of the key: without it the unfiltered list would be served from cache.
+    queryKey: ['submissions', status ?? 'all', reason ?? 'any'],
     queryFn: async () => {
       const { data, error } = await api.GET('/api/submissions', {
-        params: { query: status ? { status } : {} },
+        params: { query: { ...(status ? { status } : {}), ...(reason ? { reason } : {}) } },
       })
       if (error) throw new Error('could not load submissions')
       return data

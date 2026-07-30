@@ -12,8 +12,15 @@ from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import ChClientDep, CurrentUser, ExtractorDep, RendererDep
 from app.db import DbSession
-from app.domain.enums import AuditActor, AuditEventType, InputMode, QuoteStatus, SubmissionStatus
-from app.models import AuditEvent, Submission
+from app.domain.enums import (
+    AuditActor,
+    AuditEventType,
+    InputMode,
+    QuoteStatus,
+    ReasonCode,
+    SubmissionStatus,
+)
+from app.models import AuditEvent, Rating, Submission
 from app.schemas import (
     DeclineRequest,
     ExtractedApplication,
@@ -30,6 +37,7 @@ from app.services.pdf_text import MAX_UPLOAD_BYTES, PdfTextError, PdfTooLarge, e
 from app.services.pipeline import run_pipeline
 from app.services.quote import NotQuotable, build_quote
 from app.services.quote_render import generate_quote_pdf
+from app.services.recheck import NotRecheckable, recheck
 from app.services.storage import StorageDep
 
 router = APIRouter(prefix="/api/submissions", tags=["submissions"])
@@ -116,7 +124,12 @@ async def load_detail(db: AsyncSession, submission_id: uuid.UUID) -> Submission:
     return submission
 
 
-def submissions_query(submission_status: SubmissionStatus | None, limit: int, offset: int):
+def submissions_query(
+    submission_status: SubmissionStatus | None,
+    limit: int,
+    offset: int,
+    reason: ReasonCode | None = None,
+):
     # id breaks ties: LIMIT/OFFSET over equal timestamps can repeat or skip a row.
     query = (
         select(Submission)
@@ -124,9 +137,14 @@ def submissions_query(submission_status: SubmissionStatus | None, limit: int, of
         .limit(limit)
         .offset(offset)
     )
-    if submission_status is None:
-        return query
-    return query.where(Submission.status == submission_status)
+    if submission_status is not None:
+        query = query.where(Submission.status == submission_status)
+    if reason is not None:
+        # JSONB containment, so it stays one indexable predicate rather than a load-and-filter.
+        query = query.join(Submission.rating).where(
+            Rating.refer_reasons.contains([{"code": reason.value}])
+        )
+    return query
 
 
 async def _receive(
@@ -219,10 +237,11 @@ async def list_submissions(
     db: DbSession,
     user: CurrentUser,
     submission_status: Annotated[SubmissionStatus | None, Query(alias="status")] = None,
+    reason: Annotated[ReasonCode | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[SubmissionListItem]:
-    query = submissions_query(submission_status, limit, offset).options(*LIST_NESTED)
+    query = submissions_query(submission_status, limit, offset, reason).options(*LIST_NESTED)
     return [_to_list_item(each) for each in (await db.scalars(query)).all()]
 
 
@@ -250,6 +269,30 @@ def _require_referred(submission: Submission, action: str) -> None:
             status.HTTP_409_CONFLICT,
             f"cannot {action} a {submission.status.value} submission",
         )
+
+
+@router.post("/{submission_id}/recheck")
+async def recheck_submission(
+    submission_id: uuid.UUID,
+    db: DbSession,
+    user: CurrentUser,
+    ch_client: ChClientDep,
+    renderer: RendererDep,
+) -> SubmissionDetail:
+    """Ask Companies House again. Narrow on purpose — re-rating moves the premium. See D-037."""
+    submission = await load_detail(db, submission_id)
+    try:
+        await recheck(db, submission, ch_client, actor_id=user.id)
+    except NotRecheckable as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+
+    detail = await load_detail(db, submission_id)
+    if detail.quote is not None and detail.quote.pdf_s3_key is None:
+        # A recheck can auto-approve, and the pipeline renders in the route rather than the
+        # service — so without this the same decision yields a quote with no document.
+        await generate_quote_pdf(db, detail, renderer)
+        return await load_detail(db, submission_id)
+    return detail
 
 
 @router.post("/{submission_id}/approve")

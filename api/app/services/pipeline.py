@@ -184,10 +184,10 @@ async def _rate(
     await session.commit()
 
     if result.decision is Decision.AUTO_APPROVE:
-        await _issue_quote(session, submission)
+        await issue_quote(session, submission)
 
 
-async def _issue_quote(session: AsyncSession, submission: Submission) -> None:
+async def issue_quote(session: AsyncSession, submission: Submission) -> None:
     """The machine's own quote. AUTO_APPROVE means no underwriter is coming, so nothing else would
     ever issue one and 'auto-approved' would mean priced-then-abandoned. See D-030.
 

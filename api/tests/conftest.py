@@ -184,6 +184,20 @@ def _clear_overrides() -> None:
 
 
 @pytest.fixture
+async def operator(db):
+    """Persists TEST_USER. `actor_id` is an FK to users, and the injected user is not a row."""
+    db.add(
+        User(
+            id=TEST_USER.id,
+            username="tester",
+            password_hash="unused",
+            display_name="Test Operator",
+        )
+    )
+    await db.flush()
+
+
+@pytest.fixture
 async def api(db, fake_extractor, fake_ch_client, fake_renderer) -> AsyncIterator[AsyncClient]:
     """In-loop, on the test transaction, and authed as TEST_USER via a dependency override.
 

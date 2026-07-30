@@ -4,6 +4,7 @@ import {
   type SubmissionDetail,
   useApproveSubmission,
   useDeclineSubmission,
+  useRecheckSubmission,
   useRenderQuote,
   useSubmission,
 } from '../hooks/useSubmissions'
@@ -190,11 +191,17 @@ function MissingInfo({ fields }: { fields: string[] }) {
 function Actions({ s }: { s: SubmissionDetail }) {
   const approve = useApproveSubmission(s.id)
   const decline = useDeclineSubmission(s.id)
+  const recheck = useRecheckSubmission(s.id)
   const [reasoning, setReasoning] = useState(false)
   const [reason, setReason] = useState('')
   const canApprove = s.rating?.annual_premium_pence != null
-  const busy = approve.isPending || decline.isPending
-  const errorText = (approve.error ?? decline.error)?.message
+  // The same condition the server enforces; the button is a convenience, not the guard.
+  const canRecheck =
+    s.status === 'referred' &&
+    s.quote == null &&
+    (s.rating?.refer_reasons ?? []).some((r) => r.code === 'CH_UNAVAILABLE')
+  const busy = approve.isPending || decline.isPending || recheck.isPending
+  const errorText = (approve.error ?? decline.error ?? recheck.error)?.message
 
   return (
     <div className="mt-4">
@@ -249,6 +256,17 @@ function Actions({ s }: { s: SubmissionDetail }) {
           >
             Decline
           </button>
+          {canRecheck && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => recheck.mutate()}
+              title="Ask Companies House again. This re-rates, so the premium may change."
+              className="rounded-md border border-border-strong bg-surface px-3.5 py-2 text-[13px] font-medium text-ink disabled:opacity-45"
+            >
+              {recheck.isPending ? 'Rechecking…' : 'Recheck register'}
+            </button>
+          )}
         </div>
       )}
       {errorText && <p className="mt-2 text-[13px] text-[color:var(--dc-fg)]">{errorText}</p>}

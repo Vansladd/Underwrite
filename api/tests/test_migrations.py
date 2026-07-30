@@ -19,7 +19,7 @@ from tests.conftest import alembic_config, derive_test_database_url
 # what made this module flaky: any leftover session — a Ctrl-C'd run, an overlapping `make test`,
 # a stray psql — failed the drop with ObjectInUse and took all four tests down. See D-035.
 SCRATCH_PREFIX = "underwrite_migrations_test"
-HEAD = "0005"
+HEAD = "0006"
 
 TABLES = "select table_name from information_schema.tables where table_schema = 'public'"
 TRIGGERS = """
