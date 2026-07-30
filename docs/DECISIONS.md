@@ -38,17 +38,34 @@ dying mid-operation, which reads like a network fault rather than something you 
 
 **So the contention is removed instead of won.** Each run takes
 `underwrite_migrations_test_<uuid4>`, which nothing else can be connected to because nothing else
-has seen the name; the module drops it at teardown. Leftovers from runs that died before teardown
-are swept at setup, **but only those with no active session** — an occupied one belongs to a
-concurrent run and is left alone. Every drop is plain, so none of them can restart the server.
+has seen the name, and drops it at teardown. Every drop is plain, so none can restart the server.
 
-`scratch_only()` gates every drop on the name being a scratch database, because the cost of a
-mistake here is dropping the developer's database rather than failing a test.
+`scratch_only()` gates every drop on the name, because the cost of a mistake here is dropping the
+developer's database rather than failing a test.
 
-**Testing note.** The first regression test passed against the reverted fix — it squatted on a
-*different* database than the one under test, so it never exercised the change. The test that
-catches it re-executes the module and asserts the two runs choose different names, which is the
-actual property. *A regression test that does not fail on the un-fixed code is documentation.*
+**There is deliberately no cleanup of older scratch databases**, and the first attempt at one was
+the same bug wearing the opposite hat. It reaped any scratch database with no rows in
+`pg_stat_activity`, reasoning that an occupied one belonged to a live run. But **nothing in this
+module holds a connection between tests** — `names()`, `admin()` and Alembic's `env.py` all use
+`NullPool` and dispose immediately — so a *live* run's database has zero sessions almost all the
+time, and a concurrent run would drop it mid-test. Measured, not argued: a freshly created scratch
+database is returned by that query while its run is still going. Three concurrent copies of the
+module now pass; before the sweep was removed, they did not.
+
+That is strictly worse than the flake it replaced: the original failure was a clean `ObjectInUse` at
+setup, this one destroys another process's database part-way through. Leftovers only occur when a
+run dies before teardown, they are harmless, and `make clean` (`down -v`) collects them with the
+volume.
+
+**Testing notes.** Two of them, both instances of the same mistake:
+
+- The first regression test passed against the reverted fix — it squatted on a *different* database
+  than the one under test, so it never exercised the change.
+- The replacement squatted on a **fixed** name, `_occupied_probe`, which is precisely the shared
+  name this decision exists to remove; two concurrent runs would collide on it.
+
+Both now route through `scratch_name()`, so a mutation making it constant fails them. *A regression
+test that cannot fail on the un-fixed code is documentation.*
 
 ---
 

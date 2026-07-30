@@ -19,7 +19,6 @@ from tests.conftest import alembic_config, derive_test_database_url
 # what made this module flaky: any leftover session — a Ctrl-C'd run, an overlapping `make test`,
 # a stray psql — failed the drop with ObjectInUse and took all four tests down. See D-035.
 SCRATCH_PREFIX = "underwrite_migrations_test"
-DATABASE = f"{SCRATCH_PREFIX}_{uuid4().hex[:12]}"
 HEAD = "0005"
 
 TABLES = "select table_name from information_schema.tables where table_schema = 'public'"
@@ -35,6 +34,13 @@ select t.typname from pg_type t
 join pg_namespace n on n.oid = t.typnamespace
 where n.nspname = 'public' and t.typtype = 'e'
 """
+
+
+def scratch_name() -> str:
+    return f"{SCRATCH_PREFIX}_{uuid4().hex[:12]}"
+
+
+DATABASE = scratch_name()
 
 
 def url_for(database: str) -> str:
@@ -58,12 +64,8 @@ def names(url: str, query: str) -> set[str]:
 
 
 def scratch_only(name: str) -> str:
-    """Never drop a database this module did not create; `protected` is what that would cost."""
-    protected = {
-        make_url(get_settings().database_url).database,
-        make_url(derive_test_database_url()).database,
-    }
-    if name in protected or not name.startswith(f"{SCRATCH_PREFIX}_"):
+    """Never drop a database this module did not create — everything else is somebody's data."""
+    if not name.startswith(f"{SCRATCH_PREFIX}_"):
         raise RuntimeError(f"refusing to drop {name!r}, which is not a scratch database")
     return name
 
@@ -83,36 +85,15 @@ def admin(*statements: str) -> None:
     asyncio.run(run())
 
 
-def unused_scratch_databases() -> list[str]:
-    """Leftovers from runs that died before teardown. Occupied ones belong to a live run."""
-
-    async def run() -> list[str]:
-        engine = create_async_engine(url_for("postgres"), poolclass=NullPool)
-        try:
-            async with engine.connect() as connection:
-                rows = await connection.execute(
-                    text(
-                        "select d.datname from pg_database d"
-                        " where d.datname like :pattern and not exists ("
-                        "   select 1 from pg_stat_activity a where a.datname = d.datname)"
-                    ),
-                    {"pattern": f"{SCRATCH_PREFIX}\\_%"},
-                )
-                return [row[0] for row in rows]
-        finally:
-            await engine.dispose()
-
-    return asyncio.run(run())
-
-
 @pytest.fixture(scope="module")
 def scratch() -> str:
-    # Plain drops, never `with (force)`: force SIGTERMs the squatting backend, and a backend that
-    # exits uncleanly takes the whole postmaster into crash recovery with it. See D-035.
-    for stale in unused_scratch_databases():
-        admin(f'drop database if exists "{scratch_only(stale)}"')
+    # Deliberately no sweep of older scratch databases: nothing here holds a connection between
+    # tests, so "has no sessions" cannot tell an abandoned one from a live run's. `make clean`
+    # drops the volume, which is what collects them. See D-035.
     admin(f'create database "{scratch_only(DATABASE)}"')
     yield url_for(DATABASE)
+    # Plain drop, never `with (force)`: force SIGTERMs the other backend, and one that exits
+    # uncleanly takes the whole postmaster into crash recovery with it. See D-035.
     admin(f'drop database if exists "{scratch_only(DATABASE)}"')
 
 
@@ -181,32 +162,30 @@ def test_migrations_match_the_models(config):
     command.check(config)
 
 
-def test_an_occupied_leftover_is_left_alone_rather_than_forced(scratch):
-    """The original flake: one squatting session failed the drop and took all four tests down.
+def test_a_squatted_leftover_does_not_block_a_new_run():
+    """The original flake, as a whole run: a session on a leftover failed the drop for everyone.
 
-    Forcing the drop instead is worse — it SIGTERMs the squatter, and a backend that exits
-    uncleanly restarts the whole postmaster. So the leftover is skipped, and this run is
-    unaffected because its own database has a name nothing else has ever seen.
+    Its own name, not a fixed one — a shared `_occupied_probe` would collide between concurrent
+    runs and recreate exactly the ObjectInUse this exists to rule out.
     """
-    occupied = f"{SCRATCH_PREFIX}_occupied_probe"
-    admin(f'drop database if exists "{occupied}"', f'create database "{occupied}"')
+    squatted = scratch_name()
+    admin(f'create database "{scratch_only(squatted)}"')
 
     # Its own loop, left open: asyncio.run would close the loop and take the connection with it.
     loop = asyncio.new_event_loop()
-    engine = create_async_engine(url_for(occupied), poolclass=NullPool)
+    engine = create_async_engine(url_for(squatted), poolclass=NullPool)
     connection = loop.run_until_complete(engine.connect())
     try:
-        assert occupied not in unused_scratch_databases()
-        # This run's own database is untouched and still usable while the squatter sits there.
-        assert "submissions" not in names(scratch, TABLES)
+        # A whole run's setup and teardown, while the squatter holds its session throughout.
+        fresh = scratch_name()
+        admin(f'create database "{scratch_only(fresh)}"')
+        admin(f'drop database if exists "{scratch_only(fresh)}"')
     finally:
         for shutdown in (connection.close(), engine.dispose()):
             with contextlib.suppress(Exception):
                 loop.run_until_complete(shutdown)
         loop.close()
-
-    assert occupied in unused_scratch_databases()
-    admin(f'drop database if exists "{occupied}"')
+        admin(f'drop database if exists "{scratch_only(squatted)}"')
 
 
 def test_each_run_picks_a_scratch_database_no_other_run_will_pick():
