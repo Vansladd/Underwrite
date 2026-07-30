@@ -58,6 +58,12 @@ class Settings(BaseSettings):
         return value
 
 
+def alembic_url(settings: Settings) -> str:
+    """Alembic keeps this in a configparser, where a lone `%` is interpolation syntax — so a
+    password carrying a percent-escape (%40 for @) fails the migration, not the connection."""
+    return settings.database_url.replace("%", "%%")
+
+
 def startup_warnings(settings: Settings) -> list[str]:
     """Every shipped default that must not survive onto a TLS deployment, plus a missing CH key."""
     warnings = []

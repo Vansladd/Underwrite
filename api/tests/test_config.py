@@ -1,4 +1,5 @@
 import pytest
+from alembic.config import Config
 from pydantic import ValidationError
 
 from app.config import (
@@ -6,6 +7,7 @@ from app.config import (
     DEFAULT_SECRET_KEY,
     DEFAULT_SWEEPER_TOKEN,
     Settings,
+    alembic_url,
     startup_warnings,
 )
 
@@ -79,3 +81,14 @@ def test_the_other_shipped_defaults_still_warn():
     )
 
     assert len(warnings) == 3
+
+
+def test_a_percent_escaped_password_survives_alembic_config():
+    """A strong password with `@` must be URL-escaped, and %40 then collides with configparser
+    interpolation — so the migration fails where the connection would have worked."""
+    settings = Settings(database_url="postgresql+asyncpg://underwrite:p%40ss@db:5432/underwrite")
+    config = Config()
+
+    config.set_main_option("sqlalchemy.url", alembic_url(settings))
+
+    assert config.get_main_option("sqlalchemy.url") == settings.database_url
