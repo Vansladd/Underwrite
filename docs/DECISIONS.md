@@ -5,6 +5,89 @@ Running log of non-obvious technical choices. Domain and pricing decisions live 
 
 ---
 
+## D-034 · The sweeper token — Terraform gets the parameter's name, never its value
+
+**Ticket:** UW-071 · **Date:** 2026-07-30
+
+`SWEEPER_TOKEN` was passed as `-var sweeper_token=` and landed in the Lambda's environment. That
+put it in **plaintext in `s3://underwrite-tfstate`**, and `sensitive = true` does not help — it
+suppresses CLI output, nothing more. Read on the state bucket was read on a bearer credential for
+`/api/internal`, which expires quotes and writes audit events.
+
+**The obvious fix is theatre.** All three of these leave the secret exactly where it was:
+
+| Attempt | Where the value ends up |
+|---|---|
+| `resource "aws_ssm_parameter" { value = var.sweeper_token }` | State, verbatim |
+| `data "aws_ssm_parameter"` | State, resolved and decrypted |
+| Keeping the var and marking it `sensitive` | State, verbatim |
+
+Terraform writes every attribute it touches. So the only design that works is one where **it never
+touches the value**: the parameter is created out of band by hand, `var.sweeper_token_param` carries
+the *name*, and the Lambdas resolve it at runtime with `ssm:GetParameter` scoped to that one ARN
+plus `kms:Decrypt` conditioned on `kms:ViaService = ssm`. A variable validation rejects anything
+not starting with `/`, so passing the token where the name goes fails at plan rather than becoming
+the leak it replaced.
+
+**The handler reads the environment first and SSM second.** `SWEEPER_TOKEN` in the environment
+short-circuits the lookup, which is what keeps `python3 handler.py` and both `make *-lambda-test`
+targets working with no AWS call and no `boto3` installed — the import sits inside the fallback
+branch. In Lambda, `boto3` comes from the managed runtime, so **the zips still package no
+dependencies** and `archive_file` is unchanged.
+
+**Cost of the design:** Terraform cannot verify the parameter exists without reading it into state,
+so a typo in the name is a runtime failure, not a plan failure. The verify step is what catches it.
+The fetched value is cached per container, so a rotated parameter is picked up on the next cold
+start — with a daily and a monthly schedule, effectively every invocation.
+
+**Not moved: the API's own copy.** The API still reads `SWEEPER_TOKEN` from `/opt/underwrite/.env`,
+chmod 600 on a hand-provisioned box and never in state. It was not the leak, so it is not in scope;
+the token continues to live in two places that must match, as it always has.
+
+### The part this ticket got wrong until the plan was read
+
+Relocating the secret does not un-leak it, and the exposure was **live, not latent**:
+
+- `terraform destroy` after UW-063 took the box, **not the Lambdas** — they cost nothing at rest and
+  were deliberately left up. So both functions were sitting in AWS with the token in plaintext in
+  their environment, readable by any `lambda:GetFunctionConfiguration` caller, for the whole time it
+  was believed to be "latent until the next deploy".
+- `s3://underwrite-tfstate` has **versioning enabled** — 74 versions of `prod/terraform.tfstate`.
+  Overwriting the current state changes nothing about the old ones: of the 40 most recent versions,
+  **6 still contain `SWEEPER_TOKEN`**, and `s3:GetObjectVersion` reads any of them.
+
+So the fix has two halves and this file only describes one. **The token must be rotated**, not
+moved — a new value into SSM, the box's `.env`, and nowhere else. The old value stays readable in
+those state versions until they are expired or deleted, and no amount of restructuring the HCL
+touches them. Generalised: *a secret that has ever been in versioned state is burned, and the
+config change is only what stops the next one being burned.*
+
+### Two green signals that were measuring nothing
+
+Review found both, and they share a shape worth naming — the check ran, reported success, and never
+looked at the code under review:
+
+- **The new tests skipped in CI and the run stayed green.** They were guarded by
+  `skipif(not Path("/lambdas").is_dir())`, and CI runs `pytest` directly on the runner, where the
+  compose mount does not exist. `485 passed, 10 skipped`. Now resolved from the compose mount *or*
+  the repo root, with **no skip at all** — absence raises, because a fixture directory that has
+  gone missing is a failure and skipping it is how this file came to run nowhere.
+- **`lambdas/` was outside ruff's scope entirely.** `make lint` runs in the api container at
+  `/app`, so `.` never included the handlers — production code deployed to AWS, unlinted since it
+  was written. The proof was in the diff under review: three blank lines before `def handler`, while
+  lint reported "95 files already formatted". Both targets now pass `/lambdas` explicitly, with
+  `--config pyproject.toml` so it gets this project's line length rather than ruff's default.
+  **And the same hole existed one layer up** — `ci.yml`'s lint job sets `working-directory: api`
+  and runs `ruff check .`, so fixing only the Makefile would have left CI blind to exactly the code
+  the Makefile had just started checking. Fixed in both.
+
+That is the third and fourth instance in this repo of a green signal that wasn't measuring anything
+(after the sweeper-token test that only passed on an empty `.env`, and `ruff format --check` missing
+from the Makefile while CI ran it). The pattern is always the same: **the scope of the check and the
+scope of the change were never compared.**
+
+---
+
 ## D-033 · EventBridge Scheduler — the group is the only grain the trust policy has
 
 **Ticket:** UW-063 · **Date:** 2026-07-30

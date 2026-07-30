@@ -247,7 +247,21 @@ make bordereau-lambda-test PERIOD=2026-06    # export a month; omit PERIOD for t
 
 Neither touches the database. Both `POST` to `/api/internal/…`, which is gated by `SWEEPER_TOKEN`
 (compared with `secrets.compare_digest`; **unset means 503, not 401**, so an unconfigured deployment
-is closed rather than open). The same token goes in the box's `.env` and in `-var sweeper_token=`.
+is closed rather than open).
+
+The token lives in the box's `.env` and in **SSM Parameter Store**, which the Lambdas read at
+runtime. **Terraform is given the parameter's name, never its value** — an `aws_ssm_parameter`
+resource, a `data` source, or a `sensitive` variable all write the secret to the state bucket in
+plaintext, so any of them would have looked like a fix and changed nothing. Create it once, by
+hand, then pass the name:
+
+```
+aws ssm put-parameter --name /underwrite/sweeper-token --type SecureString --value "$TOKEN"
+make tf-apply … -var sweeper_token_param=/underwrite/sweeper-token
+```
+
+Locally there is no SSM: `SWEEPER_TOKEN` in the environment short-circuits the lookup, which is why
+`python3 handler.py` still runs anywhere. See D-034.
 
 | Job | Schedule | What it does |
 |---|---|---|

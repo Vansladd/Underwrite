@@ -60,6 +60,7 @@ services:
       - api
     environment:
       DOMAIN: ${DOMAIN:?set DOMAIN to the public hostname Caddy serves}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL to the ACME account contact address}
     ports:
       - "80:80"
       - "443:443"

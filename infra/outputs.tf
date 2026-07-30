@@ -19,12 +19,12 @@ output "pdf_render_function_name" {
 }
 
 output "quote_expiry_function_name" {
-  description = "EventBridge Scheduler target (#42); null until -var sweeper_token is set"
+  description = "EventBridge Scheduler target (#42); null until -var sweeper_token_param is set"
   value       = one(aws_lambda_function.quote_expiry[*].function_name)
 }
 
 output "bordereau_function_name" {
-  description = "EventBridge Scheduler target (#42); null until -var sweeper_token is set"
+  description = "EventBridge Scheduler target (#42); null until -var sweeper_token_param is set"
   value       = one(aws_lambda_function.bordereau[*].function_name)
 }
 

@@ -105,13 +105,15 @@ regen-goldens:
 	$(COMPOSE) run --rm --no-deps api uv run --frozen pytest -q --regen-goldens tests/test_rating_goldens.py
 
 # Both steps, because CI's lint job runs both — `make lint` has to be able to fail the same way.
+# /lambdas explicitly: ruff runs from /app, so the zip handlers are outside `.` and went
+# unchecked entirely. --config, or they get ruff's default line length instead of ours.
 lint:
-	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff check .
-	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff format --check .
+	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff check . /lambdas --config pyproject.toml
+	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff format --check . /lambdas --config pyproject.toml
 
 fmt:
-	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff format .
-	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff check --fix .
+	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff format . /lambdas --config pyproject.toml
+	$(COMPOSE) run --rm --no-deps api uv run --frozen ruff check --fix . /lambdas --config pyproject.toml
 
 migrate:
 	$(COMPOSE) run --rm -w /app api uv run --frozen alembic upgrade head
@@ -161,7 +163,7 @@ push-api: tf-account
 
 prod-up: .env
 	docker build -t underwrite/api:local ./api
-	API_IMAGE=underwrite/api:local DOMAIN=localhost $(PROD_COMPOSE) up -d
+	API_IMAGE=underwrite/api:local DOMAIN=localhost ACME_EMAIL=dev@localhost $(PROD_COMPOSE) up -d
 	@printf "waiting for api via caddy (https, internal cert)"; \
 	for i in $$(seq 1 40); do \
 		if curl -fsSk https://localhost/health >/dev/null 2>&1; then \
@@ -171,10 +173,10 @@ prod-up: .env
 		fi; \
 		printf "."; sleep 1; \
 	done; \
-	echo " timed out"; API_IMAGE=underwrite/api:local DOMAIN=localhost $(PROD_COMPOSE) logs --tail=40; exit 1
+	echo " timed out"; API_IMAGE=underwrite/api:local DOMAIN=localhost ACME_EMAIL=dev@localhost $(PROD_COMPOSE) logs --tail=40; exit 1
 
 prod-down:
-	API_IMAGE=underwrite/api:local DOMAIN=localhost $(PROD_COMPOSE) down
+	API_IMAGE=underwrite/api:local DOMAIN=localhost ACME_EMAIL=dev@localhost $(PROD_COMPOSE) down
 
 smoke:
 	@test -n "$(DOMAIN)" || (echo 'usage: make smoke DOMAIN=<host>'; exit 1)

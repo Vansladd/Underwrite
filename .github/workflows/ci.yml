@@ -27,11 +27,13 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
+      # ../lambdas explicitly: this job runs in api/, so `.` excludes the zip handlers, which
+      # is how they reached AWS unlinted. --config, or they get ruff's default line length.
       - name: ruff check
-        run: uv run --frozen ruff check .
+        run: uv run --frozen ruff check . ../lambdas --config pyproject.toml
 
       - name: ruff format
-        run: uv run --frozen ruff format --check .
+        run: uv run --frozen ruff format --check . ../lambdas --config pyproject.toml
 
   infra:
     name: infra
