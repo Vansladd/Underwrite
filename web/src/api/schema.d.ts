@@ -124,6 +124,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/submissions/{submission_id}/recheck": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recheck Submission
+         * @description Ask Companies House again. Narrow on purpose — re-rating moves the premium. See D-037.
+         */
+        post: operations["recheck_submission_api_submissions__submission_id__recheck_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/submissions/{submission_id}/approve": {
         parameters: {
             query?: never;
@@ -315,7 +335,7 @@ export interface components {
          * AuditEventType
          * @enum {string}
          */
-        AuditEventType: "submission_received" | "extraction_completed" | "extraction_failed" | "enrichment_completed" | "enrichment_failed" | "rating_completed" | "rating_failed" | "submission_approved" | "submission_declined" | "quote_generated" | "quote_render_failed" | "quote_expired" | "bordereau_exported";
+        AuditEventType: "submission_received" | "extraction_completed" | "extraction_failed" | "enrichment_completed" | "enrichment_failed" | "rating_completed" | "rating_failed" | "submission_approved" | "submission_declined" | "submission_rechecked" | "quote_generated" | "quote_render_failed" | "quote_expired" | "bordereau_exported";
         /** Body_create_submission_from_pdf_api_submissions_pdf_post */
         Body_create_submission_from_pdf_api_submissions_pdf_post: {
             /** File */
@@ -755,6 +775,7 @@ export interface operations {
         parameters: {
             query?: {
                 status?: components["schemas"]["SubmissionStatus"] | null;
+                reason?: components["schemas"]["ReasonCode"] | null;
                 limit?: number;
                 offset?: number;
             };
@@ -871,6 +892,37 @@ export interface operations {
         };
     };
     get_submission_api_submissions__submission_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recheck_submission_api_submissions__submission_id__recheck_post: {
         parameters: {
             query?: never;
             header?: never;

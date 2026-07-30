@@ -5,6 +5,56 @@ Running log of non-obvious technical choices. Domain and pricing decisions live 
 
 ---
 
+## D-037 · Rechecking a Companies House outage — narrow on purpose
+
+**Ticket:** UW-074 · **Date:** 2026-07-30
+
+When the register is unreachable, every submission in that window refers with `CH_UNAVAILABLE`
+(D-029) and lands in the queue beside genuine referrals. `enrichments.lookup_error` recorded exactly
+what happened and **nothing read it**: the operator could not tell "we could not ask" from "the
+register said something concerning", and had no way to ask again once CH came back.
+
+`GET /api/submissions?reason=` filters on `refer_reasons` by JSONB containment, so finding them is
+one indexable predicate rather than loading the queue and filtering in the client.
+
+**`POST /{id}/recheck` is deliberately not a re-run-the-pipeline button.** Re-rating moves the
+premium, so the gates are:
+
+| Refused when | Because |
+|---|---|
+| a quote exists | that number is one somebody is holding |
+| status is not `referred` | approved and declined are answers already given |
+| never rated | there is nothing to re-rate |
+| the referral was not `CH_UNAVAILABLE` | this recovers an outage, not any referral |
+
+**The quote gate is checked first**, before the status gate, even though status subsumes it today.
+Ordered the other way it is unreachable — mutation-tested and confirmed dead, exactly like the
+`protected` set removed in D-035. First, it fires on its own and gives the operator the reason that
+actually matters.
+
+**Rebuilt from the stored columns, not from a reconstructed `ExtractedApplication`.** The row keeps
+storage units (`annual_revenue_pence`, `months_trading`); going back through the broker-units schema
+would mean pence → float pounds → pence, which is the round trip the money rule exists to prevent.
+`enrich()` gets only the three fields it reads, and rating gets the pence untouched.
+
+**Both rows update in place.** `enrichments` and `ratings` are unique on `submission_id`, so the
+previous values survive only in the trail — hence `submission_rechecked` (migration **0006**) with
+both sides of the decision, the premium before and after, and both lookup errors. A new event type
+rather than a second `enrichment_completed`, because two identical events with nothing marking one
+as a retry is the D-030 mistake. Actor is **OPS with `actor_id`**: a human pressed this, and
+borrowing SYSTEM would falsify the record.
+
+**A recheck that reaches AUTO_APPROVE issues the quote**, exactly as the pipeline does — otherwise
+it produces the priced-then-abandoned state D-030 exists to prevent.
+
+**Testing note.** The auto-approve assertion was first written as `if decision == "auto_approve"`,
+and the API serialises `AUTO_APPROVE` — so the branch never ran and the test asserted nothing. Third
+instance of the same pattern in this repo. It is unconditional now. Likewise, asserting only
+`409` could not distinguish which gate fired, leaving three of them free to be deleted; each gate
+test now asserts its own message.
+
+---
+
 ## D-036 · The end of a deploy ticket is a *targeted* destroy
 
 **Ticket:** UW-073 · **Date:** 2026-07-30

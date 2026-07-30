@@ -1,6 +1,5 @@
 from datetime import date, timedelta
 
-import pytest
 from sqlalchemy import select
 
 from app.domain.enums import (
@@ -12,26 +11,12 @@ from app.domain.enums import (
     Sector,
     SubmissionStatus,
 )
-from app.models import AuditEvent, Extraction, Quote, Rating, Submission, User
+from app.models import AuditEvent, Extraction, Quote, Rating, Submission
 from app.schemas import rating_to_orm_kwargs
 from app.services.rating import rate
 from tests.conftest import TEST_USER
 from tests.factories import STRIKE_OFF, make_submission
 from tests.rating_baseline import application
-
-
-@pytest.fixture
-async def operator(db):
-    # actor_id is an FK to users; the injected TEST_USER is never persisted by the fixtures.
-    db.add(
-        User(
-            id=TEST_USER.id,
-            username="tester",
-            password_hash="unused",
-            display_name="Test Operator",
-        )
-    )
-    await db.flush()
 
 
 async def referred(db, *, rated=True) -> Submission:
